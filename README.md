@@ -1,1 +1,1 @@
-# Fin-nces
+# Finances
