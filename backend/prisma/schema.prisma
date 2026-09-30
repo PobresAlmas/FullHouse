@@ -1,0 +1,941 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model alocacao_pagamento {
+  pagamento_id      String         @db.Uuid
+  rateio_despesa_id String         @db.Uuid
+  valor             Decimal        @db.Decimal(12, 2)
+  pagamento         pagamento      @relation(fields: [pagamento_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rateio_despesa    rateio_despesa @relation(fields: [rateio_despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([pagamento_id, rateio_despesa_id])
+}
+
+model anuncio_quarto {
+  id                         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                    String              @db.Uuid
+  titulo                     String              @db.VarChar(150)
+  descricao                  String?
+  valor_mensal               Decimal             @db.Decimal(10, 2)
+  cidade                     String              @db.VarChar(100)
+  bairro                     String?             @db.VarChar(100)
+  status                     status_anuncio_enum @default(ABERTO)
+  exibir_endereco            Boolean             @default(false)
+  endereco_referencia        String?             @db.VarChar(255)
+  exibir_contato             Boolean             @default(false)
+  criado_por_participacao_id String              @db.Uuid
+  casa                       casa                @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao               participacao        @relation(fields: [criado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  interesse_anuncio          interesse_anuncio[]
+
+  @@index([cidade, bairro], map: "idx_anuncio_quarto_cidade_bairro")
+}
+
+model casa {
+  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nome                    String                   @db.VarChar(150)
+  cidade                  String?                  @db.VarChar(100)
+  bairro                  String?                  @db.VarChar(100)
+  status                  status_casa_enum         @default(ATIVA)
+  criada_por_usuario_id   String                   @db.Uuid
+  fechada_em              DateTime?                @db.Timestamptz(6)
+  excluido_em             DateTime?                @db.Timestamptz(6)
+  anuncio_quarto          anuncio_quarto[]
+  usuario                 usuario                  @relation(fields: [criada_por_usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  configuracao_casa       configuracao_casa?
+  conversa                conversa[]
+  convite_casa            convite_casa[]
+  definicao_tarefa        definicao_tarefa[]
+  despesa                 despesa[]
+  fundo_reserva           fundo_reserva?
+  item_despensa           item_despensa[]
+  lancamento_financeiro   lancamento_financeiro[]
+  notificacao             notificacao[]
+  pagamento               pagamento[]
+  participacao            participacao[]
+  penalidade              penalidade[]
+  perfil_convivencia_casa perfil_convivencia_casa?
+  pet                     pet[]
+  proposta_regra          proposta_regra[]
+  regra_convivencia       regra_convivencia[]
+  reuniao                 reuniao[]
+  subgrupo                subgrupo[]
+}
+
+model comprovante_pagamento {
+  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rateio_despesa_id           String?                       @db.Uuid
+  pagamento_id                String?                       @db.Uuid
+  arquivo_url                 String                        @db.VarChar(500)
+  tipo_arquivo                tipo_arquivo_comprovante_enum
+  enviado_por_participacao_id String                        @db.Uuid
+  participacao                participacao                  @relation(fields: [enviado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pagamento                   pagamento?                    @relation(fields: [pagamento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rateio_despesa              rateio_despesa?               @relation(fields: [rateio_despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model configuracao_casa {
+  casa_id                     String                 @id @db.Uuid
+  penalidade_ativa            Boolean                @default(true)
+  tolerancia_padrao_horas     Int                    @default(24) @db.SmallInt
+  ocorrencias_para_penalidade Int                    @default(1) @db.SmallInt
+  penalidade_valor_padrao     Decimal                @default(0) @db.Decimal(10, 2)
+  limite_negociacoes          Int                    @default(3) @db.SmallInt
+  periodo_renovacao_limites   periodo_renovacao_enum @default(MENSAL)
+  votacao_regras_obrigatoria  Boolean                @default(true)
+  quorum_minimo_aprovacao     Int                    @default(1) @db.SmallInt
+  prazo_aprovacao_regra_dias  Int                    @default(7) @db.SmallInt
+  estrategia_rateio_padrao    estrategia_rateio_enum @default(IGUALITARIO)
+  casa                        casa                   @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model conversa {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id          String             @db.Uuid
+  subgrupo_id      String?            @unique @db.Uuid
+  tipo             tipo_conversa_enum
+  titulo           String?            @db.VarChar(150)
+  casa             casa               @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  subgrupo         subgrupo?          @relation(fields: [subgrupo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  leitura_conversa leitura_conversa[]
+  mensagem         mensagem[]
+}
+
+model convite_casa {
+  id                                                                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                                                               String              @db.Uuid
+  codigo_pessoal_convidado                                              String?             @db.Char(6)
+  usuario_convidado_id                                                  String?             @db.Uuid
+  convidado_por_participacao_id                                         String              @db.Uuid
+  status                                                                status_convite_enum @default(PENDENTE)
+  expira_em                                                             DateTime            @db.Timestamptz(6)
+  casa                                                                  casa                @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao_convite_casa_convidado_por_participacao_idToparticipacao participacao        @relation("convite_casa_convidado_por_participacao_idToparticipacao", fields: [convidado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario                                                               usuario?            @relation(fields: [usuario_convidado_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participacao_participacao_convite_idToconvite_casa                    participacao[]      @relation("participacao_convite_idToconvite_casa")
+
+  @@index([casa_id], map: "idx_convite_casa_casa")
+}
+
+model cuidado_pet {
+  id                                                                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pet_id                                                                String        @db.Uuid
+  tipo                                                                  String        @db.VarChar(50)
+  data_cuidado                                                          DateTime      @db.Date
+  valor                                                                 Decimal?      @db.Decimal(10, 2)
+  pago_por_participacao_id                                              String?       @db.Uuid
+  despesa_id                                                            String?       @db.Uuid
+  proxima_ocorrencia                                                    DateTime?     @db.Date
+  registrado_por_participacao_id                                        String        @db.Uuid
+  despesa                                                               despesa?      @relation(fields: [despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participacao_cuidado_pet_pago_por_participacao_idToparticipacao       participacao? @relation("cuidado_pet_pago_por_participacao_idToparticipacao", fields: [pago_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pet                                                                   pet           @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao_cuidado_pet_registrado_por_participacao_idToparticipacao participacao  @relation("cuidado_pet_registrado_por_participacao_idToparticipacao", fields: [registrado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model definicao_tarefa {
+  id                               String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  escopo                           escopo_tarefa_enum
+  casa_id                          String?                  @db.Uuid
+  usuario_id                       String?                  @db.Uuid
+  titulo                           String                   @db.VarChar(150)
+  cor                              String?                  @db.Char(7)
+  periodicidade                    periodicidade_enum
+  intervalo_dias                   Int?                     @db.SmallInt
+  regra_recorrencia                Json?
+  tipo_atribuicao                  tipo_atribuicao_enum
+  responsavel_fixo_participacao_id String?                  @db.Uuid
+  visibilidade                     visibilidade_tarefa_enum @default(PUBLICA)
+  tolerancia_horas                 Int?                     @db.SmallInt
+  gera_penalidade                  Boolean                  @default(false)
+  valor_penalidade                 Decimal?                 @db.Decimal(10, 2)
+  data_inicio                      DateTime                 @db.Date
+  data_fim                         DateTime?                @db.Date
+  casa                             casa?                    @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao                     participacao?            @relation(fields: [responsavel_fixo_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario                          usuario?                 @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fila_rodizio                     fila_rodizio[]
+  instancia_tarefa                 instancia_tarefa[]
+
+  @@index([casa_id], map: "idx_definicao_tarefa_casa")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model despesa {
+  id                       String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  escopo                   escopo_despesa_enum
+  casa_id                  String?                   @db.Uuid
+  usuario_id               String?                   @db.Uuid
+  subgrupo_id              String?                   @db.Uuid
+  descricao                String                    @db.VarChar(255)
+  valor_total              Decimal                   @db.Decimal(12, 2)
+  tipo                     tipo_despesa_enum
+  estrategia_rateio        estrategia_rateio_enum
+  visibilidade             visibilidade_despesa_enum @default(PUBLICA)
+  data_vencimento          DateTime?                 @db.Date
+  pago_por_participacao_id String?                   @db.Uuid
+  status                   status_despesa_enum       @default(ABERTA)
+  quitada_em               DateTime?                 @db.Timestamptz(6)
+  cuidado_pet              cuidado_pet[]
+  casa                     casa?                     @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao             participacao?             @relation(fields: [pago_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subgrupo                 subgrupo?                 @relation(fields: [subgrupo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario                  usuario?                  @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lancamento_financeiro    lancamento_financeiro[]
+  lembrete                 lembrete[]
+  rateio_despesa           rateio_despesa[]
+
+  @@index([casa_id], map: "idx_despesa_casa")
+}
+
+model fila_rodizio {
+  definicao_tarefa_id String           @db.Uuid
+  ordem               Int              @db.SmallInt
+  participacao_id     String           @db.Uuid
+  ativo               Boolean          @default(true)
+  definicao_tarefa    definicao_tarefa @relation(fields: [definicao_tarefa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao        participacao     @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([definicao_tarefa_id, ordem])
+}
+
+model fundo_reserva {
+  id                      String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                 String                       @unique @db.Uuid
+  nome                    String                       @db.VarChar(150)
+  tipo_contribuicao       tipo_contribuicao_fundo_enum
+  valor_contribuicao_fixa Decimal?                     @db.Decimal(12, 2)
+  meta                    Decimal?                     @db.Decimal(12, 2)
+  casa                    casa                         @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  lancamento_financeiro   lancamento_financeiro[]
+}
+
+model instancia_tarefa {
+  id                                                                        String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  definicao_tarefa_id                                                       String                       @db.Uuid
+  data_prevista                                                             DateTime                     @db.Date
+  prazo_limite                                                              DateTime?                    @db.Timestamptz(6)
+  responsavel_participacao_id                                               String?                      @db.Uuid
+  responsavel_usuario_id                                                    String?                      @db.Uuid
+  ordem_rodizio                                                             Int?                         @db.SmallInt
+  status                                                                    status_instancia_tarefa_enum @default(PENDENTE)
+  concluida_em                                                              DateTime?                    @db.Timestamptz(6)
+  concluida_por_participacao_id                                             String?                      @db.Uuid
+  participacao_instancia_tarefa_concluida_por_participacao_idToparticipacao participacao?                @relation("instancia_tarefa_concluida_por_participacao_idToparticipacao", fields: [concluida_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  definicao_tarefa                                                          definicao_tarefa             @relation(fields: [definicao_tarefa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao_instancia_tarefa_responsavel_participacao_idToparticipacao   participacao?                @relation("instancia_tarefa_responsavel_participacao_idToparticipacao", fields: [responsavel_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario                                                                   usuario?                     @relation(fields: [responsavel_usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lembrete                                                                  lembrete[]
+  penalidade                                                                penalidade[]
+  solicitacao_troca_tarefa                                                  solicitacao_troca_tarefa[]
+
+  @@unique([definicao_tarefa_id, data_prevista], map: "uq_instancia_tarefa_data")
+  @@index([definicao_tarefa_id], map: "idx_instancia_tarefa_definicao")
+  @@index([responsavel_participacao_id], map: "idx_instancia_tarefa_responsavel")
+}
+
+model interesse_anuncio {
+  id             String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  anuncio_id     String                        @db.Uuid
+  usuario_id     String                        @db.Uuid
+  mensagem       String?
+  status         status_interesse_anuncio_enum @default(PENDENTE)
+  anuncio_quarto anuncio_quarto                @relation(fields: [anuncio_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuario        usuario                       @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model item_despensa {
+  id                                                                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                                                             String                  @db.Uuid
+  nome                                                                String                  @db.VarChar(150)
+  propriedade                                                         propriedade_item_enum
+  dono_participacao_id                                                String?                 @db.Uuid
+  unidade                                                             unidade_item_enum
+  quantidade_minima                                                   Decimal?                @db.Decimal(10, 2)
+  data_validade                                                       DateTime?               @db.Date
+  criado_por_participacao_id                                          String                  @db.Uuid
+  casa                                                                casa                    @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao_item_despensa_criado_por_participacao_idToparticipacao participacao            @relation("item_despensa_criado_por_participacao_idToparticipacao", fields: [criado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participacao_item_despensa_dono_participacao_idToparticipacao       participacao?           @relation("item_despensa_dono_participacao_idToparticipacao", fields: [dono_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lembrete                                                            lembrete[]
+  movimentacao_despensa                                               movimentacao_despensa[]
+
+  @@index([casa_id], map: "idx_item_despensa_casa")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model lancamento_financeiro {
+  id                          String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                     String                   @db.Uuid
+  participacao_id             String?                  @db.Uuid
+  fundo_reserva_id            String?                  @db.Uuid
+  natureza                    natureza_lancamento_enum
+  origem                      origem_lancamento_enum
+  valor                       Decimal                  @db.Decimal(12, 2)
+  descricao                   String?                  @db.VarChar(255)
+  motivo                      String?
+  despesa_id                  String?                  @db.Uuid
+  rateio_despesa_id           String?                  @db.Uuid
+  pagamento_id                String?                  @db.Uuid
+  penalidade_id               String?                  @db.Uuid
+  estorna_lancamento_id       String?                  @db.Uuid
+  ocorrido_em                 DateTime                 @default(now()) @db.Timestamptz(6)
+  casa                        casa                     @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  despesa                     despesa?                 @relation(fields: [despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lancamento_financeiro       lancamento_financeiro?   @relation("lancamento_financeiroTolancamento_financeiro", fields: [estorna_lancamento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_lancamento_financeiro lancamento_financeiro[]  @relation("lancamento_financeiroTolancamento_financeiro")
+  fundo_reserva               fundo_reserva?           @relation(fields: [fundo_reserva_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pagamento                   pagamento?               @relation(fields: [pagamento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participacao                participacao?            @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  penalidade                  penalidade?              @relation(fields: [penalidade_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rateio_despesa              rateio_despesa?          @relation(fields: [rateio_despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([casa_id], map: "idx_lancamento_financeiro_casa")
+  @@index([participacao_id], map: "idx_lancamento_financeiro_participacao")
+}
+
+model leitura_conversa {
+  conversa_id             String       @db.Uuid
+  participacao_id         String       @db.Uuid
+  ultima_mensagem_lida_id String?      @db.Uuid
+  atualizado_em           DateTime     @default(now()) @db.Timestamptz(6)
+  conversa                conversa     @relation(fields: [conversa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao            participacao @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  mensagem                mensagem?    @relation(fields: [ultima_mensagem_lida_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([conversa_id, participacao_id])
+}
+
+model lembrete {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id          String            @db.Uuid
+  titulo              String            @db.VarChar(150)
+  lembrar_em          DateTime          @db.Timestamptz(6)
+  instancia_tarefa_id String?           @db.Uuid
+  despesa_id          String?           @db.Uuid
+  rateio_despesa_id   String?           @db.Uuid
+  item_despensa_id    String?           @db.Uuid
+  enviado             Boolean           @default(false)
+  despesa             despesa?          @relation(fields: [despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  instancia_tarefa    instancia_tarefa? @relation(fields: [instancia_tarefa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  item_despensa       item_despensa?    @relation(fields: [item_despensa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rateio_despesa      rateio_despesa?   @relation(fields: [rateio_despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario             usuario           @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model membro_subgrupo {
+  subgrupo_id     String       @db.Uuid
+  participacao_id String       @db.Uuid
+  entrou_em       DateTime     @default(now()) @db.Timestamptz(6)
+  saiu_em         DateTime?    @db.Timestamptz(6)
+  participacao    participacao @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subgrupo        subgrupo     @relation(fields: [subgrupo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([subgrupo_id, participacao_id])
+}
+
+model mensagem {
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversa_id           String             @db.Uuid
+  autor_participacao_id String             @db.Uuid
+  conteudo              String
+  responde_mensagem_id  String?            @db.Uuid
+  enviada_em            DateTime           @default(now()) @db.Timestamptz(6)
+  excluido_em           DateTime?          @db.Timestamptz(6)
+  leitura_conversa      leitura_conversa[]
+  participacao          participacao       @relation(fields: [autor_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  conversa              conversa           @relation(fields: [conversa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mensagem              mensagem?          @relation("mensagemTomensagem", fields: [responde_mensagem_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_mensagem        mensagem[]         @relation("mensagemTomensagem")
+
+  @@index([conversa_id], map: "idx_mensagem_conversa")
+}
+
+model movimentacao_despensa {
+  id               String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  item_despensa_id String                          @db.Uuid
+  tipo             tipo_movimentacao_despensa_enum
+  quantidade       Decimal                         @db.Decimal(10, 2)
+  participacao_id  String                          @db.Uuid
+  ocorrido_em      DateTime                        @default(now()) @db.Timestamptz(6)
+  item_despensa    item_despensa                   @relation(fields: [item_despensa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao     participacao                    @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model negociacao_penalidade {
+  id                          String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  penalidade_id               String                 @db.Uuid
+  solicitante_participacao_id String                 @db.Uuid
+  justificativa               String
+  status                      status_negociacao_enum @default(PENDENTE)
+  prazo_votacao               DateTime?              @db.Timestamptz(6)
+  penalidade                  penalidade             @relation(fields: [penalidade_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao                participacao           @relation(fields: [solicitante_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  voto_negociacao             voto_negociacao[]
+}
+
+model notificacao {
+  id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id    String                @db.Uuid
+  casa_id       String?               @db.Uuid
+  tipo          tipo_notificacao_enum
+  titulo        String                @db.VarChar(150)
+  mensagem      String?
+  entidade_tipo String?               @db.VarChar(50)
+  entidade_id   String?               @db.Uuid
+  lida          Boolean               @default(false)
+  criado_em     DateTime              @default(now()) @db.Timestamptz(6)
+  casa          casa?                 @relation(fields: [casa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuario       usuario               @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([usuario_id, lida], map: "idx_notificacao_usuario_lida")
+}
+
+model pagamento {
+  id                                                           String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                                                      String                  @db.Uuid
+  participacao_id                                              String                  @db.Uuid
+  destino_participacao_id                                      String?                 @db.Uuid
+  valor                                                        Decimal                 @db.Decimal(12, 2)
+  metodo                                                       metodo_pagamento_enum
+  pago_em                                                      DateTime                @default(now()) @db.Timestamptz(6)
+  confirmado_em                                                DateTime?               @db.Timestamptz(6)
+  alocacao_pagamento                                           alocacao_pagamento[]
+  comprovante_pagamento                                        comprovante_pagamento[]
+  lancamento_financeiro                                        lancamento_financeiro[]
+  casa                                                         casa                    @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao_pagamento_destino_participacao_idToparticipacao participacao?           @relation("pagamento_destino_participacao_idToparticipacao", fields: [destino_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participacao_pagamento_participacao_idToparticipacao         participacao            @relation("pagamento_participacao_idToparticipacao", fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model participacao {
+  id                                                                                           String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                                                                                      String                     @db.Uuid
+  usuario_id                                                                                   String                     @db.Uuid
+  papel                                                                                        papel_participacao_enum    @default(MORADOR)
+  data_entrada                                                                                 DateTime                   @default(dbgenerated("CURRENT_DATE")) @db.Date
+  data_saida                                                                                   DateTime?                  @db.Date
+  convite_id                                                                                   String?                    @db.Uuid
+  anuncio_quarto                                                                               anuncio_quarto[]
+  comprovante_pagamento                                                                        comprovante_pagamento[]
+  convite_casa_convite_casa_convidado_por_participacao_idToparticipacao                        convite_casa[]             @relation("convite_casa_convidado_por_participacao_idToparticipacao")
+  cuidado_pet_cuidado_pet_pago_por_participacao_idToparticipacao                               cuidado_pet[]              @relation("cuidado_pet_pago_por_participacao_idToparticipacao")
+  cuidado_pet_cuidado_pet_registrado_por_participacao_idToparticipacao                         cuidado_pet[]              @relation("cuidado_pet_registrado_por_participacao_idToparticipacao")
+  definicao_tarefa                                                                             definicao_tarefa[]
+  despesa                                                                                      despesa[]
+  fila_rodizio                                                                                 fila_rodizio[]
+  instancia_tarefa_instancia_tarefa_concluida_por_participacao_idToparticipacao                instancia_tarefa[]         @relation("instancia_tarefa_concluida_por_participacao_idToparticipacao")
+  instancia_tarefa_instancia_tarefa_responsavel_participacao_idToparticipacao                  instancia_tarefa[]         @relation("instancia_tarefa_responsavel_participacao_idToparticipacao")
+  item_despensa_item_despensa_criado_por_participacao_idToparticipacao                         item_despensa[]            @relation("item_despensa_criado_por_participacao_idToparticipacao")
+  item_despensa_item_despensa_dono_participacao_idToparticipacao                               item_despensa[]            @relation("item_despensa_dono_participacao_idToparticipacao")
+  lancamento_financeiro                                                                        lancamento_financeiro[]
+  leitura_conversa                                                                             leitura_conversa[]
+  membro_subgrupo                                                                              membro_subgrupo[]
+  mensagem                                                                                     mensagem[]
+  movimentacao_despensa                                                                        movimentacao_despensa[]
+  negociacao_penalidade                                                                        negociacao_penalidade[]
+  pagamento_pagamento_destino_participacao_idToparticipacao                                    pagamento[]                @relation("pagamento_destino_participacao_idToparticipacao")
+  pagamento_pagamento_participacao_idToparticipacao                                            pagamento[]                @relation("pagamento_participacao_idToparticipacao")
+  convite_casa_participacao_convite_idToconvite_casa                                           convite_casa?              @relation("participacao_convite_idToconvite_casa", fields: [convite_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_participacao_convite")
+  casa                                                                                         casa                       @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuario                                                                                      usuario                    @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participante_reuniao                                                                         participante_reuniao[]
+  penalidade                                                                                   penalidade[]
+  permissao_participacao_permissao_participacao_concedida_por_participacao_idToparticipacao    permissao_participacao[]   @relation("permissao_participacao_concedida_por_participacao_idToparticipacao")
+  permissao_participacao_permissao_participacao_participacao_idToparticipacao                  permissao_participacao[]   @relation("permissao_participacao_participacao_idToparticipacao")
+  pet                                                                                          pet[]
+  proposta_regra                                                                               proposta_regra[]
+  rateio_despesa                                                                               rateio_despesa[]
+  regra_convivencia_regra_convivencia_atualizada_por_participacao_idToparticipacao             regra_convivencia[]        @relation("regra_convivencia_atualizada_por_participacao_idToparticipacao")
+  regra_convivencia_regra_convivencia_criada_por_participacao_idToparticipacao                 regra_convivencia[]        @relation("regra_convivencia_criada_por_participacao_idToparticipacao")
+  reuniao                                                                                      reuniao[]
+  saldo_negociacao                                                                             saldo_negociacao?
+  solicitacao_troca_tarefa_solicitacao_troca_tarefa_destinatario_participacao_idToparticipacao solicitacao_troca_tarefa[] @relation("solicitacao_troca_tarefa_destinatario_participacao_idToparticipacao")
+  solicitacao_troca_tarefa_solicitacao_troca_tarefa_solicitante_participacao_idToparticipacao  solicitacao_troca_tarefa[] @relation("solicitacao_troca_tarefa_solicitante_participacao_idToparticipacao")
+  subgrupo                                                                                     subgrupo[]
+  voto_negociacao                                                                              voto_negociacao[]
+  voto_proposta_regra                                                                          voto_proposta_regra[]
+
+  @@unique([casa_id, usuario_id, data_saida], map: "uq_participacao_casa_usuario_ativo")
+  @@index([casa_id], map: "idx_participacao_casa")
+  @@index([usuario_id], map: "idx_participacao_usuario")
+}
+
+model participante_reuniao {
+  reuniao_id      String                             @db.Uuid
+  participacao_id String                             @db.Uuid
+  situacao        situacao_participante_reuniao_enum @default(PENDENTE)
+  respondido_em   DateTime?                          @db.Timestamptz(6)
+  participacao    participacao                       @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reuniao         reuniao                            @relation(fields: [reuniao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([reuniao_id, participacao_id])
+}
+
+model penalidade {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id               String                  @db.Uuid
+  participacao_id       String                  @db.Uuid
+  instancia_tarefa_id   String?                 @db.Uuid
+  motivo                String?
+  valor                 Decimal                 @db.Decimal(10, 2)
+  status                status_penalidade_enum  @default(PENDENTE)
+  aplicada_em           DateTime                @default(now()) @db.Timestamptz(6)
+  lancamento_financeiro lancamento_financeiro[]
+  negociacao_penalidade negociacao_penalidade[]
+  casa                  casa                    @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  instancia_tarefa      instancia_tarefa?       @relation(fields: [instancia_tarefa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participacao          participacao            @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([participacao_id], map: "idx_penalidade_participacao")
+}
+
+model perfil_convivencia_casa {
+  casa_id                 String    @id @db.Uuid
+  aceita_pets             Boolean   @default(false)
+  permite_fumar           Boolean   @default(false)
+  aceita_visitas          Boolean   @default(true)
+  horario_silencio_inicio DateTime? @db.Time(6)
+  horario_silencio_fim    DateTime? @db.Time(6)
+  perfil_publico          Boolean   @default(false)
+  casa                    casa      @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model permissao_participacao {
+  participacao_id                                                                 String         @db.Uuid
+  permissao                                                                       permissao_enum
+  concedida_por_participacao_id                                                   String?        @db.Uuid
+  concedida_em                                                                    DateTime       @default(now()) @db.Timestamptz(6)
+  participacao_permissao_participacao_concedida_por_participacao_idToparticipacao participacao?  @relation("permissao_participacao_concedida_por_participacao_idToparticipacao", fields: [concedida_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participacao_permissao_participacao_participacao_idToparticipacao               participacao   @relation("permissao_participacao_participacao_idToparticipacao", fields: [participacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([participacao_id, permissao])
+}
+
+model pet {
+  id                         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                    String        @db.Uuid
+  nome                       String        @db.VarChar(100)
+  especie                    String        @db.VarChar(100)
+  raca                       String?       @db.VarChar(100)
+  data_nascimento            DateTime?     @db.Date
+  criado_por_participacao_id String        @db.Uuid
+  cuidado_pet                cuidado_pet[]
+  casa                       casa          @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao               participacao  @relation(fields: [criado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model proposta_regra {
+  id                                                                     String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                                                                String                     @db.Uuid
+  regra_id                                                               String?                    @db.Uuid
+  titulo                                                                 String                     @db.VarChar(150)
+  escopo                                                                 escopo_regra_enum
+  subgrupo_id                                                            String?                    @db.Uuid
+  proposta_por_participacao_id                                           String                     @db.Uuid
+  quorum_minimo                                                          Int                        @db.SmallInt
+  status                                                                 status_proposta_regra_enum @default(EM_VOTACAO)
+  prazo_votacao                                                          DateTime                   @db.Timestamptz(6)
+  regra_convivencia_proposta_regra_regra_idToregra_convivencia           regra_convivencia?         @relation("proposta_regra_regra_idToregra_convivencia", fields: [regra_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_proposta_regra_regra")
+  casa                                                                   casa                       @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao                                                           participacao               @relation(fields: [proposta_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subgrupo                                                               subgrupo?                  @relation(fields: [subgrupo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  regra_convivencia_regra_convivencia_proposta_origem_idToproposta_regra regra_convivencia[]        @relation("regra_convivencia_proposta_origem_idToproposta_regra")
+  voto_proposta_regra                                                    voto_proposta_regra[]
+}
+
+model rateio_despesa {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  despesa_id            String                  @db.Uuid
+  participacao_id       String                  @db.Uuid
+  valor_devido          Decimal                 @db.Decimal(12, 2)
+  percentual            Decimal?                @db.Decimal(5, 2)
+  pago                  Boolean                 @default(false)
+  pago_em               DateTime?               @db.Timestamptz(6)
+  alocacao_pagamento    alocacao_pagamento[]
+  comprovante_pagamento comprovante_pagamento[]
+  lancamento_financeiro lancamento_financeiro[]
+  lembrete              lembrete[]
+  despesa               despesa                 @relation(fields: [despesa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao          participacao            @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([despesa_id, participacao_id], map: "uq_rateio_despesa_participacao")
+  @@index([despesa_id], map: "idx_rateio_despesa_despesa")
+  @@index([participacao_id], map: "idx_rateio_despesa_participacao")
+}
+
+model regra_convivencia {
+  id                                                                          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                                                                     String            @db.Uuid
+  titulo                                                                      String            @db.VarChar(150)
+  descricao                                                                   String
+  escopo                                                                      escopo_regra_enum
+  subgrupo_id                                                                 String?           @db.Uuid
+  status                                                                      status_regra_enum @default(VIGENTE)
+  proposta_origem_id                                                          String?           @db.Uuid
+  criada_por_participacao_id                                                  String            @db.Uuid
+  atualizada_por_participacao_id                                              String?           @db.Uuid
+  criado_em                                                                   DateTime          @default(now()) @db.Timestamptz(6)
+  proposta_regra_proposta_regra_regra_idToregra_convivencia                   proposta_regra[]  @relation("proposta_regra_regra_idToregra_convivencia")
+  participacao_regra_convivencia_atualizada_por_participacao_idToparticipacao participacao?     @relation("regra_convivencia_atualizada_por_participacao_idToparticipacao", fields: [atualizada_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  casa                                                                        casa              @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao_regra_convivencia_criada_por_participacao_idToparticipacao     participacao      @relation("regra_convivencia_criada_por_participacao_idToparticipacao", fields: [criada_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  proposta_regra_regra_convivencia_proposta_origem_idToproposta_regra         proposta_regra?   @relation("regra_convivencia_proposta_origem_idToproposta_regra", fields: [proposta_origem_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subgrupo                                                                    subgrupo?         @relation(fields: [subgrupo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([casa_id], map: "idx_regra_convivencia_casa")
+}
+
+model reuniao {
+  id                         String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                    String                 @db.Uuid
+  titulo                     String                 @db.VarChar(150)
+  pauta                      String?
+  data_hora                  DateTime               @db.Timestamptz(6)
+  status                     status_reuniao_enum    @default(AGENDADA)
+  reagendada_de_id           String?                @db.Uuid
+  criada_por_participacao_id String                 @db.Uuid
+  participante_reuniao       participante_reuniao[]
+  casa                       casa                   @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao               participacao           @relation(fields: [criada_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reuniao                    reuniao?               @relation("reuniaoToreuniao", fields: [reagendada_de_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_reuniao              reuniao[]              @relation("reuniaoToreuniao")
+}
+
+model saldo_negociacao {
+  participacao_id     String       @id @db.Uuid
+  limites_disponiveis Int          @db.SmallInt
+  ciclo_inicio        DateTime     @default(dbgenerated("CURRENT_DATE")) @db.Date
+  proxima_renovacao   DateTime     @db.Date
+  participacao        participacao @relation(fields: [participacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model solicitacao_troca_tarefa {
+  id                                                                               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  instancia_tarefa_id                                                              String            @db.Uuid
+  solicitante_participacao_id                                                      String            @db.Uuid
+  destinatario_participacao_id                                                     String            @db.Uuid
+  tipo                                                                             tipo_troca_enum
+  status                                                                           status_troca_enum @default(PENDENTE)
+  expira_em                                                                        DateTime?         @db.Timestamptz(6)
+  participacao_solicitacao_troca_tarefa_destinatario_participacao_idToparticipacao participacao      @relation("solicitacao_troca_tarefa_destinatario_participacao_idToparticipacao", fields: [destinatario_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  instancia_tarefa                                                                 instancia_tarefa  @relation(fields: [instancia_tarefa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao_solicitacao_troca_tarefa_solicitante_participacao_idToparticipacao  participacao      @relation("solicitacao_troca_tarefa_solicitante_participacao_idToparticipacao", fields: [solicitante_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model subgrupo {
+  id                         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                    String              @db.Uuid
+  nome                       String              @db.VarChar(150)
+  criado_por_participacao_id String              @db.Uuid
+  excluido_em                DateTime?           @db.Timestamptz(6)
+  conversa                   conversa?
+  despesa                    despesa[]
+  membro_subgrupo            membro_subgrupo[]
+  proposta_regra             proposta_regra[]
+  regra_convivencia          regra_convivencia[]
+  casa                       casa                @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao               participacao        @relation(fields: [criado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model usuario {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo_pessoal    String              @unique @db.Char(6)
+  nome              String              @db.VarChar(150)
+  apelido           String?             @db.VarChar(100)
+  email             String              @unique @db.Citext
+  senha_hash        String              @db.VarChar(255)
+  foto_url          String?             @db.VarChar(500)
+  status_moradia    status_moradia_enum @default(PROCURANDO)
+  anonimizado_em    DateTime?           @db.Timestamptz(6)
+  excluido_em       DateTime?           @db.Timestamptz(6)
+  casa              casa[]
+  convite_casa      convite_casa[]
+  definicao_tarefa  definicao_tarefa[]
+  despesa           despesa[]
+  instancia_tarefa  instancia_tarefa[]
+  interesse_anuncio interesse_anuncio[]
+  lembrete          lembrete[]
+  notificacao       notificacao[]
+  participacao      participacao[]
+  password_reset    password_reset[]
+}
+
+model password_reset {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id String   @db.Uuid
+  codigo     String   @db.Char(6)
+  expira_em  DateTime @db.Timestamptz(6)
+  usado      Boolean  @default(false)
+
+  usuario usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([usuario_id])
+}
+
+model voto_negociacao {
+  negociacao_id         String                @db.Uuid
+  participacao_id       String                @db.Uuid
+  voto                  voto_enum
+  votado_em             DateTime              @default(now()) @db.Timestamptz(6)
+  negociacao_penalidade negociacao_penalidade @relation(fields: [negociacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao          participacao          @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([negociacao_id, participacao_id])
+}
+
+model voto_proposta_regra {
+  proposta_id     String         @db.Uuid
+  participacao_id String         @db.Uuid
+  voto            voto_enum
+  votado_em       DateTime       @default(now()) @db.Timestamptz(6)
+  participacao    participacao   @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  proposta_regra  proposta_regra @relation(fields: [proposta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([proposta_id, participacao_id])
+}
+
+enum escopo_despesa_enum {
+  CASA
+  INDIVIDUAL
+}
+
+enum escopo_regra_enum {
+  CASA
+  SUBGRUPO
+}
+
+enum escopo_tarefa_enum {
+  CASA
+  INDIVIDUAL
+}
+
+enum estrategia_rateio_enum {
+  IGUALITARIO
+  PERCENTUAL
+  PERSONALIZADO
+}
+
+enum metodo_pagamento_enum {
+  PIX
+  DINHEIRO
+  CARTAO
+  TRANSFERENCIA
+  OUTRO
+}
+
+enum natureza_lancamento_enum {
+  DEBITO
+  CREDITO
+}
+
+enum origem_lancamento_enum {
+  RATEIO
+  PAGAMENTO
+  PENALIDADE
+  FUNDO
+}
+
+enum papel_participacao_enum {
+  LIDER
+  ADMINISTRADOR
+  MORADOR
+}
+
+enum periodicidade_enum {
+  DIARIA
+  SEMANAL
+  QUINZENAL
+  MENSAL
+  PERSONALIZADA
+}
+
+enum periodo_renovacao_enum {
+  MENSAL
+  TRIMESTRAL
+  SEMESTRAL
+  ANUAL
+}
+
+enum permissao_enum {
+  GERENCIAR_MEMBROS
+  GERENCIAR_TAREFAS
+  GERENCIAR_FINANCAS
+  GERENCIAR_REGRAS
+  GERENCIAR_CONVITES
+  GERENCIAR_CONFIGURACOES
+}
+
+enum propriedade_item_enum {
+  COMUNITARIO
+  PRIVADO
+}
+
+enum situacao_participante_reuniao_enum {
+  PENDENTE
+  CONFIRMADO
+  RECUSADO
+}
+
+enum status_anuncio_enum {
+  ABERTO
+  FECHADO
+}
+
+enum status_casa_enum {
+  ATIVA
+  FECHADA
+}
+
+enum status_convite_enum {
+  PENDENTE
+  ACEITO
+  RECUSADO
+  EXPIRADO
+  CANCELADO
+}
+
+enum status_despesa_enum {
+  ABERTA
+  QUITADA
+  CANCELADA
+}
+
+enum status_instancia_tarefa_enum {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  ATRASADA
+  CANCELADA
+}
+
+enum status_interesse_anuncio_enum {
+  PENDENTE
+  ACEITO
+  RECUSADO
+}
+
+enum status_moradia_enum {
+  MORANDO
+  PROCURANDO
+}
+
+enum status_negociacao_enum {
+  PENDENTE
+  APROVADA
+  REJEITADA
+  EXPIRADA
+}
+
+enum status_penalidade_enum {
+  PENDENTE
+  PAGA
+  NEGOCIADA
+  CANCELADA
+}
+
+enum status_proposta_regra_enum {
+  EM_VOTACAO
+  APROVADA
+  REJEITADA
+  EXPIRADA
+}
+
+enum status_regra_enum {
+  VIGENTE
+  REVOGADA
+}
+
+enum status_reuniao_enum {
+  AGENDADA
+  REALIZADA
+  CANCELADA
+  REAGENDADA
+}
+
+enum status_troca_enum {
+  PENDENTE
+  ACEITA
+  RECUSADA
+  EXPIRADA
+  CANCELADA
+}
+
+enum tipo_arquivo_comprovante_enum {
+  IMAGEM
+  PDF
+}
+
+enum tipo_atribuicao_enum {
+  FIXA
+  RODIZIO
+}
+
+enum tipo_contribuicao_fundo_enum {
+  LIVRE
+  FIXA
+}
+
+enum tipo_conversa_enum {
+  CASA
+  SUBGRUPO
+}
+
+enum tipo_despesa_enum {
+  FIXA
+  VARIAVEL
+}
+
+enum tipo_movimentacao_despensa_enum {
+  ENTRADA
+  CONSUMO
+  DESCARTE
+}
+
+enum tipo_notificacao_enum {
+  TAREFA
+  DESPESA
+  PENALIDADE
+  REGRA
+  REUNIAO
+  CONVITE
+  SISTEMA
+}
+
+enum tipo_troca_enum {
+  PONTUAL
+  PERMANENTE
+}
+
+enum unidade_item_enum {
+  UNIDADE
+  KG
+  G
+  L
+  ML
+  PACOTE
+}
+
+enum visibilidade_despesa_enum {
+  PUBLICA
+  RESTRITA
+}
+
+enum visibilidade_tarefa_enum {
+  PUBLICA
+  PRIVADA
+}
+
+enum voto_enum {
+  APROVAR
+  REJEITAR
+  ABSTER
+}
