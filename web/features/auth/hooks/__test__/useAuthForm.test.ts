@@ -14,6 +14,11 @@ describe("useAuthForm", () => {
 
         const onSubmit = vi.fn();
 
+        act(() => {
+            result.current.setValue("email", "test@example.com");
+            result.current.setValue("password", "password123");
+        });
+
         const form = document.createElement("form");
 
         const submitHandler = result.current.handleSubmit(onSubmit);
@@ -31,7 +36,11 @@ describe("useAuthForm", () => {
             );
         });
 
-        expect(onSubmit).toHaveBeenCalled();
+        expect(onSubmit).toHaveBeenCalledOnce();
+        expect(onSubmit.mock.calls[0][0]).toEqual({
+            email: "test@example.com",
+            password: "password123",
+        });
     });
 
     it("should not submit invalid data", async () => {

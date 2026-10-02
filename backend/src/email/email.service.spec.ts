@@ -8,7 +8,7 @@ describe("EmailService", () => {
         process.env.RESEND_API_KEY ??= "re_test_key";
         service = new EmailService();
         send = vi.fn().mockResolvedValue({ data: { id: "email-1" }, error: null });
-        (service as any).resend.emails.send = send;
+        (service as { resend: { emails: { send: typeof send } } }).resend.emails.send = send;
     });
 
     it("sends a password reset email containing the recipient and code", async () => {

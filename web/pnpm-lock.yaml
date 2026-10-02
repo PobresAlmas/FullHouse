@@ -304,6 +304,9 @@ importers:
             eslint-config-prettier:
                 specifier: ^10.1.8
                 version: 10.1.8(eslint@9.39.5(jiti@2.7.0)(supports-color@7.2.0))
+            husky:
+                specifier: ^9.1.7
+                version: 9.1.7
             jsdom:
                 specifier: ^30.1.1
                 version: 30.1.1
@@ -4113,6 +4116,14 @@ packages:
                 integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==,
             }
         engines: { node: ">=18.18.0" }
+
+    husky@9.1.7:
+        resolution:
+            {
+                integrity: sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA==,
+            }
+        engines: { node: ">=18" }
+        hasBin: true
 
     iconv-lite@0.7.3:
         resolution:
@@ -9150,6 +9161,8 @@ snapshots:
     human-signals@2.1.0: {}
 
     human-signals@8.0.1: {}
+
+    husky@9.1.7: {}
 
     iconv-lite@0.7.3:
         dependencies:

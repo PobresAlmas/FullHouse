@@ -1,0 +1,6 @@
+pnpm --dir web lint
+pnpm --dir web format:check
+pnpm --dir web test --run
+
+pnpm --dir backend lint
+pnpm --dir backend test --run

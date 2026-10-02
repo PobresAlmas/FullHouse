@@ -3,7 +3,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { StorageService } from "./storage.service.js";
 
 describe("StorageService", () => {
-    const config: any = {
+    const config: { getOrThrow: (key: string) => string } = {
         getOrThrow: vi.fn(
             (key: string) =>
                 ({
@@ -12,7 +12,7 @@ describe("StorageService", () => {
                     MINIO_ACCESS_KEY: "key",
                     MINIO_SECRET_KEY: "secret",
                     MINIO_BUCKET: "fullhouse",
-                })[key]
+                })[key] as string
         ),
     };
     let service: StorageService;
@@ -23,7 +23,7 @@ describe("StorageService", () => {
         vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
         service = new StorageService(config as ConfigService);
         send = vi.fn().mockResolvedValue({});
-        (service as any).s3.send = send;
+        (service as { s3: { send: typeof send } }).s3.send = send;
     });
 
     afterEach(() => vi.useRealTimers());

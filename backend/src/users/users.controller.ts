@@ -37,7 +37,7 @@ export class UsersController {
             })
         )
         file: Express.Multer.File,
-        @Req() req: any
+        @Req() req: { user: { id: string } }
     ) {
         return this.userService.updateAvatar(req.user.id, file);
     }

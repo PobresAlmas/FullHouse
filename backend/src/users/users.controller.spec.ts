@@ -2,7 +2,10 @@ import { UsersController } from "./users.controller.js";
 import { UsersService } from "./users.service.js";
 
 describe("UsersController", () => {
-    let service: any;
+    let service: {
+        findAll: ReturnType<typeof vi.fn>;
+        updateAvatar: ReturnType<typeof vi.fn>;
+    };
     let controller: UsersController;
 
     beforeEach(() => {
@@ -10,7 +13,7 @@ describe("UsersController", () => {
             findAll: vi.fn().mockResolvedValue([{ id: "u1" }]),
             updateAvatar: vi.fn().mockResolvedValue({ id: "u1" }),
         };
-        controller = new UsersController(service as UsersService);
+        controller = new UsersController(service as unknown as UsersService);
     });
 
     it("returns all users from the service", async () => {

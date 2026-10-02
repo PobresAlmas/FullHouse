@@ -24,7 +24,7 @@ export default function UploadPhotoPage() {
 
         formData.append("photo", photo);
 
-        const response = await api.post("/users/me/avatar", formData);
+        await api.post("/users/me/avatar", formData);
 
         await refreshUser();
 

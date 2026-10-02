@@ -2,8 +2,12 @@ import { PasswordResetService } from "./password-reset.service.js";
 
 describe("PasswordResetService", () => {
     const reset = { id: "r1" };
-    let repository: any;
-    let email: any;
+    let repository: {
+        create: ReturnType<typeof vi.fn>;
+        findValid: ReturnType<typeof vi.fn>;
+        markUsed: ReturnType<typeof vi.fn>;
+    };
+    let email: { sendResetPasswordEmail: ReturnType<typeof vi.fn> };
     let service: PasswordResetService;
 
     beforeEach(() => {
@@ -13,7 +17,7 @@ describe("PasswordResetService", () => {
             markUsed: vi.fn().mockResolvedValue(reset),
         };
         email = { sendResetPasswordEmail: vi.fn().mockResolvedValue(undefined) };
-        service = new PasswordResetService(repository, email);
+        service = new PasswordResetService(repository as never, email as never);
     });
 
     it("creates a six-digit code expiring in fifteen minutes and emails it", async () => {

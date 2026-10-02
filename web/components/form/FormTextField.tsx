@@ -14,7 +14,6 @@ export default function FormTextField<T extends FieldValues>({
     label,
     placeholder,
     form,
-    type = "text",
 }: FormTextFieldProps<T>) {
     return (
         <TextField

@@ -2,12 +2,16 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PhotoUpload from "../PhotoUpload";
+import React from "react";
 
 vi.mock("next/image", () => ({
     default: ({
         unoptimized: _unoptimized,
         ...props
-    }: React.ImgHTMLAttributes<HTMLImageElement> & { unoptimized?: boolean }) => <img {...props} />,
+    }: React.ImgHTMLAttributes<HTMLImageElement> & { unoptimized?: boolean }) => {
+        void _unoptimized;
+        return React.createElement("img", { ...props, alt: props.alt ?? "" });
+    },
 }));
 
 describe("PhotoUpload", () => {

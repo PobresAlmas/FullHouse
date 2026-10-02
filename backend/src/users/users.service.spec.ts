@@ -2,10 +2,15 @@ import { UserAlreadyExistsException } from "./exceptions/user-already-exists.exc
 import { UsersService } from "./users.service.js";
 
 describe("UsersService", () => {
-    let repository: any;
-    let password: any;
-    let codes: any;
-    let storage: any;
+    let repository: {
+        findAll: ReturnType<typeof vi.fn>;
+        findByEmail: ReturnType<typeof vi.fn>;
+        create: ReturnType<typeof vi.fn>;
+        update: ReturnType<typeof vi.fn>;
+    };
+    let password: { hash: ReturnType<typeof vi.fn> };
+    let codes: { generate: ReturnType<typeof vi.fn> };
+    let storage: { upload: ReturnType<typeof vi.fn> };
     let service: UsersService;
 
     beforeEach(() => {
@@ -18,7 +23,7 @@ describe("UsersService", () => {
         password = { hash: vi.fn().mockResolvedValue("hash") };
         codes = { generate: vi.fn().mockReturnValue("ABC123") };
         storage = { upload: vi.fn().mockResolvedValue("https://cdn/avatar.png") };
-        service = new UsersService(repository, password, codes, storage);
+        service = new UsersService(repository as never, password as never, codes as never, storage as never);
     });
 
     it("delegates listing and email lookup", async () => {

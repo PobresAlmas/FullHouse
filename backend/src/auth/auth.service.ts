@@ -32,7 +32,8 @@ export class AuthService {
         };
     }
 
-    async login(data: LoginDto, response: Response) {
+    async login(data: LoginDto, _response: Response) {
+        void _response;
         const user = await this.usersService.findByEmail(data.email);
 
         if (!user) throw new UnauthorizedException("E-mail ou senha inválidos.");
@@ -60,7 +61,7 @@ export class AuthService {
                 message: "Se o email existir, enviaremos um código.",
             };
 
-        const reset = await this.passwordResetService.create(user.id, user.email);
+        await this.passwordResetService.create(user.id, user.email);
 
         return {
             message: "Se o email existir, enviaremos um código.",

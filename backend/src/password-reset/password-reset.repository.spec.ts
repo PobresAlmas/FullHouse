@@ -1,10 +1,16 @@
 import { PasswordResetRepository } from "./password-reset.repository.js";
 
 describe("PasswordResetRepository", () => {
-    const prisma: any = {
+    const prisma: {
+        password_reset: {
+            create: ReturnType<typeof vi.fn>;
+            findFirst: ReturnType<typeof vi.fn>;
+            update: ReturnType<typeof vi.fn>;
+        };
+    } = {
         password_reset: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     };
-    const repository = new PasswordResetRepository(prisma);
+    const repository = new PasswordResetRepository(prisma as never);
 
     beforeEach(() => vi.clearAllMocks());
 

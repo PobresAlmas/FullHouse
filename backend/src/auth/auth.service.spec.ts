@@ -2,7 +2,18 @@ import { UnauthorizedException } from "@nestjs/common";
 import { AuthService } from "./auth.service.js";
 
 describe("AuthService", () => {
-    const user = {
+    type MockUser = {
+        id: string;
+        email: string;
+        nome: string;
+        apelido: string | null;
+        codigo_pessoal: string;
+        foto_url: string | null;
+        status_moradia: string;
+        senha_hash: string;
+    };
+
+    const user: MockUser = {
         id: "u1",
         email: "a@example.com",
         nome: "Ana",
@@ -11,11 +22,19 @@ describe("AuthService", () => {
         foto_url: null,
         status_moradia: "PROCURANDO",
         senha_hash: "hashed",
-    } as any;
-    let users: any;
-    let passwords: any;
-    let resets: any;
-    let jwt: any;
+    };
+    let users: {
+        create: ReturnType<typeof vi.fn>;
+        findByEmail: ReturnType<typeof vi.fn>;
+        updatePassword: ReturnType<typeof vi.fn>;
+    };
+    let passwords: { compare: ReturnType<typeof vi.fn>; hash: ReturnType<typeof vi.fn> };
+    let resets: {
+        create: ReturnType<typeof vi.fn>;
+        verify: ReturnType<typeof vi.fn>;
+        consume: ReturnType<typeof vi.fn>;
+    };
+    let jwt: { sign: ReturnType<typeof vi.fn> };
     let service: AuthService;
 
     beforeEach(() => {
@@ -34,7 +53,7 @@ describe("AuthService", () => {
             consume: vi.fn().mockResolvedValue(undefined),
         };
         jwt = { sign: vi.fn().mockReturnValue("token") };
-        service = new AuthService(users, passwords, resets, jwt);
+        service = new AuthService(users as never, passwords as never, resets as never, jwt as never);
     });
 
     it("registers, signs a token and returns a public user shape", async () => {
@@ -44,7 +63,7 @@ describe("AuthService", () => {
                 nickname: "",
                 email: user.email,
                 password: "secret",
-            } as any)
+            } as Parameters<AuthService["register"]>[0])
         ).resolves.toEqual({
             access_token: "token",
             user: {
@@ -63,7 +82,10 @@ describe("AuthService", () => {
 
     it("logs in with valid credentials", async () => {
         await expect(
-            service.login({ email: user.email, password: "secret" } as any, {} as any)
+            service.login(
+                { email: user.email, password: "secret" } as Parameters<AuthService["login"]>[0],
+                {} as Parameters<AuthService["login"]>[1]
+            )
         ).resolves.toMatchObject({ access_token: "token", user: { id: "u1" } });
         expect(passwords.compare).toHaveBeenCalledWith("secret", "hashed");
     });
@@ -75,7 +97,10 @@ describe("AuthService", () => {
         users.findByEmail.mockResolvedValue(found);
         passwords.compare.mockResolvedValue(false);
         await expect(
-            service.login({ email: user.email, password: "bad" } as any, {} as any)
+            service.login(
+                { email: user.email, password: "bad" } as Parameters<AuthService["login"]>[0],
+                {} as Parameters<AuthService["login"]>[1]
+            )
         ).rejects.toBeInstanceOf(UnauthorizedException);
         if (!found) expect(passwords.compare).not.toHaveBeenCalled();
     });
@@ -112,19 +137,31 @@ describe("AuthService", () => {
     it("rejects password reset for missing users or invalid codes", async () => {
         users.findByEmail.mockResolvedValue(null);
         await expect(
-            service.resetPassword({ email: user.email, code: "bad", password: "new" } as any)
+            service.resetPassword({
+                email: user.email,
+                code: "bad",
+                password: "new",
+            } as Parameters<AuthService["resetPassword"]>[0])
         ).rejects.toThrow("Código inválido");
         users.findByEmail.mockResolvedValue(user);
         resets.verify.mockResolvedValue(null);
         await expect(
-            service.resetPassword({ email: user.email, code: "bad", password: "new" } as any)
+            service.resetPassword({
+                email: user.email,
+                code: "bad",
+                password: "new",
+            } as Parameters<AuthService["resetPassword"]>[0])
         ).rejects.toThrow("Código inválido ou expirado");
         expect(passwords.hash).not.toHaveBeenCalled();
     });
 
     it("hashes and updates the password before consuming a valid reset", async () => {
         await expect(
-            service.resetPassword({ email: user.email, code: "123456", password: "new" } as any)
+            service.resetPassword({
+                email: user.email,
+                code: "123456",
+                password: "new",
+            } as Parameters<AuthService["resetPassword"]>[0])
         ).resolves.toEqual({ message: "Senha alterada com sucesso." });
         expect(users.updatePassword).toHaveBeenCalledWith(user.id, "new-hash");
         expect(resets.consume).toHaveBeenCalledWith("r1");
@@ -133,7 +170,11 @@ describe("AuthService", () => {
     it("does not consume the code if the password update fails", async () => {
         users.updatePassword.mockRejectedValue(new Error("db error"));
         await expect(
-            service.resetPassword({ email: user.email, code: "123456", password: "new" } as any)
+            service.resetPassword({
+                email: user.email,
+                code: "123456",
+                password: "new",
+            } as Parameters<AuthService["resetPassword"]>[0])
         ).rejects.toThrow("db error");
         expect(resets.consume).not.toHaveBeenCalled();
     });

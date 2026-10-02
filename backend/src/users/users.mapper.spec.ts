@@ -1,7 +1,18 @@
 import { toUserResponse } from "./users.mapper.js";
 
 describe("toUserResponse", () => {
-    const user: any = {
+    const user: {
+        id: string;
+        codigo_pessoal: string;
+        nome: string;
+        apelido: string | null;
+        email: string;
+        foto_url: string | null;
+        status_moradia: string;
+        senha_hash: string;
+        anonimizado_em: null;
+        excluido_em: null;
+    } = {
         id: "u1",
         codigo_pessoal: "ABC123",
         nome: "Ana",

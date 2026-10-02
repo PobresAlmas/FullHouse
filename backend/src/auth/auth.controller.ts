@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Res, UseGuards } from "@nestjs/common";
 import { RegisterDto } from "./dto/register.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { AuthService } from "./auth.service.js";
@@ -17,7 +17,7 @@ export class AuthController {
     @UseGuards(JwtAuthGuard)
     me(
         @CurrentUser()
-        user: any
+        user: { id: string }
     ) {
         return user;
     }
@@ -41,7 +41,10 @@ export class AuthController {
     async login(@Body() data: LoginDto, @Res({ passthrough: true }) response: Response) {
         const result = await this.service.login(data, response);
 
-        const maxAge = data.rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24;
+        const rememberMeFlag = data.rememberMe as boolean | string | undefined;
+        const rememberMe =
+            rememberMeFlag === true || String(rememberMeFlag).toLowerCase() === "true";
+        const maxAge = rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24;
 
         response.cookie("access_token", result.access_token, {
             httpOnly: true,

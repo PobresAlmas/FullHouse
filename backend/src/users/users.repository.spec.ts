@@ -1,10 +1,17 @@
 import { UserRepository } from "./users.repository.js";
 
 describe("UserRepository", () => {
-    const prisma: any = {
+    const prisma: {
+        usuario: {
+            findMany: ReturnType<typeof vi.fn>;
+            findUnique: ReturnType<typeof vi.fn>;
+            create: ReturnType<typeof vi.fn>;
+            update: ReturnType<typeof vi.fn>;
+        };
+    } = {
         usuario: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     };
-    const repository = new UserRepository(prisma);
+    const repository = new UserRepository(prisma as never);
 
     beforeEach(() => vi.clearAllMocks());
 
