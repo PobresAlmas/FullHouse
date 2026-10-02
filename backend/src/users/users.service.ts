@@ -45,7 +45,7 @@ export class UsersService {
         })
     }
 
-    async updateAvatar(userId: string, file: any) {
+    async updateAvatar(userId: string, file: Express.Multer.File) {
         const url = await this.storage.upload(file);
 
         return this.repository.update(userId, { foto_url: url });

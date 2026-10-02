@@ -21,7 +21,7 @@ export class StorageService {
         });
     }
 
-    async upload(file: any) {
+    async upload(file: Express.Multer.File) {
         const key = `avatars/${Date.now()}-${file.originalname}`;
 
         await this.s3.send(

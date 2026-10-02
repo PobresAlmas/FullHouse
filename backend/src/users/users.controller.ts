@@ -26,7 +26,7 @@ export class UsersController {
           new FileTypeValidator({ fileType: /(jpg|jpeg|png)$/ })
         ]
       })
-    ) file: any,
+    ) file: Express.Multer.File,
     @Req() req: any
   ) {
     return this.userService.updateAvatar(req.user.id, file);

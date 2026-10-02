@@ -5,20 +5,17 @@ import SubmitButton from "./SubmitButton";
 import AuthFormLayout from "./AuthFormLayout";
 import PasswordField from "./PasswordField";
 import { RegisterFormData, registerSchema } from "./schemas/register.schema";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import FormTextField from "@/components/form/FormTextField";
 import { useRouter } from "next/navigation";
 import { register as registerUser } from "../api/auth.api";
 import { useState } from "react";
 import { isApiError } from "@/services/api-error.utils";
+import { useAuthForm } from "../hooks/useAuthForm";
 
 export default function RegisterForm() {
     const [errorMessage, setErrorMessage] = useState("");
 
-    const form = useForm<RegisterFormData>({
-        resolver: zodResolver(registerSchema)
-    });
+    const form = useAuthForm(registerSchema);
     
     const {
         register,

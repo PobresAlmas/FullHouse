@@ -2,20 +2,50 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-const { push, refreshUser, login } = vi.hoisted(() => ({
+const { push, replace, refreshUser, login, authState } = vi.hoisted(() => ({
   push: vi.fn(),
+  replace: vi.fn(),
   refreshUser: vi.fn(),
   login: vi.fn(),
+  authState: { user: null as { id: string; email: string } | null, loading: false },
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace }) }));
 vi.mock("@/features/auth/hooks/useAuth", () => ({
-  useAuth: () => ({ refreshUser }),
+  useAuth: () => ({ ...authState, refreshUser }),
 }));
 vi.mock("@/features/auth/api/auth.api", () => ({ login }));
 import LoginForm from "../LoginForm";
 
 describe("LoginForm", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState.user = null;
+    authState.loading = false;
+  });
+
+  it("redirects an authenticated user to the private page", async () => {
+    authState.user = { id: "user-id", email: "teste@email.com" };
+
+    render(<LoginForm />);
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/test-private"));
+    expect(screen.queryByText("Entrar na sua conta")).not.toBeInTheDocument();
+  });
+
+  it("waits for the session check before redirecting", async () => {
+    authState.loading = true;
+
+    const { rerender } = render(<LoginForm />);
+
+    expect(screen.queryByText("Entrar na sua conta")).not.toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+
+    authState.user = { id: "user-id", email: "teste@email.com" };
+    authState.loading = false;
+    rerender(<LoginForm />);
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/test-private"));
+  });
 
   it("renders fields, remember checkbox, and account links", () => {
     render(<LoginForm />);

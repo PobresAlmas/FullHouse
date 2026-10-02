@@ -5,9 +5,8 @@ import AuthFormLayout from "./AuthFormLayout";
 import PasswordField from "./PasswordField";
 import SubmitButton from "./SubmitButton";
 import { resetPassword } from "../api/auth.api";
-import { useForm } from "react-hook-form";
 import { ResetPasswordFormData, resetPasswordSchema } from "./schemas/reset-password.schema";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuthForm } from "../hooks/useAuthForm";
 
 export default function CreateNewPasswordForm() {
     const router = useRouter();
@@ -17,14 +16,13 @@ export default function CreateNewPasswordForm() {
     const email = searchParams.get("email");
     const code = searchParams.get("code");
 
-    const form = useForm<ResetPasswordFormData>({
-        resolver: zodResolver(resetPasswordSchema)
-    });
+    const form = useAuthForm(resetPasswordSchema);
 
     const {
         register,
         formState: { errors }
     } = form;
+
 
     async function onSubmit(data: ResetPasswordFormData) {
         if (!email || !code)

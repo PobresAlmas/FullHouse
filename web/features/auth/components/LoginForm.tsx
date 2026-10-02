@@ -6,22 +6,19 @@ import { Separator } from "@/components/ui/separator";
 import SubmitButton from "./SubmitButton";
 import AuthFormLayout from "./AuthFormLayout";
 import PasswordField from "./PasswordField";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormData } from "./schemas/login.schema";
 import FormTextField from "@/components/form/FormTextField";
 import { login } from "../api/auth.api";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
 import { isApiError } from "@/services/api-error.utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuthForm } from "../hooks/useAuthForm";
 
 export default function LoginForm() {
     const [errorMessage, setErrorMessage] = useState("");
 
-    const form = useForm<LoginFormData>({
-        resolver: zodResolver(loginSchema)
-    });
+    const form = useAuthForm(loginSchema);
 
     const {
         register,
@@ -29,7 +26,12 @@ export default function LoginForm() {
     } = form;
 
     const router = useRouter();
-    const { refreshUser } = useAuth();
+    const { user, loading, refreshUser } = useAuth();
+
+    useEffect(() => {
+        if (!loading && user)
+            router.replace("/test-private");
+    }, [loading, router, user]);
 
     async function onSubmit(data: LoginFormData) {
         try {
@@ -43,6 +45,9 @@ export default function LoginForm() {
                 setErrorMessage(error.message);
         }
     }
+
+    if (loading || user)
+        return null;
 
     return (
         <AuthFormLayout
@@ -96,4 +101,3 @@ export default function LoginForm() {
         </AuthFormLayout>
     )
 }
-

@@ -6,17 +6,14 @@ import TextField from "./TextField";
 
 import { ArrowLeft } from "lucide-react";
 import { forgotPassword } from "../api/auth.api";
-import { useForm } from "react-hook-form";
 import { ForgotPasswordFormData, forgotPasswordSchema } from "./schemas/forgot-passowrd.schema";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { useAuthForm } from "../hooks/useAuthForm";
 
 export default function ForgotPasswordForm() {
     const router = useRouter();
 
-    const form = useForm<ForgotPasswordFormData>({
-        resolver: zodResolver(forgotPasswordSchema)
-    })
+    const form = useAuthForm(forgotPasswordSchema);
 
     async function onSubmit(data: ForgotPasswordFormData) {
         await forgotPassword(data.email);
