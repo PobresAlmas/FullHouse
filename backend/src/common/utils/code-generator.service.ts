@@ -8,7 +8,10 @@ export class CodeGeneratorService {
     generate(): string {
         return Array.from(
             { length: CodeGeneratorService.LENGTH },
-            () => CodeGeneratorService.CHARS[Math.floor(Math.random() * CodeGeneratorService.CHARS.length)]
+            () =>
+                CodeGeneratorService.CHARS[
+                    Math.floor(Math.random() * CodeGeneratorService.CHARS.length)
+                ]
         ).join("");
     }
 }

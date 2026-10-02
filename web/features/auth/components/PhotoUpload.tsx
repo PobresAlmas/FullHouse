@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { Camera } from "lucide-react";
 import Image from "next/image";
@@ -15,16 +15,12 @@ export default function PhotoUpload({ onChange }: PhotoUploadProps) {
     const [error, setError] = useState<string | null>(null);
 
     const MAX_SIZE = 5 * 1024 * 1024;
-    const ALLOWED_TYPES = [
-        "image/png",
-        "image/jpeg"
-    ]
+    const ALLOWED_TYPES = ["image/png", "image/jpeg"];
 
     useEffect(() => {
         return () => {
-            if (preview) 
-                URL.revokeObjectURL(preview);
-        }
+            if (preview) URL.revokeObjectURL(preview);
+        };
     }, [preview]);
 
     function handleFile(file: File) {
@@ -55,34 +51,29 @@ export default function PhotoUpload({ onChange }: PhotoUploadProps) {
                 onClick={() => inputRef.current?.click()}
                 className="w-35 h-35 rounded-full bg-success-light flex flex-col gap-2 items-center justify-center overflow-hidden cursor-pointer"
             >
-                {
-                    preview ? (
-                        <Image
-                            src={preview}
-                            alt="Preview da foto"
-                            width={96}
-                            height={96}
-                            unoptimized
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        <>
-                            <Camera className="text-primary" size={32} />
-                            <span className="text-sm text-secondary">Selecionar foto</span>
-                        </>
-                    )
-                }
+                {preview ? (
+                    <Image
+                        src={preview}
+                        alt="Preview da foto"
+                        width={96}
+                        height={96}
+                        unoptimized
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <>
+                        <Camera className="text-primary" size={32} />
+                        <span className="text-sm text-secondary">Selecionar foto</span>
+                    </>
+                )}
             </button>
-
 
             <span className="text-xs text-gray text-center">
                 PNG, JPG ou JPEG <br />
                 Máx. 5 MB
             </span>
 
-            {error && (
-                <span className="text-xs text-destructive text-center">{error}</span>
-            )}
+            {error && <span className="text-xs text-destructive text-center">{error}</span>}
 
             <input
                 ref={inputRef}
@@ -92,10 +83,9 @@ export default function PhotoUpload({ onChange }: PhotoUploadProps) {
                 onChange={(e) => {
                     const file = e.target.files?.[0];
 
-                    if (file)
-                        handleFile(file);
+                    if (file) handleFile(file);
                 }}
             />
         </div>
-    )
+    );
 }

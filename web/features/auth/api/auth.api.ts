@@ -13,7 +13,7 @@ interface LoginResponse {
         id: string;
         email: string;
         name: string;
-    }
+    };
 }
 
 export async function login(data: LoginRequest): Promise<LoginResponse> {
@@ -50,11 +50,7 @@ export async function verifyResetCode(email: string, code: string) {
     return response.data;
 }
 
-export async function resetPassword(data: {
-    email: string, 
-    code: string, 
-    password: string
-}) {
+export async function resetPassword(data: { email: string; code: string; password: string }) {
     const response = await api.post("/auth/reset-password", data);
 
     return response.data;

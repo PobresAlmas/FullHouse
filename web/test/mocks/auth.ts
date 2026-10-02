@@ -4,6 +4,6 @@ export const mockRefreshUser = vi.fn();
 
 vi.mock("@/features/auth/hooks/useAuth", () => ({
     useAuth: () => ({
-        refreshUser: mockRefreshUser
-    })
+        refreshUser: mockRefreshUser,
+    }),
 }));

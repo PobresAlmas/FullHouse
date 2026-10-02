@@ -10,17 +10,14 @@ interface AuthFormLayoutProps {
 }
 
 export default function AuthFormLayout({
-    title, 
-    description, 
-    children, 
-    onSubmit 
+    title,
+    description,
+    children,
+    onSubmit,
 }: AuthFormLayoutProps) {
     return (
-        <AuthCard
-            title={title}
-            description={description}
-        >
-            <form  
+        <AuthCard title={title} description={description}>
+            <form
                 className="flex flex-col gap-4"
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -31,5 +28,5 @@ export default function AuthFormLayout({
                 {children}
             </form>
         </AuthCard>
-    )
+    );
 }

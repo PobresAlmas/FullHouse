@@ -8,6 +8,6 @@ export function useAuthForm<T extends FieldValues>(
 ) {
     return useForm<T>({
         resolver: zodResolver(schema),
-        ...options
+        ...options,
     });
 }

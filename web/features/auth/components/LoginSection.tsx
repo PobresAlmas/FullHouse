@@ -12,7 +12,9 @@ export default function LoginSection() {
             />
 
             <h1 className="font-heading text-xl font-bold">FullHouse</h1>
-            <p className="font-light text-sm">Organize a sua rotina e tarefas domésticas de maneiras rápida e prática</p>
+            <p className="font-light text-sm">
+                Organize a sua rotina e tarefas domésticas de maneiras rápida e prática
+            </p>
         </div>
-    )
+    );
 }

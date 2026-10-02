@@ -6,6 +6,6 @@ export class UserRespondeDto {
     name: string;
     nickname?: string;
     email: string;
-    photo?: string
+    photo?: string;
     housingStatus: HousingStatus;
 }

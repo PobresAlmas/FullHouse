@@ -1,11 +1,5 @@
 import React from "react";
-import {
-    Card,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-    CardContent
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface AuthCardProps {
     title: string;
@@ -21,9 +15,7 @@ export default function AuthCard({ title, description, children }: AuthCardProps
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
 
-            <CardContent>
-                {children}
-            </CardContent>
+            <CardContent>{children}</CardContent>
         </Card>
-    )
+    );
 }

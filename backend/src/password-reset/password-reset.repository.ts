@@ -1,49 +1,37 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 
-
 @Injectable()
 export class PasswordResetRepository {
+    constructor(private readonly prisma: PrismaService) {}
 
-    constructor(
-        private readonly prisma: PrismaService
-    ) {}
-
-
-    create(data: {
-        usuario_id: string;
-        codigo: string;
-        expira_em: Date;
-    }) {
+    create(data: { usuario_id: string; codigo: string; expira_em: Date }) {
         return this.prisma.password_reset.create({
-            data
+            data,
         });
     }
 
-    findValid(
-        usuario_id: string,
-        codigo: string
-    ) {
+    findValid(usuario_id: string, codigo: string) {
         return this.prisma.password_reset.findFirst({
             where: {
                 usuario_id,
                 codigo,
                 usado: false,
                 expira_em: {
-                    gt: new Date()
-                }
-            }
+                    gt: new Date(),
+                },
+            },
         });
     }
 
-    markUsed(id:string) {
+    markUsed(id: string) {
         return this.prisma.password_reset.update({
-            where:{
-                id
+            where: {
+                id,
             },
-            data:{
-                usado:true
-            }
+            data: {
+                usado: true,
+            },
         });
     }
 }

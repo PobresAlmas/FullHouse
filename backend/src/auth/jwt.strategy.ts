@@ -10,20 +10,18 @@ const cookieExtractor = (req: any) => {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-    constructor(
-        private readonly configService: ConfigService
-    ) {
+    constructor(private readonly configService: ConfigService) {
         super({
             jwtFromRequest: cookieExtractor,
             ignoreExpiration: false,
-            secretOrKey: configService.getOrThrow<string>("JWT_SECRET") 
-        })
+            secretOrKey: configService.getOrThrow<string>("JWT_SECRET"),
+        });
     }
 
     validate(payload: JwtPayload) {
         return {
             id: payload.sub,
-            email: payload.email
+            email: payload.email,
         };
     }
 }

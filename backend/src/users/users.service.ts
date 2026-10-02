@@ -1,9 +1,9 @@
-import { UserAlreadyExistsException } from './exceptions/user-already-exists.exception.js';
-import { CodeGeneratorService } from '../common/utils/code-generator.service.js';
+import { UserAlreadyExistsException } from "./exceptions/user-already-exists.exception.js";
+import { CodeGeneratorService } from "../common/utils/code-generator.service.js";
 import { Injectable } from "@nestjs/common";
 import { PasswordService } from "../crypto/password.service.js";
-import { UserRepository } from './users.repository.js';
-import { StorageService } from '../storage/storage.service.js';
+import { UserRepository } from "./users.repository.js";
+import { StorageService } from "../storage/storage.service.js";
 
 @Injectable()
 export class UsersService {
@@ -22,16 +22,10 @@ export class UsersService {
         return this.repository.findByEmail(email);
     }
 
-    async create(data: {
-        name:string;
-        nickname:string;
-        email:string;
-        password:string;
-    }) {
+    async create(data: { name: string; nickname: string; email: string; password: string }) {
         const userExists = await this.repository.findByEmail(data.email);
 
-        if (userExists)
-            throw new UserAlreadyExistsException();
+        if (userExists) throw new UserAlreadyExistsException();
 
         const passwordHash = await this.passwordService.hash(data.password);
         const code = this.codeGenerator.generate();
@@ -41,8 +35,8 @@ export class UsersService {
             apelido: data.nickname,
             email: data.email,
             senha_hash: passwordHash,
-            codigo_pessoal: code
-        })
+            codigo_pessoal: code,
+        });
     }
 
     async updateAvatar(userId: string, file: Express.Multer.File) {

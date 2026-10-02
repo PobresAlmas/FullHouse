@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { ArrowLeft } from "lucide-react";
 import AuthFormLayout from "./AuthFormLayout";
@@ -20,10 +20,9 @@ export default function VerifyEmailForm() {
     const canResend = seconds === 0;
 
     useEffect(() => {
-        if (seconds === 0)
-            return; 
+        if (seconds === 0) return;
 
-        const timer = setTimeout(() => setSeconds(prev => prev - 1), 1000);
+        const timer = setTimeout(() => setSeconds((prev) => prev - 1), 1000);
 
         return () => clearTimeout(timer);
     }, [seconds]);
@@ -31,13 +30,11 @@ export default function VerifyEmailForm() {
     async function onSubmit() {
         const response = await verifyResetCode(email!, code);
 
-        if (response.valid)
-            router.push(`/create-new-password?email=${email}&code=${code}`);
+        if (response.valid) router.push(`/create-new-password?email=${email}&code=${code}`);
     }
-    
+
     async function resendCode() {
-        if (!email)
-            return;
+        if (!email) return;
 
         await forgotPassword(email);
 
@@ -51,29 +48,33 @@ export default function VerifyEmailForm() {
             onSubmit={onSubmit}
         >
             <OtpInput length={6} onChange={setCode} />
-            <SubmitButton text="Confirmar código" /> 
+            <SubmitButton text="Confirmar código" />
             <p className="text-center text-muted-foreground">
                 Não recebeu o código? <br />
-                {
-                    canResend ? (
-                        <button
-                            type="button"
-                            onClick={resendCode}
-                            className="font-bold text-primary hover:underline"
-                        >
-                            Reenviar código
-                        </button>
-                    ) : (
-                        <span>
-                            Reenviar código em <span className="font-bold text-primary">00:{seconds.toString().padStart(2, "0")}</span>
+                {canResend ? (
+                    <button
+                        type="button"
+                        onClick={resendCode}
+                        className="font-bold text-primary hover:underline"
+                    >
+                        Reenviar código
+                    </button>
+                ) : (
+                    <span>
+                        Reenviar código em{" "}
+                        <span className="font-bold text-primary">
+                            00:{seconds.toString().padStart(2, "0")}
                         </span>
-                    )
-                }
+                    </span>
+                )}
             </p>
-            <a href="/Forgot-password" className="text-secondary font-bold flex justify-center items-center w-full gap-2 hover:underline">
+            <a
+                href="/Forgot-password"
+                className="text-secondary font-bold flex justify-center items-center w-full gap-2 hover:underline"
+            >
                 <ArrowLeft className="text-secondary" />
                 Voltar
             </a>
         </AuthFormLayout>
-    )
+    );
 }

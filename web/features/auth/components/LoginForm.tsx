@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,15 +22,14 @@ export default function LoginForm() {
 
     const {
         register,
-        formState: { errors }
+        formState: { errors },
     } = form;
 
     const router = useRouter();
     const { user, loading, refreshUser } = useAuth();
 
     useEffect(() => {
-        if (!loading && user)
-            router.replace("/test-private");
+        if (!loading && user) router.replace("/test-private");
     }, [loading, router, user]);
 
     async function onSubmit(data: LoginFormData) {
@@ -41,13 +40,11 @@ export default function LoginForm() {
             await refreshUser();
             router.push("/test-private");
         } catch (error: unknown) {
-            if (isApiError(error))
-                setErrorMessage(error.message);
+            if (isApiError(error)) setErrorMessage(error.message);
         }
     }
 
-    if (loading || user)
-        return null;
+    if (loading || user) return null;
 
     return (
         <AuthFormLayout
@@ -72,20 +69,18 @@ export default function LoginForm() {
 
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Checkbox 
-                        id="remember"
-                        {...register("rememberMe")} 
-                    />
+                    <Checkbox id="remember" {...register("rememberMe")} />
                     <Label htmlFor="remember">Lembrar de mim</Label>
                 </div>
-                <a href="/forgot-password" className="text-sm text-secondary font-bold hover:underline">
+                <a
+                    href="/forgot-password"
+                    className="text-sm text-secondary font-bold hover:underline"
+                >
                     Esqueceu sua senha?
                 </a>
             </div>
 
-            {errorMessage && (
-                <p className="text-red-500 text-sm text-center">{errorMessage}</p>
-            )}
+            {errorMessage && <p className="text-red-500 text-sm text-center">{errorMessage}</p>}
 
             <SubmitButton text="Entrar" />
 
@@ -96,8 +91,12 @@ export default function LoginForm() {
             </div>
 
             <p className="text-center text-sm text-muted-foreground">
-                Não tem uma conta? <a href="/register" className="text-secondary font-bold wl-1"> Cadastre-se!</a>
+                Não tem uma conta?{" "}
+                <a href="/register" className="text-secondary font-bold wl-1">
+                    {" "}
+                    Cadastre-se!
+                </a>
             </p>
         </AuthFormLayout>
-    )
+    );
 }

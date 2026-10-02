@@ -10,6 +10,6 @@ export function toUserResponse(user: usuario): UserRespondeDto {
         nickname: user.apelido ?? undefined,
         email: user.email,
         photo: user.foto_url ?? undefined,
-        housingStatus: user.status_moradia as HousingStatus
+        housingStatus: user.status_moradia as HousingStatus,
     };
 }

@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { Resend } from 'resend';
+import { Injectable } from "@nestjs/common";
+import { Resend } from "resend";
 
 @Injectable()
 export class EmailService {
@@ -181,7 +181,7 @@ export class EmailService {
 
                 </body>
                 </html>
-            `
+            `,
         });
     }
 }

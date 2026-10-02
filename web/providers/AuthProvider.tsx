@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { getMe, logout as logoutRequest } from "@/features/auth/api/auth.api";
 import { useRouter } from "next/navigation";
@@ -54,6 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, logout, refreshUser }}>{children}</AuthContext.Provider>
-    )
+        <AuthContext.Provider value={{ user, loading, logout, refreshUser }}>
+            {children}
+        </AuthContext.Provider>
+    );
 }

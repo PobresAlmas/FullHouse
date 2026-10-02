@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthFormLayout from "./AuthFormLayout";
@@ -10,7 +10,7 @@ import { useAuthForm } from "../hooks/useAuthForm";
 
 export default function CreateNewPasswordForm() {
     const router = useRouter();
-    
+
     const searchParams = useSearchParams();
 
     const email = searchParams.get("email");
@@ -20,18 +20,16 @@ export default function CreateNewPasswordForm() {
 
     const {
         register,
-        formState: { errors }
+        formState: { errors },
     } = form;
 
-
     async function onSubmit(data: ResetPasswordFormData) {
-        if (!email || !code)
-            return;
+        if (!email || !code) return;
 
-        await resetPassword({ 
-            email: email, 
+        await resetPassword({
+            email: email,
             code: code,
-            password: data.password 
+            password: data.password,
         });
 
         router.push("/password-success");
@@ -60,5 +58,5 @@ export default function CreateNewPasswordForm() {
                 <SubmitButton text="Alterar senha" />
             </div>
         </AuthFormLayout>
-    )
+    );
 }

@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { Separator } from "@/components/ui/separator";
 import SubmitButton from "./SubmitButton";
@@ -16,10 +16,10 @@ export default function RegisterForm() {
     const [errorMessage, setErrorMessage] = useState("");
 
     const form = useAuthForm(registerSchema);
-    
+
     const {
         register,
-        formState: { errors }
+        formState: { errors },
     } = form;
 
     const router = useRouter();
@@ -29,8 +29,7 @@ export default function RegisterForm() {
             await registerUser(data);
             router.push("/upload-photo");
         } catch (error: unknown) {
-            if (isApiError(error))
-                setErrorMessage(error.message);
+            if (isApiError(error)) setErrorMessage(error.message);
         }
     }
 
@@ -40,12 +39,7 @@ export default function RegisterForm() {
             description="Vamos começar!"
             onSubmit={form.handleSubmit(onSubmit)}
         >
-            <FormTextField
-                name="name"
-                label="Nome"
-                placeholder="Seu nome"
-                form={form}
-            />
+            <FormTextField name="name" label="Nome" placeholder="Seu nome" form={form} />
             <FormTextField
                 name="nickname"
                 label="Apelido"
@@ -66,12 +60,8 @@ export default function RegisterForm() {
                 {...register("password")}
                 error={errors.password?.message}
             />
-    
-            {errorMessage && (
-                <p className="text-destructive text-sm text-center">
-                    {errorMessage}
-                </p>
-            )}
+
+            {errorMessage && <p className="text-destructive text-sm text-center">{errorMessage}</p>}
             <SubmitButton text="Criar conta" />
 
             <div className="flex items-center gap-3 w-full">
@@ -81,8 +71,11 @@ export default function RegisterForm() {
             </div>
 
             <p className="text-center text-sm text-muted-foreground">
-                Já possui uma conta? <a href="/login" className="text-secondary font-bold wl-1">Entrar</a>
+                Já possui uma conta?{" "}
+                <a href="/login" className="text-secondary font-bold wl-1">
+                    Entrar
+                </a>
             </p>
         </AuthFormLayout>
-    )
+    );
 }

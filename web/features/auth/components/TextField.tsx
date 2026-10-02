@@ -20,22 +20,15 @@ export default function TextField({
     ...props
 }: TextFieldProps) {
     return (
-        <FormField
-            id={id}
-            label={label}
-            error={error}
-        >
+        <FormField id={id} label={label} error={error}>
             <Input
                 id={id}
                 type={type}
                 placeholder={placeholder}
                 required
-                className={cn(
-                    "rounded-sm",
-                    inputErrorClass(error)
-                )}
+                className={cn("rounded-sm", inputErrorClass(error))}
                 {...props}
             />
         </FormField>
-    )
+    );
 }

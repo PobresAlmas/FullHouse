@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
@@ -11,11 +11,7 @@ interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement>
     error?: string;
 }
 
-export default function PasswordInput({
-    id,
-    error,
-    ...props
-}: PasswordInputProps) {
+export default function PasswordInput({ id, error, ...props }: PasswordInputProps) {
     const [showPassword, setShowPassword] = useState(false);
 
     return (
@@ -25,10 +21,7 @@ export default function PasswordInput({
                 id={id}
                 type={showPassword ? "text" : "password"}
                 placeholder="•••••••••••"
-                className={cn(
-                    "rounded-sm",
-                    inputErrorClass(error)
-                )}
+                className={cn("rounded-sm", inputErrorClass(error))}
             />
 
             <button
@@ -36,10 +29,8 @@ export default function PasswordInput({
                 className="absolute right-3 top-1/2 -translate-y-1/2"
                 onClick={() => setShowPassword(!showPassword)}
             >
-                {
-                    showPassword ? <EyeOff size={18}/> : <Eye size={18} />
-                }
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
         </div>
-    )
+    );
 }

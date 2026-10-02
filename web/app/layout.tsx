@@ -1,5 +1,5 @@
-import type {Metadata} from "next";
-import {Nunito_Sans, Roboto} from "next/font/google";
+import type { Metadata } from "next";
+import { Nunito_Sans, Roboto } from "next/font/google";
 import "./globals.css";
 import React from "react";
 import { AuthProvider } from "@/providers/AuthProvider";
@@ -18,16 +18,11 @@ export const metadata: Metadata = {
     title: "FullHouse",
     description: "Organização de casas compartilhadas",
 };
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <html
-            lang="pt-BR"
-            className={`${nunito.variable} ${roboto.variable}`}
-        >
+        <html lang="pt-BR" className={`${nunito.variable} ${roboto.variable}`}>
             <body>
-                <AuthProvider>
-                    {children}
-                </AuthProvider>
+                <AuthProvider>{children}</AuthProvider>
             </body>
         </html>
     );

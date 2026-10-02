@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import AuthFormLayout from "@/features/auth/components/AuthFormLayout"
+import AuthFormLayout from "@/features/auth/components/AuthFormLayout";
 import PhotoUpload from "@/features/auth/components/PhotoUpload";
 import SubmitButton from "@/features/auth/components/SubmitButton";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -13,9 +13,8 @@ export default function UploadPhotoPage() {
 
     const { refreshUser } = useAuth();
     const router = useRouter();
-    
-    async function onSubmit() {
 
+    async function onSubmit() {
         if (!photo) {
             console.log("sem foto");
             return;
@@ -25,11 +24,7 @@ export default function UploadPhotoPage() {
 
         formData.append("photo", photo);
 
-
-        const response = await api.post(
-            "/users/me/avatar",
-            formData
-        );
+        const response = await api.post("/users/me/avatar", formData);
 
         await refreshUser();
 
@@ -42,13 +37,15 @@ export default function UploadPhotoPage() {
             description="Essa foto será exibida para os membros da sua casa e ajuda a personalizar sua conta"
             onSubmit={onSubmit}
         >
-            <PhotoUpload onChange={setPhoto} /> 
+            <PhotoUpload onChange={setPhoto} />
             <SubmitButton text="Continuar" />
             <button
                 type="button"
                 onClick={() => router.push("/test-private")}
                 className="text-secondary font-bold text-sm hover:underline"
-            >Pular por enquanto</button>
+            >
+                Pular por enquanto
+            </button>
         </AuthFormLayout>
-    )
+    );
 }

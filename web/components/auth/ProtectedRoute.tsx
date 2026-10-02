@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { useRouter } from "next/navigation";
@@ -10,14 +10,10 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     const router = useRouter();
 
     useEffect(() => {
-        if (!loading && !user)
-            router.push("/login");
+        if (!loading && !user) router.push("/login");
     }, [loading, user, router]);
 
-    if (loading)
-        return (
-            <p>Carregando...</p>
-        )
+    if (loading) return <p>Carregando...</p>;
 
     if (!user) return null;
 

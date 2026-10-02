@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import AuthFormLayout from "./AuthFormLayout";
 import SubmitButton from "./SubmitButton";
@@ -37,11 +37,13 @@ export default function ForgotPasswordForm() {
 
             <SubmitButton text="Enviar código" />
 
-            <a href="/login" className="text-secondary font-bold flex justify-center items-center w-full gap-2 hover:underline">
+            <a
+                href="/login"
+                className="text-secondary font-bold flex justify-center items-center w-full gap-2 hover:underline"
+            >
                 <ArrowLeft className="text-secondary" />
                 Voltar para o login
             </a>
         </AuthFormLayout>
-    )    
+    );
 }
-

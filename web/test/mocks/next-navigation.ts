@@ -8,7 +8,6 @@ vi.mock("next/navigation", () => ({
     }),
 
     useSearchParams: () => ({
-        get: vi.fn()
-            .mockReturnValue("teste@email.com")
+        get: vi.fn().mockReturnValue("teste@email.com"),
     }),
 }));

@@ -14,7 +14,7 @@ export default function FormTextField<T extends FieldValues>({
     label,
     placeholder,
     form,
-    type = "text"
+    type = "text",
 }: FormTextFieldProps<T>) {
     return (
         <TextField
@@ -24,5 +24,5 @@ export default function FormTextField<T extends FieldValues>({
             {...form.register(name)}
             error={form.formState.errors[name]?.message as string}
         />
-    )
+    );
 }

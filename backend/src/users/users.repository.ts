@@ -4,17 +4,15 @@ import { Prisma, usuario } from "../generated/prisma/client.js";
 
 @Injectable()
 export class UserRepository {
-    constructor(
-        private readonly prisma: PrismaService
-    ) {}
+    constructor(private readonly prisma: PrismaService) {}
 
     findAll() {
-        return this.prisma.usuario.findMany(); 
+        return this.prisma.usuario.findMany();
     }
 
     findByEmail(email: string) {
         return this.prisma.usuario.findUnique({
-            where: { email }
+            where: { email },
         });
     }
 
@@ -31,7 +29,7 @@ export class UserRepository {
     update(id: string, data: Prisma.usuarioUpdateInput) {
         return this.prisma.usuario.update({
             where: { id },
-            data
-        })
+            data,
+        });
     }
 }

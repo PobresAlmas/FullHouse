@@ -1,13 +1,13 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UsersService } from '../users/users.service.js';
-import { RegisterDto } from './dto/register.dto.js';
-import { LoginDto } from './dto/login.dto.js';
-import { PasswordService } from '../crypto/password.service.js';
-import { toUserResponse } from '../users/users.mapper.js';
-import { JwtService } from '@nestjs/jwt';
-import { Response } from 'express';
-import { PasswordResetService } from '../password-reset/password-reset.service.js';
-import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { UsersService } from "../users/users.service.js";
+import { RegisterDto } from "./dto/register.dto.js";
+import { LoginDto } from "./dto/login.dto.js";
+import { PasswordService } from "../crypto/password.service.js";
+import { toUserResponse } from "../users/users.mapper.js";
+import { JwtService } from "@nestjs/jwt";
+import { Response } from "express";
+import { PasswordResetService } from "../password-reset/password-reset.service.js";
+import { ResetPasswordDto } from "./dto/reset-password.dto.js";
 
 @Injectable()
 export class AuthService {
@@ -23,75 +23,68 @@ export class AuthService {
 
         const token = this.jwtService.sign({
             sub: user.id,
-            email: user.email
+            email: user.email,
         });
-        
+
         return {
             access_token: token,
-            user: toUserResponse(user)
-        }
+            user: toUserResponse(user),
+        };
     }
 
     async login(data: LoginDto, response: Response) {
         const user = await this.usersService.findByEmail(data.email);
-        
-        if (!user)
-            throw new UnauthorizedException("E-mail ou senha inválidos.");
+
+        if (!user) throw new UnauthorizedException("E-mail ou senha inválidos.");
 
         const passwordValid = await this.passwordService.compare(data.password, user.senha_hash);
 
-        if (!passwordValid)
-            throw new UnauthorizedException("E-mail ou senha inválidos.");
+        if (!passwordValid) throw new UnauthorizedException("E-mail ou senha inválidos.");
 
         const token = this.jwtService.sign({
             sub: user.id,
-            email: user.email
+            email: user.email,
         });
 
         return {
             access_token: token,
-            user: toUserResponse(user)
-        }
+            user: toUserResponse(user),
+        };
     }
 
-    async forgotPassword(email: string){
+    async forgotPassword(email: string) {
         const user = await this.usersService.findByEmail(email);
 
         if (!user)
             return {
-                message:
-                "Se o email existir, enviaremos um código."
+                message: "Se o email existir, enviaremos um código.",
             };
 
         const reset = await this.passwordResetService.create(user.id, user.email);
 
         return {
-            message:
-            "Se o email existir, enviaremos um código."
+            message: "Se o email existir, enviaremos um código.",
         };
     }
 
     async verifyResetCode(email: string, code: string) {
         const user = await this.usersService.findByEmail(email);
 
-        if (!user)
-            return { valid: false };
-        
+        if (!user) return { valid: false };
+
         const valid = await this.passwordResetService.verify(user.id, code);
 
         return { valid };
     }
-    
+
     async resetPassword(data: ResetPasswordDto) {
         const user = await this.usersService.findByEmail(data.email);
 
-        if (!user)
-            throw new UnauthorizedException("Código inválido");
+        if (!user) throw new UnauthorizedException("Código inválido");
 
         const reset = await this.passwordResetService.verify(user.id, data.code);
 
-        if (!reset)
-            throw new UnauthorizedException("Código inválido ou expirado");
+        if (!reset) throw new UnauthorizedException("Código inválido ou expirado");
 
         const passwordHash = await this.passwordService.hash(data.password);
 

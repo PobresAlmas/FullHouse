@@ -7,5 +7,5 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <LoginSection />
             {children}
         </main>
-    )
+    );
 }
