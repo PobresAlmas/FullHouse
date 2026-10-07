@@ -1,0 +1,32 @@
+@startuml permissions
+
+|Usuario|
+start
+:Clicar em "Perfil";
+:Selecionar "Permissões";
+|Sistema|
+:Buscar permissões dos moradores;
+|Usuario|
+:Visualizar "Permissões dos moradores";
+repeat
+  :Selecionar um morador da lista;
+  :Clicar no menu suspenso de permissão;
+  |Sistema|
+  :Exibir opções de acesso;
+  |Usuario|
+  if () then ([Administrador])
+    :Selecionar "Administrador";
+  else ([Outras opções])
+    if () then ([Pode editar])
+      :Selecionar "Pode editar";
+    else ([Somente leitura])
+      :Selecionar "Somente leitura";
+    endif
+  endif
+  |Sistema|
+  :Registar alteração de permissão;
+  :Atualizar perfil de acesso do morador;
+  |Usuario|
+repeat while () is ([alterar outro morador]) not ([finalizar interação])
+stop
+@enduml

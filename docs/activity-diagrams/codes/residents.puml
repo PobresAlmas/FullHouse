@@ -1,0 +1,49 @@
+@startuml residents
+
+|Usuario|
+start
+:Clica em "Perfil";
+:Selecionar "Moradores";
+|Sistema|
+:Buscar lista de membros da casa;
+|Usuario|
+repeat
+  :Visualizar "Membros da casa";
+  if () then ([adicionar/convidar])
+    :Preencher dados do novo morador;
+    :Confirmar convite;
+    |Sistema|
+    :Enviar convite / Adicionar morador;
+  else ([opções do morador])
+    |Usuario|
+    :Clicar no menu de opções (três pontos);
+    if () then ([editar])
+      |Usuario|
+      :Selecionar "Editar";
+      |Sistema|
+      :Abrir modal "Editar morador";
+      |Usuario|
+      repeat
+        :Alterar Nome, E-mail ou Permissão;
+        :Clicar em "Salvar alterações";
+        |Sistema|
+        :Validar dados;
+        |Usuario|
+        backward:Exibir erro;
+      repeat while () is ([dados inválidos]) not ([dados válidos])
+      |Sistema|
+      :Atualizar dados do morador;
+      :Fechar modal e atualizar lista;
+   else ([excluir])
+      :Selecionar "Excluir";
+      :Confirmar exclusão;
+      |Sistema|
+      :Remover morador;
+      :Atualizar lista;
+   
+    endif
+  endif
+  |Usuario|
+repeat while () is ([continuar gerenciamento]) not ([finalizar interação])
+stop
+@enduml
