@@ -1,0 +1,62 @@
+@startuml notifications
+
+!include style.puml
+
+|Usuário|
+start
+:Clicar no ícone de notificações;
+
+|Sistema|
+:Buscar notificações;
+:Exibir popup de notificações;
+
+|Usuário|
+repeat
+  if () then ([marcar como lidas])
+
+    |Sistema|
+    :Marcar notificações como lidas;
+    :Atualizar contador de não lidas;
+
+  else ([convite de residência])
+
+    |Usuário|
+    if () then ([aceitar])
+      |Sistema|
+      :Associar residência;
+      :Definir permissão de morador;
+    else ([rejeitar])
+      |Sistema|
+      :Excluir notificação;
+    endif
+
+    :Atualizar lista de notificações;
+
+  endif
+  |Usuário|
+repeat while () is ([continuar no popup]) not ([finalizar interação])
+
+if () then ([ver todas no histórico])
+
+  |Sistema|
+  :Buscar histórico de notificações;
+  :Exibir "Notificações" no perfil;
+
+  |Usuário|
+  repeat
+    if () then ([visão geral])
+      |Sistema|
+      :Listar todas as notificações;
+    else ([não lidas])
+      |Sistema|
+      :Filtrar notificações não lidas;
+    endif
+    |Usuário|
+  repeat while () is ([alternar aba]) not ([finalizar interação])
+
+else ([fechar popup])
+endif
+
+stop
+
+@enduml
