@@ -1,0 +1,122 @@
+@startuml pantry
+
+!include style.puml
+
+|Usuário|
+start
+:Acessar "Despensa";
+
+|Sistema|
+:Buscar itens da despensa;
+:Buscar categorias;
+:Exibir painel da despensa;
+
+|Usuário|
+
+repeat
+
+    if () then ([adicionar item])
+
+        :Clicar em "Adicionar item";
+        :Preencher nome do item;
+        :Selecionar categoria;
+        :Informar quantidade;
+        :Selecionar unidade;
+
+        if () then ([definir quantidade mínima])
+            :Informar quantidade mínima;
+        else ([não definir])
+        endif
+
+        :Clicar em "Salvar";
+
+        |Sistema|
+        :Validar dados;
+
+        if () then ([dados válidos])
+
+            :Cadastrar item;
+            :Atualizar estoque;
+            :Atualizar lista da despensa;
+
+        else ([dados inválidos])
+
+            :Exibir erro;
+
+            |Usuário|
+            :Corrigir dados;
+
+        endif
+
+
+    else ([interagir com item])
+
+        |Usuário|
+        :Selecionar item;
+
+        if () then ([alterar quantidade])
+
+            :Informar nova quantidade;
+
+            |Sistema|
+            :Atualizar quantidade;
+
+            if () then ([estoque baixo])
+                :Gerar alerta de estoque baixo;
+            else ([estoque suficiente])
+            endif
+
+            :Atualizar lista;
+
+
+        else ([mais opções])
+
+            if () then ([editar])
+
+                |Sistema|
+                :Buscar dados do item;
+
+                |Usuário|
+                :Exibir formulário de edição;
+                :Alterar dados;
+                :Clicar em "Salvar";
+
+                |Sistema|
+                :Validar dados;
+
+                if () then ([dados válidos])
+                    :Atualizar item;
+                    :Atualizar lista;
+                else ([dados inválidos])
+                    :Exibir erro;
+                endif
+
+
+            else ([excluir])
+
+                |Usuário|
+                :Solicitar exclusão;
+
+                if () then ([confirmar])
+
+                    |Sistema|
+                    :Excluir item;
+                    :Atualizar lista da despensa;
+
+                else ([cancelar])
+                endif
+
+            endif
+
+        endif
+
+    endif
+
+
+    |Usuário|
+
+repeat while () is ([continuar na despensa])
+
+stop
+
+@enduml

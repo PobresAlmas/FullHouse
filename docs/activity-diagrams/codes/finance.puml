@@ -1,0 +1,75 @@
+@startuml finance-edit
+!include style.puml
+
+|Usuário|
+start
+:Acessar "Financeiro";
+|Sistema|
+:Buscar dados financeiros;
+|Usuário|
+:Dashboard;
+if () then (~[visão casa])
+  |Sistema|
+  :Buscar despesas da casa;
+else (~[visão individual])
+  |Sistema|
+  :Buscar despesas individuais;
+endif
+:Calcular total a pagar;
+:Calcular total pago;
+:Calcular média mensal;
+|Usuário|
+repeat
+  repeat
+    :Mostrar despesas;
+    if () then ([adicionar despea])
+      :Fluxo de criação de despesa;
+      stop
+    else ([mais opções])
+      if () then ([criar subgrupo])
+        :Fluxo de criação de subgrupo;
+        stop
+      else ([mais opções])
+        if () then ([finalizar interação])
+          stop
+        else ([criar despesa])
+        endif
+      endif
+    endif
+    :Selecionar despesa;
+    |Sistema|
+    :Buscar detalhes;
+    |Usuário|
+    :Exibir detalhes;
+    if () then ([marcar como pago])
+      |Sistema|
+      :Registrar pagamento;
+      |Usuário|
+      break
+    else ([mais opções])
+      |Usuário|
+      if () then ([excluir])
+        :Confirmar exclusão;
+        |Sistema|
+        :Excluir despesa;
+        :Atualizar lista;
+        :Atualizar calendário;
+      else ([editar])
+        |Usuário|
+        repeat
+          :Alterar dados;
+          :Confirmar alterações;
+          |Sistema|
+          :Validar dados;
+          |Usuário|
+          backward:Exibir erro;
+        repeat while () is ([dados inválidos]) not ([dados válidos])
+      endif
+    endif
+  repeat while ()
+  |Sistema|
+  :Atualizar despesa;
+  :Atualizar lista;
+  |Usuário|
+repeat while ()
+@enduml

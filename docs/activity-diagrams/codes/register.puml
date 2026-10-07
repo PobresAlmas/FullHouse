@@ -1,0 +1,33 @@
+@startuml register
+
+!include style.puml
+
+|Usuário|
+start
+repeat
+:Inserir nome, apelido, email e senha;
+if () then ([clicou no olho])
+  :Exibir senha;
+else ([não clicou])
+endif
+
+|Sistema|
+:Validar campos;
+if () then ([credenciais validas])
+    :Buscar email;
+    if () then ([email não registrado])
+        |Usuário|
+        :Apertar "Criar conta";
+
+        |Sistema|
+        :Exibir login;
+    else ([email já registrado])
+    endif
+else ([credenciais inválidas])
+endif
+|Usuário|
+:Exibir erro;
+:Corrigir dados;
+repeat while ()
+
+@enduml

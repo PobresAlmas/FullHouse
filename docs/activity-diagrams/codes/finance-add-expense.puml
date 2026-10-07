@@ -1,0 +1,44 @@
+@startuml add-despesa
+
+!include style.puml
+
+|Usuário|
+start
+:Adicionar despesa;
+
+|Sistema|
+:Buscar categorias;
+:Buscar moradores;
+
+|Usuário|
+:Preencher dados da despesa;
+:Selecionar categoria;
+:Informar valor;
+:Informar vencimento;
+
+if () then ([casa])
+    :Definir participantes;
+else ([individual])
+endif
+
+:Confirmar cadastro;
+
+|Sistema|
+:Validar dados;
+
+while () is ([dados inválidos])
+    :Exibir erro;
+    |Usuário|
+    :Corrigir dados;
+    :Confirmar cadastro;
+    |Sistema|
+    :Validar dados;
+endwhile ([dados válidos])
+
+:Cadastrar despesa;
+:Atualizar valores;
+:Atualizar lista;
+:Atualizar calendário;
+stop
+
+@enduml

@@ -1,0 +1,182 @@
+@startuml finance
+
+!include style.puml
+
+|Usuário|
+start
+:Acessar "Financeiro";
+
+|Sistema|
+:Buscar dados financeiros;
+:Exibir dashboard financeiro;
+
+|Usuário|
+
+repeat
+
+    if () then ([alternar visão])
+
+        if () then ([pessoal])
+
+            |Sistema|
+            :Buscar despesas individuais;
+            :Calcular total a pagar;
+            :Calcular total pago no mês;
+            :Calcular média mensal;
+            :Exibir dashboard individual;
+
+        else ([casa])
+
+            |Sistema|
+            :Buscar despesas da residência;
+            :Calcular total a pagar da casa;
+            :Calcular total pago no mês;
+            :Calcular média mensal;
+            :Exibir dashboard da casa;
+
+        endif
+
+    else ([interagir com financeiro])
+
+        |Usuário|
+
+        if () then ([adicionar despesa])
+
+            :Clicar em "Adicionar Despesa";
+            :Preencher dados da despesa;
+            :Selecionar categoria;
+            :Informar valor;
+            :Informar vencimento;
+
+            if () then ([despesa da casa])
+                :Definir participantes da despesa;
+            else ([despesa individual])
+            endif
+
+            :Confirmar cadastro;
+
+            |Sistema|
+            :Validar dados;
+
+            if () then ([dados válidos])
+
+                :Cadastrar despesa;
+                :Atualizar valores do dashboard;
+                :Atualizar lista de despesas;
+                :Atualizar calendário;
+
+            else ([dados inválidos])
+
+                :Exibir erro;
+
+                |Usuário|
+                :Corrigir dados;
+
+            endif
+
+        else ([outra ação])
+
+            if () then ([selecionar despesa])
+
+                |Usuário|
+                :Selecionar despesa;
+
+                |Sistema|
+                :Buscar detalhes da despesa;
+
+                |Usuário|
+                :Exibir detalhes da despesa;
+
+                if () then ([marcar como paga])
+
+                    |Sistema|
+                    :Registrar pagamento;
+                    :Atualizar status da despesa;
+                    :Atualizar total pago;
+                    :Atualizar total a pagar;
+                    :Atualizar calendário;
+
+                else ([mais opções])
+
+                    if () then ([editar])
+
+                        |Usuário|
+                        :Alterar dados da despesa;
+                        :Confirmar alterações;
+
+                        |Sistema|
+                        :Validar dados;
+
+                        if () then ([dados válidos])
+                            :Atualizar despesa;
+                            :Atualizar dashboard;
+                            :Atualizar lista;
+                        else ([dados inválidos])
+                            :Exibir erro;
+                        endif
+
+                    else ([excluir])
+
+                        |Usuário|
+                        :Solicitar exclusão;
+
+                        if () then ([confirmar])
+
+                            |Sistema|
+                            :Excluir despesa;
+                            :Atualizar dashboard;
+                            :Atualizar lista;
+                            :Atualizar calendário;
+
+                        else ([cancelar])
+                        endif
+
+                    endif
+
+                endif
+
+            else ([outra ação])
+
+                if () then ([filtrar ou ordenar])
+
+                    |Usuário|
+                    :Selecionar filtros ou ordenação;
+
+                    |Sistema|
+                    :Aplicar filtros;
+                    :Ordenar despesas;
+                    :Atualizar lista;
+
+                else ([criar subgrupo])
+
+                    |Usuário|
+                    :Clicar em "Criar Subgrupo";
+                    :Preencher dados do subgrupo;
+                    :Selecionar participantes;
+                    :Confirmar criação;
+
+                    |Sistema|
+                    :Validar dados;
+
+                    if () then ([dados válidos])
+                        :Criar subgrupo;
+                        :Atualizar opções financeiras;
+                    else ([dados inválidos])
+                        :Exibir erro;
+                    endif
+
+                endif
+
+            endif
+
+        endif
+
+    endif
+
+    |Usuário|
+
+repeat while () is ([continuar no financeiro])
+
+stop
+
+@enduml 

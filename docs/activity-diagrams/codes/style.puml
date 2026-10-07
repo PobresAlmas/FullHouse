@@ -1,0 +1,28 @@
+skinparam backgroundColor #ffffff
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam defaultFontName Arial
+skinparam defaultFontColor black
+skinparam ArrowColor black
+
+skinparam activity {
+  BackgroundColor #F6F3C7
+  BorderColor black
+  FontColor black
+}
+
+skinparam activityDiamond {
+  BackgroundColor #F6F3C7
+  BorderColor black
+  FontColor black
+}
+
+skinparam activityPartition {
+    BackgroundColor #FFFCCB
+    BorderColor black
+    FontColor black
+    FontSize 14
+    FontStyle plain
+}
+
+skinparam activityBarColor black

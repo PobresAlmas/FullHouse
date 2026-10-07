@@ -1,0 +1,48 @@
+@startuml login
+
+!include style.puml
+
+|Usuário|
+start
+repeat
+:Inserir e-mail e senha;
+
+if () then ([clicou no olho])
+  :Exibir senha;
+else ([não clicou])
+endif
+
+|Sistema|
+:Validar campos;
+
+if () then ([email válido])
+  :Validar senha;
+
+  if () then (senha válida)
+    if () then ([lembrar de mim])
+      :Definir expiração longa;
+    else ([não lembrar])
+      :Definir expiração curta;
+    endif
+
+    :Gerar token de autenticação;
+    :Enviar token;
+    
+    |Navegador|
+    :Armazenar credencial de sessão;
+
+    |Sistema|
+    :Carregar dados da residência;
+    :Exibir Home;
+    stop
+  else (senha inválida)
+  endif
+
+else ([email inválido])
+endif
+|Usuário|
+:Exibir erro;
+:Corrigir dados;
+repeat while ()
+
+@enduml

@@ -1,0 +1,31 @@
+@startuml add-subgroup
+
+!include style.puml
+
+|Usuário|
+start
+:Adicionar subgrupo;
+
+|Sistema|
+:Buscar participantes;
+
+|Usuário|
+repeat
+    :Preencher dados do subgrupo;
+    :Selecionar participantes;
+
+    |Sistema|
+    :Confirmar criação;
+    :Validar dados;
+
+    |Usuário|
+    backward:Exibir erro;
+
+    |Sistema|
+repeat while () is ([dados inválidos]) not ([dados válidos])
+
+:Criar subgrupo;
+:Atualizar opções financeiras;
+stop
+
+@enduml

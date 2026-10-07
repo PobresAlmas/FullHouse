@@ -1,0 +1,64 @@
+@startuml enter-residence
+
+!include style.puml
+
+|Sistema|
+start
+
+repeat
+    :Buscar residência associada;
+    if () then ([existe])
+        :Buscar permissões;
+
+        |Usuário|
+
+        if () then ([é admin])
+            :Exibir painel de gerenciamento;
+            stop
+        else ([não é admin])
+            :Exibir painel de visualização;
+            stop
+        endif
+    else ([não existe])
+        repeat
+            |Usuário|
+            :Tela inicial;
+
+            if () then ([clicou em notificações])
+                |Sistema|
+                :Buscar notificações;
+
+                if () then ([existem notificações])
+                    |Usuário|
+                    :Exibir convite;
+
+                    if () then ([aceitar])
+                        |Sistema|
+                        :Associar residência;
+                        :Definir permissão de morador;
+                    else ([recusar])
+                        |Sistema|
+                        :Excluir notificação;
+
+                        |Usuário|
+                        :Fechar badge de convite;
+                    endif
+                else ([não existem notificações])
+                    |Usuário|
+                    :Exibir painel vazio;
+                    :Fechar painel;
+                endif
+            else ([criar residência])
+                |Usuário|
+                :Preencher nome da casa;
+                :Criar casa;
+
+                |Sistema|
+                :Registra casa;
+                :Associa residência;
+                :Definir permissão de admin;
+            endif
+        repeat while () is ([voltar à tela inicial]) not ([residência associada])
+    endif
+repeat while ()
+@enduml

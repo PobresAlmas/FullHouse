@@ -1,0 +1,48 @@
+@startuml task-exchange
+
+!include style.puml
+
+|Usuário|
+start
+:Clicar em "Trocar" em uma tarefa;
+:Selecionar morador;
+:Selecionar tarefa desejada para troca;
+repeat
+    :Clicar em "Solicitar troca";
+
+    |Sistema|
+    :Validar solicitação;
+
+    if () then ([válida])
+        :Criar solicitação de troca;
+        :Notificar outro morador;
+
+        |Outro morador|
+        :Visualizar solicitação;
+
+        if () then ([aceitar])
+            |Sistema|
+            :Trocar responsáveis das tarefas;
+            :Atualizar tarefas;
+            :Remover solicitação;
+            :Notificar solicitante;
+
+            stop
+        else ([recusar])
+            |Sistema|
+            :Remover solicitação;
+            :Notificar solicitante;
+
+            stop
+        endif
+
+    else ([inválida])
+        :Exibir erro;
+
+        |Usuário|
+        :Corrigir seleção;
+    endif
+repeat while ()
+stop
+
+@enduml

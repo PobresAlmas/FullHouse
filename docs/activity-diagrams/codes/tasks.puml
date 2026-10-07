@@ -1,0 +1,146 @@
+@startuml tasks
+
+!include style.puml
+
+|Usuário|
+start
+:Acessar "Tarefas";
+
+|Sistema|
+:Buscar tarefas da residência;
+:Buscar categorias;
+:Buscar solicitações de troca;
+:Exibir painel de tarefas;
+
+|Usuário|
+
+repeat
+
+    if () then ([nova tarefa])
+
+        :Clicar em "Nova tarefa";
+        :Exibir formulário de cadastro;
+        :Preencher título;
+        :Opcionalmente preencher descrição;
+        :Selecionar tags;
+        :Selecionar responsável;
+        :Informar data e horário;
+
+        if () then ([definir repetição])
+            :Selecionar frequência de repetição;
+        else ([não repetir])
+        endif
+
+        if () then ([ativar lembrete])
+            :Ativar lembrete;
+            :Selecionar antecedência do aviso;
+        else ([sem lembrete])
+        endif
+
+        :Clicar em "Salvar tarefa";
+
+        |Sistema|
+        :Validar dados da tarefa;
+
+        if () then ([dados válidos])
+
+            :Cadastrar tarefa;
+
+            if () then ([possui repetição])
+                :Registrar recorrência;
+            else ([sem repetição])
+            endif
+
+            if () then ([possui lembrete])
+                :Agendar lembrete;
+            else ([sem lembrete])
+            endif
+
+            :Atualizar lista de tarefas;
+
+        else ([dados inválidos])
+
+            :Exibir erro;
+
+            |Usuário|
+            :Corrigir dados;
+
+        endif
+
+
+    else ([interagir com tarefas])
+
+        |Usuário|
+
+        if () then ([filtrar tarefas])
+
+            :Selecionar filtro;
+
+            |Sistema|
+            :Aplicar filtro;
+            :Exibir tarefas filtradas;
+
+
+        else ([selecionar tarefa])
+
+            :Selecionar tarefa;
+
+            if () then ([marcar como concluída])
+
+                |Sistema|
+                :Atualizar tarefa como concluída;
+                :Atualizar indicadores;
+                :Atualizar lista;
+
+            else ([mais opções])
+
+                if () then ([editar])
+
+                    |Sistema|
+                    :Buscar dados da tarefa;
+
+                    |Usuário|
+                    :Exibir formulário de edição;
+                    :Alterar dados;
+                    :Confirmar alterações;
+
+                    |Sistema|
+                    :Validar dados;
+
+                    if () then ([dados válidos])
+                        :Atualizar tarefa;
+                        :Atualizar lista;
+                    else ([dados inválidos])
+                        :Exibir erro;
+                    endif
+
+
+                else ([excluir])
+
+                    |Usuário|
+                    :Solicitar exclusão;
+
+                    if () then ([confirmar])
+
+                        |Sistema|
+                        :Excluir tarefa;
+                        :Atualizar lista;
+
+                    else ([cancelar])
+                    endif
+
+                endif
+
+            endif
+
+        endif
+
+    endif
+
+    |Usuário|
+
+repeat while () is ([continuar em tarefas])
+
+stop
+
+@enduml
