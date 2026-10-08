@@ -1,0 +1,89 @@
+@startuml pets
+
+!include style.puml
+
+skinparam linetype ortho
+skinparam wrapWidth 220
+skinparam maxMessageSize 150
+
+header Diagrama de Atividades - Gestão de Pets
+title Gestão de Pets (Cadastrar, Visualizar, Editar, Excluir e Registrar Cuidados)
+
+|Morador|
+start
+:Acessa a seção "Pets" da residência;
+
+|Sistema|
+:Busca os pets cadastrados no banco de dados;
+:Exibe a lista de pets e opções de gestão;
+
+|Morador|
+switch (Escolha a ação desejada:)
+
+case ( Visualizar Detalhes )
+  :Seleciona um pet na lista;
+  |Sistema|
+  :Busca histórico de cuidados e gastos do pet;
+  :Exibe ficha detalhada com vacinas e despesas;
+
+case ( Cadastrar Pet )
+  |Morador|
+  :Preenche formulário de cadastro (Nome*, Espécie*, Raça, Foto);
+  :Clica em "Salvar Pet";
+  |Sistema|
+  if (Campos obrigatórios preenchidos?) then (sim)
+    :Cadastra pet no banco de dados;
+    :Exibe mensagem de sucesso;
+  else (não)
+    :Exibe alerta de campos obrigatórios pendentes;
+  endif
+
+case ( Editar Pet )
+  |Morador|
+  :Seleciona o pet e altera as informações;
+  :Clica em "Salvar Alterações";
+  |Sistema|
+  if (Dados válidos?) then (sim)
+    :Atualiza o cadastro do pet no banco de dados;
+    :Exibe mensagem de confirmação;
+  else (não)
+    :Exibe alerta de erro de validação;
+  endif
+
+case ( Excluir Pet )
+  |Morador|
+  :Seleciona o pet e clica em "Excluir";
+  |Sistema|
+  :Exibe modal de confirmação de exclusão;
+  |Morador|
+  if (Confirma a exclusão?) then (sim)
+    |Sistema|
+    :Remove o pet e seus registros do banco de dados;
+    :Exibe mensagem de remoção efetuada;
+  else (não)
+    |Sistema|
+    :Cancela a operação e fecha o modal;
+  endif
+
+case ( Registrar Cuidado / Gasto )
+  |Morador|
+  :Seleciona o pet e o tipo de cuidado (Vacina, Ração, Vet);
+  :Preenche descrição, data, valor e pagador;
+  :Clica em "Salvar Registro";
+  |Sistema|
+  if (Informações válidas?) then (sim)
+    :Registra o cuidado/gasto no histórico do pet;
+    :Exibe confirmação de registro salvo;
+  else (não)
+    :Exibe mensagem de erro nos dados;
+  endif
+
+endswitch
+
+|Sistema|
+:Atualiza a listagem exibida na área de Pets;
+
+|Morador|
+stop
+
+@enduml
