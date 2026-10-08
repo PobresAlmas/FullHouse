@@ -1,0 +1,42 @@
+@startuml leave-residence
+
+!include style.puml
+
+|Usuário|
+start
+:Clicar em "Perfil";
+:Selecionar "Casa";
+
+|Sistema|
+:Buscar informações da casa;
+
+|Usuário|
+:Visualizar "Informações da casa";
+:Clicar em "Sair da casa";
+
+|Sistema|
+:Exibir confirmação de saída;
+
+|Usuário|
+if () then ([confirmar])
+
+  |Sistema|
+  :Remover morador da residência;
+  :Excluir permissões do morador;
+  :Atualizar lista de membros da casa;
+  :Exibir tela inicial sem residência;
+
+else ([cancelar])
+
+  |Sistema|
+  :Fechar confirmação;
+
+  |Usuário|
+  :Visualizar "Informações da casa";
+
+endif
+
+|Usuário|
+stop
+
+@enduml
