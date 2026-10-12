@@ -269,7 +269,7 @@ export default function FinancePage() {
                     <SidebarLink icon={<DollarSign size={17} />} label="Financeiro" href="/finance" active />
                     <SidebarLink icon={<Wallet size={17} />} label="Despesa" />
                     <SidebarLink icon={<UserRound size={17} />} label="Perfil" />
-                    <SidebarLink icon={<PawPrint size={18} />} label="Pets" />
+                    <SidebarLink icon={<PawPrint size={18} />} label="Pets" href="/pets" />
                 </nav>
             </aside>
 
