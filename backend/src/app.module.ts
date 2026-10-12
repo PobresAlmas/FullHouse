@@ -11,6 +11,7 @@ import { StorageModule } from "./storage/storage.module.js";
 import { EmailModule } from "./email/email.module.js";
 import { PasswordResetModule } from "./password-reset/password-reset.module.js";
 import Joi from "joi";
+import { ExpensesModule } from "./expenses/expenses.module.js";
 
 @Module({
     imports: [
@@ -34,6 +35,7 @@ import Joi from "joi";
         StorageModule,
         EmailModule,
         PasswordResetModule,
+        ExpensesModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService],

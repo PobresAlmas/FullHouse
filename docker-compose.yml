@@ -1,6 +1,18 @@
 services:
+  postgres:
+    image: postgres:18.1-alpine
+    container_name: fullhouse-postgres
+    environment:
+      POSTGRES_USER: fullhouse
+      POSTGRES_PASSWORD: fullhouse123
+      POSTGRES_DB: fullhouse
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   minio:
-    image: minio/minio
+    image: docker.io/pgsty/silo
     container_name: fullhouse-minio
     ports:
       - "9000:9000"
@@ -13,4 +25,5 @@ services:
     command: server /data --console-address ":9001"
 
 volumes:
+  postgres_data:
   minio_data:
