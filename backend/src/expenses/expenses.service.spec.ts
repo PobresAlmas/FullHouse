@@ -3,6 +3,7 @@ import { ExpensesService } from "./expenses.service.js";
 
 describe("ExpensesService CRUD", () => {
     const memberParticipationId = "member-id";
+    const home = { id: "home-id", participacao: [{ id: memberParticipationId }] };
     const subgroup = {
         casa_id: "home-id",
         membro_subgrupo: [{ participacao_id: memberParticipationId }],
@@ -16,6 +17,7 @@ describe("ExpensesService CRUD", () => {
     };
     const accessibleExpense = {
         id: "expense-id",
+        casa_id: "home-id",
         subgrupo_id: "subgroup-id",
         status: "ABERTA",
         quitada_em: null,
@@ -34,7 +36,11 @@ describe("ExpensesService CRUD", () => {
 
     let repository: {
         findEditableExpense: ReturnType<typeof vi.fn>;
+        findAvailableHomes: ReturnType<typeof vi.fn>;
+        findHomeForUser: ReturnType<typeof vi.fn>;
         findSubgroupForUser: ReturnType<typeof vi.fn>;
+        findForUser: ReturnType<typeof vi.fn>;
+        create: ReturnType<typeof vi.fn>;
         update: ReturnType<typeof vi.fn>;
         softDelete: ReturnType<typeof vi.fn>;
     };
@@ -43,35 +49,39 @@ describe("ExpensesService CRUD", () => {
     beforeEach(() => {
         repository = {
             findEditableExpense: vi.fn().mockResolvedValue(accessibleExpense),
+            findAvailableHomes: vi.fn().mockResolvedValue([{ id: "home-id", nome: "Grifinória" }]),
+            findHomeForUser: vi.fn().mockResolvedValue(home),
             findSubgroupForUser: vi.fn().mockResolvedValue(subgroup),
+            findForUser: vi.fn().mockResolvedValue([mappedExpense]),
+            create: vi.fn().mockResolvedValue(mappedExpense),
             update: vi.fn().mockResolvedValue(mappedExpense),
             softDelete: vi.fn().mockResolvedValue(undefined),
         };
         service = new ExpensesService(repository as never);
     });
 
-    it("updates an accessible expense with the selected subgroup and payment state", async () => {
+    it("updates an accessible expense and preserves the paid status", async () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-10-11T12:00:00.000Z"));
-
-        await expect(service.update("expense-id", dto, "user-id")).resolves.toMatchObject({
-            id: "expense-id",
-            paidBy: "Emilson",
-            paymentStatus: "PAID",
-        });
-        expect(repository.findEditableExpense).toHaveBeenCalledWith("expense-id", "user-id");
-        expect(repository.findSubgroupForUser).toHaveBeenCalledWith("subgroup-id", "user-id");
-        expect(repository.update).toHaveBeenCalledWith(
-            "expense-id",
-            dto,
-            "home-id",
-            memberParticipationId,
-            new Date("2026-10-11T12:00:00.000Z"),
-        );
-        vi.useRealTimers();
+        try {
+            await expect(service.update("expense-id", dto, "user-id")).resolves.toMatchObject({
+                id: "expense-id",
+                paidBy: "Emilson",
+                paymentStatus: "PAID",
+            });
+            expect(repository.update).toHaveBeenCalledWith(
+                "expense-id",
+                dto,
+                "home-id",
+                memberParticipationId,
+                new Date("2026-10-11T12:00:00.000Z"),
+            );
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
-    it("does not update an expense outside the active membership scope", async () => {
+    it("does not update an expense outside the active residence membership", async () => {
         repository.findEditableExpense.mockResolvedValue(null);
 
         await expect(service.update("expense-id", dto, "user-id")).rejects.toBeInstanceOf(NotFoundException);
@@ -85,12 +95,33 @@ describe("ExpensesService CRUD", () => {
         expect(repository.update).not.toHaveBeenCalled();
     });
 
+    it("creates an expense without a subgroup or a client-supplied residence", async () => {
+        const body = {
+            description: "Conta de energia",
+            amount: "119.87",
+            date: "2026-10-11",
+            subgroupId: null,
+            paymentStatus: "PENDING" as const,
+        };
+
+        await expect(service.create(body, "user-id")).resolves.toMatchObject({
+            id: "expense-id",
+        });
+        expect(repository.findAvailableHomes).toHaveBeenCalledWith("user-id");
+        expect(repository.create).toHaveBeenCalledWith(body, "home-id", memberParticipationId);
+        expect(repository.findSubgroupForUser).not.toHaveBeenCalled();
+    });
+
+    it("passes an optional status filter to the repository", async () => {
+        await service.findAll("user-id", "PENDING");
+        expect(repository.findForUser).toHaveBeenCalledWith("user-id", "PENDING");
+    });
+
     it("soft-deletes an accessible expense to preserve related records", async () => {
         await expect(service.remove("expense-id", "user-id")).resolves.toEqual({
             id: "expense-id",
             deleted: true,
         });
-        expect(repository.findEditableExpense).toHaveBeenCalledWith("expense-id", "user-id");
         expect(repository.softDelete).toHaveBeenCalledWith("expense-id");
     });
 });

@@ -50,8 +50,8 @@ export class ExpensesService {
         return this.mapExpense(expense);
     }
 
-    async findAll(userId: string) {
-        const expenses = await this.repository.findForUser(userId);
+    async findAll(userId: string, paymentStatus?: "PENDING" | "PAID") {
+        const expenses = await this.repository.findForUser(userId, paymentStatus);
 
         return expenses.map((expense) => this.mapExpense(expense));
     }

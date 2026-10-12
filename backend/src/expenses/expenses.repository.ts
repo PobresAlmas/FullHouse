@@ -176,7 +176,7 @@ export class ExpensesRepository {
         });
     }
 
-    findForUser(userId: string) {
+    findForUser(userId: string, paymentStatus?: "PENDING" | "PAID") {
         return this.prisma.despesa.findMany({
             where: {
                 casa: { is: { excluido_em: null, participacao: { some: { usuario_id: userId, data_saida: null } } } },
@@ -184,7 +184,11 @@ export class ExpensesRepository {
                     { subgrupo_id: null },
                     { subgrupo: { is: { excluido_em: null, membro_subgrupo: { some: { saiu_em: null, participacao: { usuario_id: userId, data_saida: null } } } } } },
                 ],
-                status: { not: "CANCELADA" },
+                status: paymentStatus
+                    ? paymentStatus === "PAID"
+                        ? "QUITADA"
+                        : "ABERTA"
+                    : { not: "CANCELADA" },
             },
             select: {
                 id: true,

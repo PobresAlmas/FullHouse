@@ -1,5 +1,6 @@
 import {
     Body,
+    BadRequestException,
     Controller,
     Delete,
     Get,
@@ -10,6 +11,7 @@ import {
     UseGuards,
     UsePipes,
     ValidationPipe,
+    Query,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth-guard.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
@@ -33,8 +35,17 @@ export class ExpensesController {
     }
 
     @Get()
-    findAll(@CurrentUser() user: { id: string }) {
-        return this.expensesService.findAll(user.id);
+    findAll(
+        @CurrentUser() user: { id: string },
+        @Query("paymentStatus") paymentStatus?: string,
+    ) {
+        if (paymentStatus && paymentStatus !== "PENDING" && paymentStatus !== "PAID") {
+            throw new BadRequestException("Filtre de pagamento inválido.");
+        }
+        return this.expensesService.findAll(
+            user.id,
+            paymentStatus as "PENDING" | "PAID" | undefined,
+        );
     }
 
     @Post()

@@ -370,7 +370,11 @@ export default function FinancePage() {
                                 </table>
                             </div>
                         )}
-                        <div className="flex flex-wrap justify-end gap-2 border-t border-[#eee9f0] px-4 py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eee9f0] px-4 py-3">
+                            <p className="text-xs text-[#625c66]" aria-live="polite">
+                                Total das despesas exibidas: <strong className="text-[#29252d]">{formatCurrency(expenses.reduce((sum, item) => sum + amountToCents(item.amount), 0) / 100)}</strong>
+                            </p>
+                            <div className="flex flex-wrap justify-end gap-2">
                             <button type="button" disabled className="inline-flex items-center gap-1.5 rounded-lg bg-[#4e812f] px-3 py-2 text-[11px] font-medium text-white opacity-90">
                                 <Plus size={14} /> Adicionar lembrete
                             </button>
@@ -380,6 +384,7 @@ export default function FinancePage() {
                             <button type="button" onClick={openCreateModal} disabled={loading} className="inline-flex items-center gap-1.5 rounded-lg bg-[#4e812f] px-3 py-2 text-[11px] font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50">
                                 <Plus size={14} /> Adicionar Despesa
                             </button>
+                            </div>
                         </div>
                     </section>
                 </main>
