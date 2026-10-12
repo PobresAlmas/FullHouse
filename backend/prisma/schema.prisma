@@ -126,9 +126,12 @@ model convite_casa {
 model cuidado_pet {
   id                                                                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   pet_id                                                                String        @db.Uuid
-  tipo                                                                  String        @db.VarChar(50)
+  tipo                                                                  tipo_cuidado_pet_enum
+  titulo                                                                String        @default("Cuidado registrado") @db.VarChar(150)
+  descricao                                                              String?
   data_cuidado                                                          DateTime      @db.Date
   valor                                                                 Decimal?      @db.Decimal(10, 2)
+  criado_em                                                             DateTime      @default(now()) @db.Timestamptz(6)
   pago_por_participacao_id                                              String?       @db.Uuid
   despesa_id                                                            String?       @db.Uuid
   proxima_ocorrencia                                                    DateTime?     @db.Date
@@ -137,6 +140,8 @@ model cuidado_pet {
   participacao_cuidado_pet_pago_por_participacao_idToparticipacao       participacao? @relation("cuidado_pet_pago_por_participacao_idToparticipacao", fields: [pago_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   pet                                                                   pet           @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   participacao_cuidado_pet_registrado_por_participacao_idToparticipacao participacao  @relation("cuidado_pet_registrado_por_participacao_idToparticipacao", fields: [registrado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([pet_id, data_cuidado], map: "idx_cuidado_pet_pet_data")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -526,10 +531,14 @@ model pet {
   especie                    String        @db.VarChar(100)
   raca                       String?       @db.VarChar(100)
   data_nascimento            DateTime?     @db.Date
+  foto_url                   String?       @db.VarChar(500)
+  criado_em                  DateTime      @default(now()) @db.Timestamptz(6)
   criado_por_participacao_id String        @db.Uuid
   cuidado_pet                cuidado_pet[]
   casa                       casa          @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   participacao               participacao  @relation(fields: [criado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([casa_id], map: "idx_pet_casa")
 }
 
 model proposta_regra {
@@ -872,6 +881,14 @@ enum status_troca_enum {
 enum tipo_arquivo_comprovante_enum {
   IMAGEM
   PDF
+}
+
+enum tipo_cuidado_pet_enum {
+  VACCINE
+  FOOD
+  VET_VISIT
+  MEDICATION
+  OTHER
 }
 
 enum tipo_atribuicao_enum {
