@@ -13,6 +13,7 @@ import { PasswordResetModule } from "./password-reset/password-reset.module.js";
 import Joi from "joi";
 import { ExpensesModule } from "./expenses/expenses.module.js";
 import { PetsModule } from "./pets/pets.module.js";
+import { PantryModule } from "./pantry/pantry.module.js";
 
 @Module({
     imports: [
@@ -38,6 +39,7 @@ import { PetsModule } from "./pets/pets.module.js";
         PasswordResetModule,
         ExpensesModule,
         PetsModule,
+        PantryModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService],

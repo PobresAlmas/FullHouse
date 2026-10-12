@@ -29,7 +29,7 @@ export class AuthController {
         response.cookie("access_token", result.access_token, {
             httpOnly: true,
             sameSite: "lax",
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
         });
 
         return {
@@ -48,7 +48,7 @@ export class AuthController {
 
         response.cookie("access_token", result.access_token, {
             httpOnly: true,
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
             maxAge,
         });
