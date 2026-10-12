@@ -260,6 +260,7 @@ model item_despensa {
   id                                                                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   casa_id                                                             String                  @db.Uuid
   nome                                                                String                  @db.VarChar(150)
+  categoria                                                           String                  @default("Outros") @db.VarChar(80)
   propriedade                                                         propriedade_item_enum
   dono_participacao_id                                                String?                 @db.Uuid
   unidade                                                             unidade_item_enum
@@ -786,6 +787,7 @@ enum permissao_enum {
 enum propriedade_item_enum {
   COMUNITARIO
   PRIVADO
+  DONO_ESPECIFICO
 }
 
 enum situacao_participante_reuniao_enum {
