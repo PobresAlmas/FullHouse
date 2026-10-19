@@ -1,7 +1,7 @@
 import { ValidationPipe } from "@nestjs/common";
 import { GUARDS_METADATA, PATH_METADATA, PIPES_METADATA } from "@nestjs/common/constants";
-import { JwtAuthGuard } from "../auth/guards/jwt-auth-guard.js";
-import { PantryController } from "./pantry.controller.js";
+import { JwtAuthGuard } from "../../../src/auth/guards/jwt-auth-guard.js";
+import { PantryController } from "../../../src/pantry/pantry.controller.js";
 
 describe("PantryController", () => {
     let service: Record<string, ReturnType<typeof vi.fn>>;

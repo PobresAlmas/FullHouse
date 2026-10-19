@@ -1,10 +1,10 @@
 import "reflect-metadata";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import { CreatePantryItemDto } from "./create-pantry-item.dto.js";
-import { CreatePantryMovementDto } from "./create-pantry-movement.dto.js";
-import { PantryItemListQueryDto } from "./pantry-item-list-query.dto.js";
-import { UpdatePantryItemDto } from "./update-pantry-item.dto.js";
+import { CreatePantryItemDto } from "../../../../src/pantry/dto/create-pantry-item.dto.js";
+import { CreatePantryMovementDto } from "../../../../src/pantry/dto/create-pantry-movement.dto.js";
+import { PantryItemListQueryDto } from "../../../../src/pantry/dto/pantry-item-list-query.dto.js";
+import { UpdatePantryItemDto } from "../../../../src/pantry/dto/update-pantry-item.dto.js";
 
 describe("Pantry DTO validation", () => {
     it("trims item text and converts valid quantity fields to numbers", async () => {
