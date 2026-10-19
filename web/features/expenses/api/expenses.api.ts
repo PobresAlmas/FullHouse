@@ -8,7 +8,10 @@ export interface ExpenseSubgroup {
     members: string[];
 }
 
-export interface ExpenseHome { id: string; name: string; }
+export interface ExpenseHome {
+    id: string;
+    name: string;
+}
 
 export interface Expense {
     id: string;

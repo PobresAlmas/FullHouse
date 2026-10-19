@@ -1,11 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/services/api";
-import {
-    createExpense,
-    deleteExpense,
-    getExpenses,
-    updateExpense,
-} from "../expenses.api";
+import { createExpense, deleteExpense, getExpenses, updateExpense } from "../expenses.api";
 
 vi.mock("@/services/api", () => ({
     api: {
@@ -46,8 +41,13 @@ describe("expenses API client", () => {
         const paidExpense = { ...expense, paymentStatus: "PAID" };
         vi.mocked(api.put).mockResolvedValue({ data: paidExpense });
 
-        await expect(updateExpense("expense-id", { ...body, paymentStatus: "PAID" })).resolves.toEqual(paidExpense);
-        expect(api.put).toHaveBeenCalledWith("/expenses/expense-id", { ...body, paymentStatus: "PAID" });
+        await expect(
+            updateExpense("expense-id", { ...body, paymentStatus: "PAID" })
+        ).resolves.toEqual(paidExpense);
+        expect(api.put).toHaveBeenCalledWith("/expenses/expense-id", {
+            ...body,
+            paymentStatus: "PAID",
+        });
     });
 
     it("deletes an expense", async () => {

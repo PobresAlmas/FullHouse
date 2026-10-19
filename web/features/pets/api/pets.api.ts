@@ -73,7 +73,9 @@ export async function getPetResidenceMembers(residenceId: string): Promise<PetRe
 }
 
 export async function getPets(residenceId: string, search?: string): Promise<Pet[]> {
-    const response = await api.get<Pet[]>("/residences/" + residenceId + "/pets", { params: { search } });
+    const response = await api.get<Pet[]>("/residences/" + residenceId + "/pets", {
+        params: { search },
+    });
     return response.data;
 }
 
@@ -109,9 +111,12 @@ export async function createPetCareLog(petId: string, data: PetCareLogInput): Pr
 export async function updatePetCareLog(
     petId: string,
     careLogId: string,
-    data: Partial<PetCareLogInput>,
+    data: Partial<PetCareLogInput>
 ): Promise<PetCareLog> {
-    const response = await api.patch<PetCareLog>("/pets/" + petId + "/care-logs/" + careLogId, data);
+    const response = await api.patch<PetCareLog>(
+        "/pets/" + petId + "/care-logs/" + careLogId,
+        data
+    );
     return response.data;
 }
 

@@ -1,11 +1,6 @@
 import { api } from "@/services/api";
 
-export type TaskPeriodicity =
-    | "DIARIA"
-    | "SEMANAL"
-    | "QUINZENAL"
-    | "MENSAL"
-    | "PERSONALIZADA";
+export type TaskPeriodicity = "DIARIA" | "SEMANAL" | "QUINZENAL" | "MENSAL" | "PERSONALIZADA";
 
 export type TaskStatus = "PENDENTE" | "EM_ANDAMENTO" | "CONCLUIDA" | "ATRASADA" | "CANCELADA";
 
@@ -87,16 +82,14 @@ export async function createTask(residenceId: string, data: TaskInput): Promise<
 export async function updateTask(
     residenceId: string,
     taskId: string,
-    data: Partial<TaskInput>,
+    data: Partial<TaskInput>
 ): Promise<Task> {
     const response = await api.patch<Task>(`${residenceTasksPath(residenceId)}/${taskId}`, data);
     return response.data;
 }
 
 export async function completeTask(residenceId: string, taskId: string): Promise<Task> {
-    const response = await api.patch<Task>(
-        `${residenceTasksPath(residenceId)}/${taskId}/complete`,
-    );
+    const response = await api.patch<Task>(`${residenceTasksPath(residenceId)}/${taskId}/complete`);
     return response.data;
 }
 
