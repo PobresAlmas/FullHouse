@@ -17,7 +17,6 @@ import {
     Trash2,
     UserRound,
     Wallet,
-    X,
 } from "lucide-react";
 import {
     createPet,
@@ -313,7 +312,7 @@ export default function PetsPage() {
                     <SidebarLink icon={<House size={17} />} label="Home" />
                     <SidebarLink icon={<CheckSquare size={17} />} label="Tarefas" />
                     <SidebarLink icon={<DollarSign size={17} />} label="Financeiro" href="/finance" />
-                    <SidebarLink icon={<Wallet size={17} />} label="Despensa" />
+                    <SidebarLink icon={<Wallet size={17} />} label="Despensa" href="/pantry" />
                     <SidebarLink icon={<UserRound size={17} />} label="Perfil" />
                     <SidebarLink icon={<PawPrint size={18} />} label="Pets" href="/pets" active />
                 </nav>
