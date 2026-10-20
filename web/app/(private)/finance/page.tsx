@@ -574,7 +574,7 @@ function ExpenseModal({
                     </div>
                 </header>
 
-                <form onSubmit={onSubmit} className="grid gap-4">
+                <form onSubmit={onSubmit} noValidate className="grid gap-4">
                     {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-sm text-red-800">{error}</div>}
                     <label className="grid gap-1.5 text-xs font-medium">
                         Descrição
