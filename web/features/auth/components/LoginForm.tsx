@@ -29,16 +29,14 @@ export default function LoginForm() {
     const { user, loading, refreshUser } = useAuth();
 
     useEffect(() => {
-        if (!loading && user) router.replace("/test-private");
+        if (!loading && user) router.replace("/pantry");
     }, [loading, router, user]);
 
     async function onSubmit(data: LoginFormData) {
         try {
-            const response = await login(data);
-            console.log(response);
-
+            await login(data);
             await refreshUser();
-            router.push("/test-private");
+            router.push("/pantry");
         } catch (error: unknown) {
             if (isApiError(error)) setErrorMessage(error.message);
         }
