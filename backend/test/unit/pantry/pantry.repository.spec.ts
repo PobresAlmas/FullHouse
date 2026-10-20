@@ -1,5 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import { PantryRepository } from "./pantry.repository.js";
+import { PantryRepository } from "../../../src/pantry/pantry.repository.js";
 
 describe("PantryRepository", () => {
     type MockFunction = ReturnType<typeof vi.fn>;

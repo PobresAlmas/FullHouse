@@ -157,6 +157,8 @@ model definicao_tarefa {
   regra_recorrencia                Json?
   tipo_atribuicao                  tipo_atribuicao_enum
   responsavel_fixo_participacao_id String?                  @db.Uuid
+  descricao                        String?
+  tags                             String[]                 @default([])
   visibilidade                     visibilidade_tarefa_enum @default(PUBLICA)
   tolerancia_horas                 Int?                     @db.SmallInt
   gera_penalidade                  Boolean                  @default(false)

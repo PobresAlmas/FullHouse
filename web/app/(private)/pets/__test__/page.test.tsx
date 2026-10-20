@@ -78,10 +78,15 @@ describe("PetsPage", () => {
         await user.selectOptions(screen.getByLabelText(/Espécie/), "Cachorro");
         await user.click(screen.getByRole("button", { name: /Salvar pet/ }));
 
-        await waitFor(() => expect(createPet).toHaveBeenCalledWith(residence.id, expect.objectContaining({
-            name: "Mel",
-            species: "Cachorro",
-        })));
+        await waitFor(() =>
+            expect(createPet).toHaveBeenCalledWith(
+                residence.id,
+                expect.objectContaining({
+                    name: "Mel",
+                    species: "Cachorro",
+                })
+            )
+        );
     });
 
     it("shows pet details and registers a care history record", async () => {
@@ -105,14 +110,21 @@ describe("PetsPage", () => {
         await screen.findByText("Histórico de cuidados e gastos");
         await user.click(screen.getByRole("button", { name: /Registrar cuidado/ }));
         await user.type(screen.getByLabelText(/Título/), "Vacina anual");
-        fireEvent.change(screen.getByLabelText("Data do cuidado *"), { target: { value: "2026-10-11" } });
+        fireEvent.change(screen.getByLabelText("Data do cuidado *"), {
+            target: { value: "2026-10-11" },
+        });
         await user.click(screen.getByRole("button", { name: "Salvar registro" }));
 
-        await waitFor(() => expect(createPetCareLog).toHaveBeenCalledWith(pet.id, expect.objectContaining({
-            type: "VACCINE",
-            title: "Vacina anual",
-            date: "2026-10-11",
-        })));
+        await waitFor(() =>
+            expect(createPetCareLog).toHaveBeenCalledWith(
+                pet.id,
+                expect.objectContaining({
+                    type: "VACCINE",
+                    title: "Vacina anual",
+                    date: "2026-10-11",
+                })
+            )
+        );
     });
 
     it("updates a pet and confirms its authorized deletion", async () => {
@@ -126,7 +138,13 @@ describe("PetsPage", () => {
         await user.clear(name);
         await user.type(name, "Thor");
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
-        await waitFor(() => expect(updatePet).toHaveBeenCalledWith(residence.id, pet.id, expect.objectContaining({ name: "Thor" })));
+        await waitFor(() =>
+            expect(updatePet).toHaveBeenCalledWith(
+                residence.id,
+                pet.id,
+                expect.objectContaining({ name: "Thor" })
+            )
+        );
 
         await user.click(screen.getByRole("button", { name: /Excluir pet/ }));
         expect(screen.getByRole("alertdialog")).toHaveTextContent("Thor");

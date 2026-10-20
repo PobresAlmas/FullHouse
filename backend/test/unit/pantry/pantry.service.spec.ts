@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
-import { PantryService } from "./pantry.service.js";
+import { PantryService } from "../../../src/pantry/pantry.service.js";
 
 describe("PantryService", () => {
     const member = { id: "member-1", papel: "MORADOR" };

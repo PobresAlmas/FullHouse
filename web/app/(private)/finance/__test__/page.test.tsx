@@ -58,29 +58,41 @@ describe("FinancePage expense CRUD", () => {
         await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
         await user.type(screen.getByLabelText("Descrição"), "Internet");
         await user.type(screen.getByLabelText(/valor total da despesa/i), "120,00");
-        fireEvent.change(screen.getByLabelText(/data de vencimento/i), { target: { value: "2026-10-12" } });
+        fireEvent.change(screen.getByLabelText(/data de vencimento/i), {
+            target: { value: "2026-10-12" },
+        });
         await user.click(screen.getByRole("button", { name: "Criar despesa" }));
 
-        await waitFor(() => expect(createExpense).toHaveBeenCalledWith({
-            description: "Internet",
-            amount: "120.00",
-            date: "2026-10-12",
-            subgroupId: null,
-            paymentStatus: "PENDING",
-        }));
+        await waitFor(() =>
+            expect(createExpense).toHaveBeenCalledWith({
+                description: "Internet",
+                amount: "120.00",
+                date: "2026-10-12",
+                subgroupId: null,
+                paymentStatus: "PENDING",
+            })
+        );
         expect(await screen.findByRole("row", { name: /Internet/ })).toBeInTheDocument();
     }, 15000);
 
     it("lists the expenses and totals the values displayed", async () => {
         vi.mocked(getExpenses).mockResolvedValue([
             expense,
-            { ...expense, id: "expense-2", description: "Água", amount: "80.00", paymentStatus: "PAID" },
+            {
+                ...expense,
+                id: "expense-2",
+                description: "Água",
+                amount: "80.00",
+                paymentStatus: "PAID",
+            },
         ]);
         render(<FinancePage />);
 
         expect(await screen.findByRole("row", { name: /Internet/ })).toBeInTheDocument();
         expect(screen.getByRole("row", { name: /Água/ })).toBeInTheDocument();
-        expect(screen.getByText("Total das despesas exibidas:").parentElement).toHaveTextContent(/200,00/);
+        expect(screen.getByText("Total das despesas exibidas:").parentElement).toHaveTextContent(
+            /200,00/
+        );
     }, 15000);
 
     it("edits an expense and shows the updated values", async () => {
@@ -95,10 +107,15 @@ describe("FinancePage expense CRUD", () => {
         await user.type(description, "Internet fibra");
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
-        await waitFor(() => expect(updateExpense).toHaveBeenCalledWith("expense-id", expect.objectContaining({
-            description: "Internet fibra",
-            subgroupId: subgroup.id,
-        })));
+        await waitFor(() =>
+            expect(updateExpense).toHaveBeenCalledWith(
+                "expense-id",
+                expect.objectContaining({
+                    description: "Internet fibra",
+                    subgroupId: subgroup.id,
+                })
+            )
+        );
         expect(await screen.findByRole("row", { name: /Internet fibra/ })).toBeInTheDocument();
     }, 15000);
 
@@ -112,10 +129,12 @@ describe("FinancePage expense CRUD", () => {
         await user.selectOptions(screen.getByLabelText("Status do pagamento"), "PAID");
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
-        await waitFor(() => expect(updateExpense).toHaveBeenCalledWith(
-            "expense-id",
-            expect.objectContaining({ paymentStatus: "PAID" }),
-        ));
+        await waitFor(() =>
+            expect(updateExpense).toHaveBeenCalledWith(
+                "expense-id",
+                expect.objectContaining({ paymentStatus: "PAID" })
+            )
+        );
         expect(await screen.findByRole("row", { name: /Internet/ })).toHaveTextContent("Pago");
     }, 15000);
 
@@ -128,10 +147,14 @@ describe("FinancePage expense CRUD", () => {
         await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
         await user.type(screen.getByLabelText("Descrição"), "Internet");
         await user.type(screen.getByLabelText(/valor total da despesa/i), "120,00");
-        fireEvent.change(screen.getByLabelText(/data de vencimento/i), { target: { value: "2026-10-12" } });
+        fireEvent.change(screen.getByLabelText(/data de vencimento/i), {
+            target: { value: "2026-10-12" },
+        });
         await user.click(screen.getByRole("button", { name: "Criar despesa" }));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent("Informe um valor maior que zero.");
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "Informe um valor maior que zero."
+        );
     }, 15000);
 
     it("confirms deletion and removes the expense from the active list", async () => {

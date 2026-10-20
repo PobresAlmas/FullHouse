@@ -14,6 +14,7 @@ import Joi from "joi";
 import { ExpensesModule } from "./expenses/expenses.module.js";
 import { PetsModule } from "./pets/pets.module.js";
 import { PantryModule } from "./pantry/pantry.module.js";
+import { TasksModule } from "./tasks/tasks.module.js";
 
 @Module({
     imports: [
@@ -40,6 +41,7 @@ import { PantryModule } from "./pantry/pantry.module.js";
         ExpensesModule,
         PetsModule,
         PantryModule,
+        TasksModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService],
