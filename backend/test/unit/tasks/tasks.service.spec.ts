@@ -49,7 +49,9 @@ describe("TasksService business rules", () => {
 
     beforeEach(() => {
         repository = {
-            findResidenceMembership: vi.fn().mockResolvedValue({ id: residenceId, participacao: [{ id: memberId }] }),
+            findResidenceMembership: vi
+                .fn()
+                .mockResolvedValue({ id: residenceId, participacao: [{ id: memberId }] }),
             findMembers: vi.fn().mockResolvedValue([
                 { id: memberId, papel: "MORADOR", usuario: { nome: "Ana Souza", apelido: "Ana" } },
                 { id: "member-2", papel: "LIDER", usuario: { nome: "Bruno Lima", apelido: null } },
@@ -93,7 +95,9 @@ describe("TasksService business rules", () => {
     it("does not expose tasks when the user has no active residence membership", async () => {
         repository.findResidenceMembership.mockResolvedValue(null);
 
-        await expect(service.findAll(residenceId, userId, {})).rejects.toBeInstanceOf(NotFoundException);
+        await expect(service.findAll(residenceId, userId, {})).rejects.toBeInstanceOf(
+            NotFoundException
+        );
         expect(repository.findTasks).not.toHaveBeenCalled();
     });
 
@@ -115,18 +119,24 @@ describe("TasksService business rules", () => {
             userId,
             memberId,
             { id: memberId, userId },
-            input,
+            input
         );
         expect(repository.findTask).toHaveBeenCalledWith(residenceId, taskId);
     });
 
     it("rejects recurring tasks without a supported frequency", async () => {
-        await expect(service.create(residenceId, {
-            title: "Limpar cozinha",
-            dueAt: dueAt.toISOString(),
-            repeats: true,
-            periodicity: TaskPeriodicity.PERSONALIZADA,
-        }, userId)).rejects.toBeInstanceOf(BadRequestException);
+        await expect(
+            service.create(
+                residenceId,
+                {
+                    title: "Limpar cozinha",
+                    dueAt: dueAt.toISOString(),
+                    repeats: true,
+                    periodicity: TaskPeriodicity.PERSONALIZADA,
+                },
+                userId
+            )
+        ).rejects.toBeInstanceOf(BadRequestException);
 
         expect(repository.create).not.toHaveBeenCalled();
     });
@@ -134,11 +144,17 @@ describe("TasksService business rules", () => {
     it("rejects an assignee who is not an active member of the residence", async () => {
         repository.findActiveMember.mockResolvedValue(null);
 
-        await expect(service.create(residenceId, {
-            title: "Limpar cozinha",
-            dueAt: dueAt.toISOString(),
-            assigneeId: "inactive-member",
-        }, userId)).rejects.toBeInstanceOf(BadRequestException);
+        await expect(
+            service.create(
+                residenceId,
+                {
+                    title: "Limpar cozinha",
+                    dueAt: dueAt.toISOString(),
+                    assigneeId: "inactive-member",
+                },
+                userId
+            )
+        ).rejects.toBeInstanceOf(BadRequestException);
 
         expect(repository.create).not.toHaveBeenCalled();
     });
@@ -146,8 +162,9 @@ describe("TasksService business rules", () => {
     it.each(["CONCLUIDA", "CANCELADA"])("does not allow editing a %s task", async (status) => {
         repository.findTask.mockResolvedValue(makeTask({ status }));
 
-        await expect(service.update(residenceId, taskId, { title: "Novo título" }, userId))
-            .rejects.toBeInstanceOf(BadRequestException);
+        await expect(
+            service.update(residenceId, taskId, { title: "Novo título" }, userId)
+        ).rejects.toBeInstanceOf(BadRequestException);
         expect(repository.update).not.toHaveBeenCalled();
     });
 
@@ -160,21 +177,24 @@ describe("TasksService business rules", () => {
             { title: "Lavar a cozinha" },
             undefined,
             30,
-            userId,
+            userId
         );
     });
 
     it("rejects recurring edits with a custom frequency", async () => {
-        repository.findTask.mockResolvedValue(makeTask({
-            definicao_tarefa: {
-                ...makeTask().definicao_tarefa,
-                periodicidade: TaskPeriodicity.PERSONALIZADA,
-                regra_recorrencia: { repeats: true },
-            },
-        }));
+        repository.findTask.mockResolvedValue(
+            makeTask({
+                definicao_tarefa: {
+                    ...makeTask().definicao_tarefa,
+                    periodicidade: TaskPeriodicity.PERSONALIZADA,
+                    regra_recorrencia: { repeats: true },
+                },
+            })
+        );
 
-        await expect(service.update(residenceId, taskId, { title: "Novo título" }, userId))
-            .rejects.toBeInstanceOf(BadRequestException);
+        await expect(
+            service.update(residenceId, taskId, { title: "Novo título" }, userId)
+        ).rejects.toBeInstanceOf(BadRequestException);
         expect(repository.update).not.toHaveBeenCalled();
     });
 
@@ -195,12 +215,17 @@ describe("TasksService business rules", () => {
     it.each(["CONCLUIDA", "CANCELADA"])("rejects completion for a %s task", async (status) => {
         repository.findTask.mockResolvedValue(makeTask({ status }));
 
-        await expect(service.complete(residenceId, taskId, userId)).rejects.toBeInstanceOf(BadRequestException);
+        await expect(service.complete(residenceId, taskId, userId)).rejects.toBeInstanceOf(
+            BadRequestException
+        );
         expect(repository.complete).not.toHaveBeenCalled();
     });
 
     it("removes all instances through the task definition", async () => {
-        await expect(service.remove(residenceId, taskId, userId)).resolves.toEqual({ id: taskId, deleted: true });
+        await expect(service.remove(residenceId, taskId, userId)).resolves.toEqual({
+            id: taskId,
+            deleted: true,
+        });
 
         expect(repository.remove).toHaveBeenCalledWith("definition-id");
     });

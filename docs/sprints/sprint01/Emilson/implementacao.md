@@ -14,19 +14,19 @@ Esta documentação distingue **funcionalidades do módulo de autenticação** d
 
 O frontend está organizado em páginas do Next.js, componentes reutilizáveis e módulo de integração HTTP.
 
-| Recurso | Arquivo(s) principais | Papel |
-|---|---|---|
-| Login | `app/(auth)/login/page.tsx`; `features/auth/components/LoginForm.tsx` | Página e formulário de autenticação. |
-| Cadastro | `app/(auth)/register/page.tsx`; `features/auth/components/RegisterForm.tsx` | Página e formulário de criação de conta. |
-| Solicitação de recuperação | `app/(auth)/forgot-password/page.tsx`; `features/auth/components/ForgotPasswordForm.tsx` | Solicitação de código de recuperação. |
-| Verificação de código | `app/(auth)/verify-email/page.tsx`; `features/auth/components/VerifyEmailForm.tsx`; `features/auth/components/OtpInput.tsx` | Entrada e validação do código informado. |
-| Nova senha | `app/(auth)/create-new-password/page.tsx`; `features/auth/components/CreateNewPasswordForm.tsx` | Formulário de redefinição da senha. |
-| Confirmação da recuperação | `app/(auth)/password-success/page.tsx` | Apresentação do resultado do fluxo de redefinição. |
-| Componentes de formulário | `features/auth/components/PasswordField.tsx`; `features/auth/components/FormField.tsx`; `features/auth/components/SubmitButton.tsx` | Elementos compartilhados pelos fluxos de autenticação. |
-| Validação | `features/auth/components/schemas/` | Esquemas de validação dos formulários. |
-| Integração com a API | `features/auth/api/auth.api.ts`; `app/services/api.ts` | Operações HTTP e configuração base do cliente Axios. |
-| Estado da autenticação | `providers/AuthProvider.tsx`; `features/auth/hooks/useAuth.ts` | Recuperação do usuário autenticado, atualização de sessão e logout. |
-| Proteção de páginas | `components/auth/ProtectedRoute.tsx`; `app/(private)/layout.tsx` | Estrutura de acesso a áreas privadas. |
+| Recurso                    | Arquivo(s) principais                                                                                                               | Papel                                                               |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Login                      | `app/(auth)/login/page.tsx`; `features/auth/components/LoginForm.tsx`                                                               | Página e formulário de autenticação.                                |
+| Cadastro                   | `app/(auth)/register/page.tsx`; `features/auth/components/RegisterForm.tsx`                                                         | Página e formulário de criação de conta.                            |
+| Solicitação de recuperação | `app/(auth)/forgot-password/page.tsx`; `features/auth/components/ForgotPasswordForm.tsx`                                            | Solicitação de código de recuperação.                               |
+| Verificação de código      | `app/(auth)/verify-email/page.tsx`; `features/auth/components/VerifyEmailForm.tsx`; `features/auth/components/OtpInput.tsx`         | Entrada e validação do código informado.                            |
+| Nova senha                 | `app/(auth)/create-new-password/page.tsx`; `features/auth/components/CreateNewPasswordForm.tsx`                                     | Formulário de redefinição da senha.                                 |
+| Confirmação da recuperação | `app/(auth)/password-success/page.tsx`                                                                                              | Apresentação do resultado do fluxo de redefinição.                  |
+| Componentes de formulário  | `features/auth/components/PasswordField.tsx`; `features/auth/components/FormField.tsx`; `features/auth/components/SubmitButton.tsx` | Elementos compartilhados pelos fluxos de autenticação.              |
+| Validação                  | `features/auth/components/schemas/`                                                                                                 | Esquemas de validação dos formulários.                              |
+| Integração com a API       | `features/auth/api/auth.api.ts`; `app/services/api.ts`                                                                              | Operações HTTP e configuração base do cliente Axios.                |
+| Estado da autenticação     | `providers/AuthProvider.tsx`; `features/auth/hooks/useAuth.ts`                                                                      | Recuperação do usuário autenticado, atualização de sessão e logout. |
+| Proteção de páginas        | `components/auth/ProtectedRoute.tsx`; `app/(private)/layout.tsx`                                                                    | Estrutura de acesso a áreas privadas.                               |
 
 O arquivo `features/auth/api/auth.api.ts` concentra as chamadas aos endpoints de cadastro, login, sessão, logout e recuperação de senha. O cliente Axios é criado em `app/services/api.ts`, com URL base definida por `NEXT_PUBLIC_API_URL`.
 
@@ -49,37 +49,37 @@ O arquivo `features/auth/api/auth.api.ts` concentra as chamadas aos endpoints de
 
 O backend utiliza NestJS e organiza a lógica em controladores, serviços, módulos, DTOs, guardas e repositórios.
 
-| Arquivo ou módulo | Responsabilidade |
-|---|---|
-| `src/auth/auth.controller.ts` | Disponibilizar as rotas HTTP do módulo de autenticação. |
-| `src/auth/auth.service.ts` | Executar as regras de cadastro, login e recuperação de senha. |
-| `src/auth/auth.module.ts` | Configurar as dependências do módulo de autenticação. |
-| `src/auth/dto/` | Definir os dados esperados nas requisições. |
-| `src/auth/jwt.strategy.ts` | Estratégia de autenticação por JWT. |
-| `src/auth/guards/jwt-auth-guard.ts` | Restringir acesso a endpoints autenticados. |
-| `src/auth/decorators/current-user.decorator.ts` | Disponibilizar informações do usuário da sessão. |
-| `src/users/users.service.ts`; `src/users/users.repository.ts` | Executar as operações de usuário usadas pelo cadastro e login. |
-| `src/crypto/password.service.ts` | Criar e comparar hashes de senha. |
-| `src/password-reset/password-reset.service.ts`; `src/password-reset/password-reset.repository.ts` | Criar, verificar e consumir códigos de recuperação. |
-| `src/email/email.service.ts` | Enviar e-mails necessários à recuperação de senha. |
+| Arquivo ou módulo                                                                                 | Responsabilidade                                               |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `src/auth/auth.controller.ts`                                                                     | Disponibilizar as rotas HTTP do módulo de autenticação.        |
+| `src/auth/auth.service.ts`                                                                        | Executar as regras de cadastro, login e recuperação de senha.  |
+| `src/auth/auth.module.ts`                                                                         | Configurar as dependências do módulo de autenticação.          |
+| `src/auth/dto/`                                                                                   | Definir os dados esperados nas requisições.                    |
+| `src/auth/jwt.strategy.ts`                                                                        | Estratégia de autenticação por JWT.                            |
+| `src/auth/guards/jwt-auth-guard.ts`                                                               | Restringir acesso a endpoints autenticados.                    |
+| `src/auth/decorators/current-user.decorator.ts`                                                   | Disponibilizar informações do usuário da sessão.               |
+| `src/users/users.service.ts`; `src/users/users.repository.ts`                                     | Executar as operações de usuário usadas pelo cadastro e login. |
+| `src/crypto/password.service.ts`                                                                  | Criar e comparar hashes de senha.                              |
+| `src/password-reset/password-reset.service.ts`; `src/password-reset/password-reset.repository.ts` | Criar, verificar e consumir códigos de recuperação.            |
+| `src/email/email.service.ts`                                                                      | Enviar e-mails necessários à recuperação de senha.             |
 
 ### 3.1. Endpoints identificados
 
-| Método | Rota | Função |
-|---|---|---|
-| `POST` | `/auth/register` | Cadastrar usuário. |
-| `POST` | `/auth/login` | Autenticar usuário. |
-| `GET` | `/auth/me` | Consultar usuário autenticado; exige JWT. |
-| `POST` | `/auth/logout` | Encerrar a sessão, limpando o cookie. |
-| `POST` | `/auth/forgot-password` | Solicitar código de recuperação. |
-| `POST` | `/auth/verify-reset-code` | Verificar código de recuperação. |
-| `POST` | `/auth/reset-password` | Redefinir a senha. |
+| Método | Rota                      | Função                                    |
+| ------ | ------------------------- | ----------------------------------------- |
+| `POST` | `/auth/register`          | Cadastrar usuário.                        |
+| `POST` | `/auth/login`             | Autenticar usuário.                       |
+| `GET`  | `/auth/me`                | Consultar usuário autenticado; exige JWT. |
+| `POST` | `/auth/logout`            | Encerrar a sessão, limpando o cookie.     |
+| `POST` | `/auth/forgot-password`   | Solicitar código de recuperação.          |
+| `POST` | `/auth/verify-reset-code` | Verificar código de recuperação.          |
+| `POST` | `/auth/reset-password`    | Redefinir a senha.                        |
 
 ### 3.2. Tratamento de credenciais e sessões
 
 - As senhas são comparadas utilizando o serviço de hashing em `src/crypto/password.service.ts`.
 - O backend emite um JWT após cadastro/login e define o cookie `access_token` com `httpOnly` e `sameSite: "lax"`; o atributo `secure` é ativado quando `NODE_ENV` é `production`.
-- No login, a opção *lembrar de mim* altera o `maxAge` do cookie entre 1 dia e 30 dias.
+- No login, a opção _lembrar de mim_ altera o `maxAge` do cookie entre 1 dia e 30 dias.
 - Credenciais inválidas são rejeitadas com mensagem genérica de e-mail ou senha incorretos.
 - A solicitação de recuperação retorna a mesma mensagem independentemente da existência do e-mail, evitando revelar diretamente quais contas estão cadastradas.
 - O serviço de recuperação gera código de seis dígitos com expiração de 15 minutos e marca o código como utilizado após a troca da senha.
@@ -88,16 +88,16 @@ O backend utiliza NestJS e organiza a lógica em controladores, serviços, módu
 
 Esta seção registra a estrutura de suporte identificada nos arquivos enviados. **Não equivale a afirmar que todos os serviços foram executados e homologados nesta sprint.**
 
-| Área | Arquivo(s) observado(s) | Implementação/configuração identificada |
-|---|---|---|
-| Organização modular | `src/app.module.ts` | Registro de módulos da aplicação e suas dependências. |
-| Configuração de ambiente | `src/app.module.ts` | `ConfigModule` com esquema de validação Joi para variáveis obrigatórias. |
-| Persistência | `src/prisma/prisma.module.ts`; `src/prisma/prisma.service.ts` | Integração do backend com Prisma. |
-| Armazenamento de arquivos | `src/storage/storage.module.ts`; `src/storage/storage.service.ts` | Cliente S3 compatível com MinIO e método de upload. |
-| E-mail | `src/email/email.module.ts`; `src/email/email.service.ts` | Serviço de envio de mensagens, utilizado na recuperação de senha. |
-| Segurança HTTP | `src/main.ts` | Cookie parser, CORS com origem configurável, verificação de origem para métodos de escrita e cabeçalhos HTTP de segurança. |
-| Comunicação frontend/backend | `app/services/api.ts`; `features/auth/api/auth.api.ts` | Cliente Axios e integração dos fluxos de autenticação. |
-| Reutilização de interface | `features/auth/components/`; `components/form/`; `components/ui/` | Organização de componentes de interface e formulários. |
+| Área                         | Arquivo(s) observado(s)                                           | Implementação/configuração identificada                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Organização modular          | `src/app.module.ts`                                               | Registro de módulos da aplicação e suas dependências.                                                                      |
+| Configuração de ambiente     | `src/app.module.ts`                                               | `ConfigModule` com esquema de validação Joi para variáveis obrigatórias.                                                   |
+| Persistência                 | `src/prisma/prisma.module.ts`; `src/prisma/prisma.service.ts`     | Integração do backend com Prisma.                                                                                          |
+| Armazenamento de arquivos    | `src/storage/storage.module.ts`; `src/storage/storage.service.ts` | Cliente S3 compatível com MinIO e método de upload.                                                                        |
+| E-mail                       | `src/email/email.module.ts`; `src/email/email.service.ts`         | Serviço de envio de mensagens, utilizado na recuperação de senha.                                                          |
+| Segurança HTTP               | `src/main.ts`                                                     | Cookie parser, CORS com origem configurável, verificação de origem para métodos de escrita e cabeçalhos HTTP de segurança. |
+| Comunicação frontend/backend | `app/services/api.ts`; `features/auth/api/auth.api.ts`            | Cliente Axios e integração dos fluxos de autenticação.                                                                     |
+| Reutilização de interface    | `features/auth/components/`; `components/form/`; `components/ui/` | Organização de componentes de interface e formulários.                                                                     |
 
 **A confirmar no repositório:** o arquivo Docker Compose/definição do contêiner do MinIO, os manifests de dependências, as configurações de lint/formatador/hooks e eventuais scripts de inicialização. Esses itens foram mencionados na descrição do trabalho, mas não estavam disponíveis nos ZIPs analisados para referência exata de caminho.
 
@@ -134,12 +134,11 @@ O arquivo `testes.md` deverá registrar os **casos de teste funcionais**, os com
 
 ## 6. Rastreabilidade da entrega
 
-| Item entregue | Requisito / enquadramento | Evidência de implementação |
-|---|---|---|
-| Cadastro | RF001 / US001 | Formulário frontend e `POST /auth/register`. |
-| Login | RF002 / US001 | Formulário frontend e `POST /auth/login`. |
-| Consulta e proteção de sessão | Suporte técnico ao RF002 | `GET /auth/me`, JWT, provider e componente de proteção. |
-| Logout | Complementar à autenticação | `POST /auth/logout` e função frontend de logout. |
-| Recuperação de senha | Complementar à autenticação | Formulários, código de verificação, serviço de e-mail e endpoints específicos. |
-| Infraestrutura básica | Atividade técnica da sprint | Módulos, configurações, Prisma, MinIO e integração HTTP. |
-
+| Item entregue                 | Requisito / enquadramento   | Evidência de implementação                                                     |
+| ----------------------------- | --------------------------- | ------------------------------------------------------------------------------ |
+| Cadastro                      | RF001 / US001               | Formulário frontend e `POST /auth/register`.                                   |
+| Login                         | RF002 / US001               | Formulário frontend e `POST /auth/login`.                                      |
+| Consulta e proteção de sessão | Suporte técnico ao RF002    | `GET /auth/me`, JWT, provider e componente de proteção.                        |
+| Logout                        | Complementar à autenticação | `POST /auth/logout` e função frontend de logout.                               |
+| Recuperação de senha          | Complementar à autenticação | Formulários, código de verificação, serviço de e-mail e endpoints específicos. |
+| Infraestrutura básica         | Atividade técnica da sprint | Módulos, configurações, Prisma, MinIO e integração HTTP.                       |

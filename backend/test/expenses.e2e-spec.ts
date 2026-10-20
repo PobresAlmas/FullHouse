@@ -46,7 +46,9 @@ describe("Expenses HTTP API (e2e)", () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        expensesService.findAvailableHomes.mockResolvedValue([{ id: "home-id", name: "Grifinória" }]);
+        expensesService.findAvailableHomes.mockResolvedValue([
+            { id: "home-id", name: "Grifinória" },
+        ]);
         expensesService.findAvailableSubgroups.mockResolvedValue([]);
         expensesService.findAll.mockResolvedValue([expense]);
         expensesService.create.mockResolvedValue(expense);
@@ -118,7 +120,7 @@ describe("Expenses HTTP API (e2e)", () => {
         expect(expensesService.update).toHaveBeenCalledWith(
             EXPENSE_ID,
             { ...payload, paymentStatus: "PAID" },
-            USER_ID,
+            USER_ID
         );
 
         await request(app.getHttpServer())

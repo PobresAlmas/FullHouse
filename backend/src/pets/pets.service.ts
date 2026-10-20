@@ -101,7 +101,9 @@ export class PetsService {
             pet.participacao.usuario_id !== userId &&
             currentMembership?.papel !== "ADMINISTRADOR"
         ) {
-            throw new ForbiddenException("Somente quem cadastrou o pet ou um administrador pode removê-lo.");
+            throw new ForbiddenException(
+                "Somente quem cadastrou o pet ou um administrador pode removê-lo."
+            );
         }
 
         await this.repository.deletePet(petId);
@@ -111,7 +113,7 @@ export class PetsService {
     async findCareLogs(
         petId: string,
         userId: string,
-        filters: { type?: string; from?: string; to?: string },
+        filters: { type?: string; from?: string; to?: string }
     ) {
         const pet = await this.requirePetForUser(petId, userId);
         const logs = await this.repository.findPetCareLogs(pet.id, {
@@ -139,7 +141,7 @@ export class PetsService {
         petId: string,
         careLogId: string,
         data: UpdatePetCareLogDto,
-        userId: string,
+        userId: string
     ) {
         const pet = await this.requirePetForUser(petId, userId);
         const existing = await this.repository.findCareLog(petId, careLogId);
@@ -179,10 +181,13 @@ export class PetsService {
     private async validateCareReferences(
         residenceId: string,
         paidById?: string | null,
-        expenseId?: string | null,
+        expenseId?: string | null
     ) {
         if (paidById) {
-            const participation = await this.repository.findActiveParticipation(residenceId, paidById);
+            const participation = await this.repository.findActiveParticipation(
+                residenceId,
+                paidById
+            );
             if (!participation) {
                 throw new BadRequestException("O morador pagador não pertence à residência ativa.");
             }
@@ -190,7 +195,9 @@ export class PetsService {
         if (expenseId) {
             const expense = await this.repository.findResidenceExpense(residenceId, expenseId);
             if (!expense) {
-                throw new BadRequestException("A despesa informada não pertence à residência do pet.");
+                throw new BadRequestException(
+                    "A despesa informada não pertence à residência do pet."
+                );
             }
         }
     }
@@ -209,7 +216,7 @@ export class PetsService {
             participacao?: { usuario: { id: string; nome: string; apelido: string | null } };
             cuidado_pet?: CareLogRecord[];
         },
-        includeCareLogs = false,
+        includeCareLogs = false
     ): PetResponseDto {
         return {
             id: pet.id,
@@ -221,7 +228,9 @@ export class PetsService {
             photoUrl: pet.foto_url,
             createdById: pet.criado_por_participacao_id,
             createdAt: pet.criado_em.toISOString(),
-            ...(includeCareLogs ? { careLogs: pet.cuidado_pet?.map((log) => this.mapCareLog(log)) ?? [] } : {}),
+            ...(includeCareLogs
+                ? { careLogs: pet.cuidado_pet?.map((log) => this.mapCareLog(log)) ?? [] }
+                : {}),
         };
     }
 

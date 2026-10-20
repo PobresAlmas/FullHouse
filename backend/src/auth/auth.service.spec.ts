@@ -53,7 +53,12 @@ describe("AuthService", () => {
             consume: vi.fn().mockResolvedValue(undefined),
         };
         jwt = { sign: vi.fn().mockReturnValue("token") };
-        service = new AuthService(users as never, passwords as never, resets as never, jwt as never);
+        service = new AuthService(
+            users as never,
+            passwords as never,
+            resets as never,
+            jwt as never
+        );
     });
 
     it("registers, signs a token and returns a public user shape", async () => {

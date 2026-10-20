@@ -27,16 +27,16 @@ A tela não oferece seleção de despesa fixa ou variável. A indicação de cat
 
 O módulo está organizado em `backend/src/expenses/`:
 
-| Arquivo | Responsabilidade |
-|---|---|
-| `expenses.module.ts` | Registra controller, serviço, repositório e Prisma. |
-| `expenses.controller.ts` | Define rotas autenticadas e valida parâmetros e dados recebidos. |
-| `expenses.service.ts` | Aplica regras de acesso à residência/subgrupo, operações CRUD e mapeamento da resposta. |
-| `expenses.repository.ts` | Consulta e persiste despesas com Prisma. |
-| `dto/create-expense.dto.ts` | Valida descrição, valor positivo, data, status e identificadores opcionais. |
-| `dto/update-expense.dto.ts` | Reutiliza as validações da criação na atualização. |
-| `expenses.service.spec.ts` | Testa regras do serviço e operações CRUD. |
-| `expenses.repository.spec.ts` | Testa filtros e escopo de residência/subgrupo nas consultas. |
+| Arquivo                                                  | Responsabilidade                                                                        |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `expenses.module.ts`                                     | Registra controller, serviço, repositório e Prisma.                                     |
+| `expenses.controller.ts`                                 | Define rotas autenticadas e valida parâmetros e dados recebidos.                        |
+| `expenses.service.ts`                                    | Aplica regras de acesso à residência/subgrupo, operações CRUD e mapeamento da resposta. |
+| `expenses.repository.ts`                                 | Consulta e persiste despesas com Prisma.                                                |
+| `dto/create-expense.dto.ts`                              | Valida descrição, valor positivo, data, status e identificadores opcionais.             |
+| `dto/update-expense.dto.ts`                              | Reutiliza as validações da criação na atualização.                                      |
+| `backend/test/unit/expenses/expenses.service.spec.ts`    | Testa regras do serviço e operações CRUD.                                               |
+| `backend/test/unit/expenses/expenses.repository.spec.ts` | Testa filtros, escopo de residência/subgrupo e persistência.                            |
 
 O teste HTTP está em `backend/test/expenses.e2e-spec.ts`. Ele verifica autenticação, validação de entrada e respostas do controller; o serviço é substituído por mock, portanto não executa persistência real no banco.
 
@@ -44,14 +44,14 @@ O teste HTTP está em `backend/test/expenses.e2e-spec.ts`. Ele verifica autentic
 
 Todas as rotas exigem autenticação JWT.
 
-| Método | Rota | Função |
-|---|---|---|
-| `GET` | `/expenses` | Lista despesas visíveis; aceita `paymentStatus=PENDING` ou `PAID`. |
-| `GET` | `/expenses/homes` | Lista residências disponíveis ao usuário. |
-| `GET` | `/expenses/subgroups` | Lista subgrupos acessíveis. |
-| `POST` | `/expenses` | Cria despesa associada a uma residência ativa; o subgrupo pode ser nulo. |
-| `PUT` | `/expenses/:id` | Atualiza dados ou status geral de pagamento. |
-| `DELETE` | `/expenses/:id` | Marca a despesa como cancelada, preservando o histórico. |
+| Método   | Rota                  | Função                                                                   |
+| -------- | --------------------- | ------------------------------------------------------------------------ |
+| `GET`    | `/expenses`           | Lista despesas visíveis; aceita `paymentStatus=PENDING` ou `PAID`.       |
+| `GET`    | `/expenses/homes`     | Lista residências disponíveis ao usuário.                                |
+| `GET`    | `/expenses/subgroups` | Lista subgrupos acessíveis.                                              |
+| `POST`   | `/expenses`           | Cria despesa associada a uma residência ativa; o subgrupo pode ser nulo. |
+| `PUT`    | `/expenses/:id`       | Atualiza dados ou status geral de pagamento.                             |
+| `DELETE` | `/expenses/:id`       | Marca a despesa como cancelada, preservando o histórico.                 |
 
 ### 3.2. Regras de negócio identificadas
 
@@ -70,14 +70,14 @@ A gravação da estratégia igualitária não corresponde, por si só, ao cálcu
 
 ## 4. Rastreabilidade
 
-| Entrega | Critério / enquadramento | Evidência no código |
-|---|---|---|
-| Cadastro com descrição, valor e vencimento | RF005 / US004 | Formulário, DTO e persistência da despesa. |
-| Despesa fixa ou variável | RF005 / US004 | O backend grava sempre `VARIAVEL`; não há escolha na tela. Critério parcial. |
-| Rateio igual com valor por participante | RF005 / US004 | Estratégia persistida como `IGUALITARIO`, sem parcelas calculadas/exibidas no fluxo. Critério não atendido ponta a ponta. |
-| Acesso dos membros da residência | RF005 / US004 | Consulta escopada por participação ativa; repositório testa a condição Prisma. |
-| Status e data de quitação geral | RF006 / US005 (parcial) | Edição muda o status geral e guarda data/participação associada. |
-| Visão de pagamento de cada morador e conclusão automática | RF006 / US005 | Não há parcelas individuais nem agregação de quitações. Não implementado. |
-| Listagem, edição, exclusão lógica, filtro e totalizador | Escopo da tela Financeiro | API, página e testes do módulo. |
+| Entrega                                                   | Critério / enquadramento  | Evidência no código                                                                                                       |
+| --------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Cadastro com descrição, valor e vencimento                | RF005 / US004             | Formulário, DTO e persistência da despesa.                                                                                |
+| Despesa fixa ou variável                                  | RF005 / US004             | O backend grava sempre `VARIAVEL`; não há escolha na tela. Critério parcial.                                              |
+| Rateio igual com valor por participante                   | RF005 / US004             | Estratégia persistida como `IGUALITARIO`, sem parcelas calculadas/exibidas no fluxo. Critério não atendido ponta a ponta. |
+| Acesso dos membros da residência                          | RF005 / US004             | Consulta escopada por participação ativa; repositório testa a condição Prisma.                                            |
+| Status e data de quitação geral                           | RF006 / US005 (parcial)   | Edição muda o status geral e guarda data/participação associada.                                                          |
+| Visão de pagamento de cada morador e conclusão automática | RF006 / US005             | Não há parcelas individuais nem agregação de quitações. Não implementado.                                                 |
+| Listagem, edição, exclusão lógica, filtro e totalizador   | Escopo da tela Financeiro | API, página e testes do módulo.                                                                                           |
 
 O detalhamento dos cenários cobertos, não cobertos e dos resultados executados está em `testes.md`.

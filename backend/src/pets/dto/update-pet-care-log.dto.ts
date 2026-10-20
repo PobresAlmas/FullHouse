@@ -1,5 +1,16 @@
 import { Transform, Type } from "class-transformer";
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Matches, MaxLength, Min, MinLength } from "class-validator";
+import {
+    IsDateString,
+    IsEnum,
+    IsNumber,
+    IsOptional,
+    IsString,
+    IsUUID,
+    Matches,
+    MaxLength,
+    Min,
+    MinLength,
+} from "class-validator";
 import { PetCareType } from "./create-pet-care-log.dto.js";
 
 export class UpdatePetCareLogDto {
