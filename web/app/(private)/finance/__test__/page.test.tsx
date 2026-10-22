@@ -157,6 +157,20 @@ describe("FinancePage expense CRUD", () => {
         );
     }, 15000);
 
+    it("blocks an empty form and shows a friendly required-fields message", async () => {
+        const user = userEvent.setup();
+        render(<FinancePage />);
+
+        await screen.findByText("Nenhuma despesa cadastrada");
+        await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
+        await user.click(screen.getByRole("button", { name: "Criar despesa" }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "Preencha todos os campos obrigatórios."
+        );
+        expect(createExpense).not.toHaveBeenCalled();
+    }, 15000);
+
     it("confirms deletion and removes the expense from the active list", async () => {
         const user = userEvent.setup();
         vi.mocked(getExpenses).mockResolvedValue([expense]);

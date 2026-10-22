@@ -3,6 +3,7 @@ import { api } from "@/services/api";
 export type TaskPeriodicity = "DIARIA" | "SEMANAL" | "QUINZENAL" | "MENSAL" | "PERSONALIZADA";
 
 export type TaskStatus = "PENDENTE" | "EM_ANDAMENTO" | "CONCLUIDA" | "ATRASADA" | "CANCELADA";
+export type TaskAssignmentType = "FIXA" | "RODIZIO";
 
 export interface TaskMember {
     id: string;
@@ -22,6 +23,9 @@ export interface Task {
     title: string;
     description: string | null;
     tags: string[];
+    color: string | null;
+    assignmentType: TaskAssignmentType;
+    rotationMemberIds: string[];
     residenceId: string | null;
     assignee: { id: string; name: string } | null;
     dueAt: string;
@@ -37,6 +41,9 @@ export interface TaskInput {
     description?: string | null;
     tags?: string[];
     assigneeId?: string | null;
+    assignmentType?: TaskAssignmentType;
+    assigneeIds?: string[];
+    color?: string | null;
     dueAt: string;
     repeats?: boolean;
     periodicity?: TaskPeriodicity;

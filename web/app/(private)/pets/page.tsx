@@ -346,7 +346,7 @@ export default function PetsPage() {
                         label="Financeiro"
                         href="/finance"
                     />
-                    <SidebarLink icon={<Wallet size={17} />} label="Despensa" />
+                    <SidebarLink icon={<Wallet size={17} />} label="Despensa" href="/pantry" />
                     <SidebarLink icon={<UserRound size={17} />} label="Perfil" />
                     <SidebarLink icon={<PawPrint size={18} />} label="Pets" href="/pets" active />
                 </nav>
@@ -994,7 +994,6 @@ function PetAvatar({ pet, large = false }: { pet: Pet; large?: boolean }) {
             width={large ? 56 : 40}
             height={large ? 56 : 40}
             unoptimized
-            loader={({ src }) => src}
             className={
                 (large ? "size-14" : "size-10") +
                 " shrink-0 rounded-full border border-[#ded7e1] object-cover"

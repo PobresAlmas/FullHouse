@@ -1,5 +1,5 @@
 import { NotFoundException } from "@nestjs/common";
-import { ExpensesService } from "./expenses.service.js";
+import { ExpensesService } from "../../../src/expenses/expenses.service.js";
 
 describe("ExpensesService CRUD", () => {
     const memberParticipationId = "member-id";
@@ -99,6 +99,13 @@ describe("ExpensesService CRUD", () => {
         expect(repository.update).not.toHaveBeenCalled();
     });
 
+    it("does not create an expense in a subgroup the user cannot access", async () => {
+        repository.findSubgroupForUser.mockResolvedValue(null);
+
+        await expect(service.create(dto, "user-id")).rejects.toBeInstanceOf(NotFoundException);
+        expect(repository.create).not.toHaveBeenCalled();
+    });
+
     it("creates an expense without a subgroup or a client-supplied residence", async () => {
         const body = {
             description: "Conta de energia",
@@ -121,11 +128,69 @@ describe("ExpensesService CRUD", () => {
         expect(repository.findForUser).toHaveBeenCalledWith("user-id", "PENDING");
     });
 
+    it("maps listed expenses to the public response shape", async () => {
+        repository.findForUser.mockResolvedValue([
+            {
+                ...mappedExpense,
+                status: "ABERTA",
+                quitada_em: null,
+                subgrupo: null,
+                casa_id: "home-id",
+                casa: { nome: "Grifinória" },
+                participacao: null,
+            },
+        ]);
+
+        await expect(service.findAll("user-id")).resolves.toEqual([
+            {
+                id: "expense-id",
+                description: "Conta de energia",
+                amount: "119.87",
+                date: "2026-10-11",
+                homeId: "home-id",
+                homeName: "Grifinória",
+                subgroup: null,
+                paidBy: null,
+                paidAt: null,
+                paymentStatus: "PENDING",
+            },
+        ]);
+    });
+
+    it("clears payment metadata when changing a paid expense back to pending", async () => {
+        repository.findEditableExpense.mockResolvedValue({
+            ...accessibleExpense,
+            status: "QUITADA",
+            quitada_em: new Date("2026-10-10T12:00:00.000Z"),
+            pago_por_participacao_id: memberParticipationId,
+        });
+        const pendingDto = { ...dto, paymentStatus: "PENDING" as const };
+
+        await service.update("expense-id", pendingDto, "user-id");
+
+        expect(repository.update).toHaveBeenCalledWith(
+            "expense-id",
+            pendingDto,
+            "home-id",
+            null,
+            null
+        );
+    });
+
     it("soft-deletes an accessible expense to preserve related records", async () => {
         await expect(service.remove("expense-id", "user-id")).resolves.toEqual({
             id: "expense-id",
             deleted: true,
         });
         expect(repository.softDelete).toHaveBeenCalledWith("expense-id");
+    });
+
+    it("does not delete an expense outside the active residence membership", async () => {
+        repository.findEditableExpense.mockResolvedValue(null);
+
+        await expect(service.remove("expense-id", "user-id")).rejects.toBeInstanceOf(
+            NotFoundException
+        );
+        expect(repository.softDelete).not.toHaveBeenCalled();
     });
 });

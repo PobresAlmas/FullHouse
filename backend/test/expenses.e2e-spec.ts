@@ -81,6 +81,9 @@ describe("Expenses HTTP API (e2e)", () => {
 
     it("requires authentication", async () => {
         await request(app.getHttpServer()).get("/expenses").expect(401);
+        await request(app.getHttpServer()).post("/expenses").send(payload).expect(401);
+        await request(app.getHttpServer()).put(`/expenses/${EXPENSE_ID}`).send(payload).expect(401);
+        await request(app.getHttpServer()).delete(`/expenses/${EXPENSE_ID}`).expect(401);
     });
 
     it("lists expenses and applies the paid or pending filter", async () => {
@@ -140,11 +143,28 @@ describe("Expenses HTTP API (e2e)", () => {
 
     it("returns HTTP 400 for missing required fields", async () => {
         const cookie = await authenticatedCookie();
+        for (const invalidPayload of [
+            { ...payload, description: "" },
+            { ...payload, amount: undefined },
+            { ...payload, date: undefined },
+            { ...payload, paymentStatus: undefined },
+        ]) {
+            await request(app.getHttpServer())
+                .post("/expenses")
+                .set("Cookie", cookie)
+                .send(invalidPayload)
+                .expect(400);
+        }
+    });
+
+    it("rejects a calendar date that does not exist", async () => {
+        const cookie = await authenticatedCookie();
         await request(app.getHttpServer())
             .post("/expenses")
             .set("Cookie", cookie)
-            .send({ ...payload, description: "" })
+            .send({ ...payload, date: "2026-02-31" })
             .expect(400);
+        expect(expensesService.create).not.toHaveBeenCalled();
     });
 
     it("preserves HTTP 403 and 404 responses from the service", async () => {

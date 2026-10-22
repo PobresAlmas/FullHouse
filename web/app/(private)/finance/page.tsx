@@ -282,7 +282,7 @@ export default function FinancePage() {
                         href="/finance"
                         active
                     />
-                    <SidebarLink icon={<Wallet size={17} />} label="Despesa" />
+                    <SidebarLink icon={<Wallet size={17} />} label="Despensa" href="/pantry" />
                     <SidebarLink icon={<UserRound size={17} />} label="Perfil" />
                     <SidebarLink icon={<PawPrint size={18} />} label="Pets" href="/pets" />
                 </nav>
@@ -860,7 +860,7 @@ function ExpenseModal({
                     </div>
                 </header>
 
-                <form onSubmit={onSubmit} className="grid gap-4">
+                <form onSubmit={onSubmit} noValidate className="grid gap-4">
                     {error && (
                         <div
                             role="alert"

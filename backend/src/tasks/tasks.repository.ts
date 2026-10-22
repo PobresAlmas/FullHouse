@@ -1,12 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { CreateTaskDto, TaskPeriodicity } from "./dto/create-task.dto.js";
+import { CreateTaskDto, TaskAssignmentType, TaskPeriodicity } from "./dto/create-task.dto.js";
 import { TaskListQueryDto } from "./dto/task-list-query.dto.js";
 import { UpdateTaskDto } from "./dto/update-task.dto.js";
 
 const taskInclude = {
     definicao_tarefa: {
         include: {
+            fila_rodizio: { where: { ativo: true }, orderBy: { ordem: "asc" as const } },
             participacao: {
                 select: { id: true, usuario: { select: { id: true, nome: true, apelido: true } } },
             },
@@ -128,24 +129,40 @@ export class TasksRepository {
                     titulo: data.title,
                     descricao: data.description ?? null,
                     tags: data.tags ?? [],
-                    cor: null,
+                    cor: data.color ?? null,
                     periodicidade: repeats
                         ? (data.periodicity ?? TaskPeriodicity.SEMANAL)
                         : TaskPeriodicity.PERSONALIZADA,
                     intervalo_dias: null,
                     regra_recorrencia: recurrenceRule(repeats),
-                    tipo_atribuicao: "FIXA",
-                    responsavel_fixo_participacao_id: assignee?.id ?? null,
+                    tipo_atribuicao: data.assignmentType ?? TaskAssignmentType.FIXA,
+                    responsavel_fixo_participacao_id:
+                        data.assignmentType === TaskAssignmentType.RODIZIO
+                            ? null
+                            : (assignee?.id ?? null),
                     data_inicio: dateOnly(dueAt),
                     data_fim: repeats ? null : dateOnly(dueAt),
                 },
             });
+            if (data.assignmentType === TaskAssignmentType.RODIZIO && data.assigneeIds?.length) {
+                await transaction.fila_rodizio.createMany({
+                    data: data.assigneeIds.map((memberId, ordem) => ({
+                        definicao_tarefa_id: definition.id,
+                        participacao_id: memberId,
+                        ordem,
+                    })),
+                });
+            }
             const instance = await transaction.instancia_tarefa.create({
                 data: {
                     definicao_tarefa_id: definition.id,
                     data_prevista: dateOnly(dueAt),
                     prazo_limite: dueAt,
-                    responsavel_participacao_id: assignee?.id ?? null,
+                    responsavel_participacao_id:
+                        data.assignmentType === TaskAssignmentType.RODIZIO
+                            ? (data.assigneeIds?.[0] ?? null)
+                            : (assignee?.id ?? null),
+                    ordem_rodizio: data.assignmentType === TaskAssignmentType.RODIZIO ? 0 : null,
                 },
             });
 
@@ -181,6 +198,11 @@ export class TasksRepository {
         const repeats = data.repeats ?? recurrence?.repeats ?? false;
         const periodicity = data.periodicity ?? existing.definicao_tarefa.periodicidade;
         const title = data.title ?? existing.definicao_tarefa.titulo;
+        const assignmentType = data.assignmentType ?? existing.definicao_tarefa.tipo_atribuicao;
+        const rotationIds = data.assigneeIds;
+        const nextAssigneeId = assignmentType === TaskAssignmentType.RODIZIO
+            ? (rotationIds?.[0] ?? existing.definicao_tarefa.fila_rodizio?.[0]?.participacao_id ?? null)
+            : (assignee === undefined ? undefined : (assignee?.id ?? null));
 
         await this.prisma.$transaction(async (transaction) => {
             await transaction.definicao_tarefa.update({
@@ -189,6 +211,16 @@ export class TasksRepository {
                     ...(data.title !== undefined ? { titulo: data.title } : {}),
                     ...(data.description !== undefined ? { descricao: data.description } : {}),
                     ...(data.tags !== undefined ? { tags: data.tags } : {}),
+                    ...(data.color !== undefined ? { cor: data.color } : {}),
+                    ...(data.assignmentType !== undefined
+                        ? {
+                              tipo_atribuicao: data.assignmentType,
+                              responsavel_fixo_participacao_id:
+                                  data.assignmentType === TaskAssignmentType.FIXA
+                                      ? (nextAssigneeId ?? null)
+                                      : null,
+                          }
+                        : {}),
                     ...(data.repeats !== undefined || data.periodicity !== undefined
                         ? {
                               periodicidade: repeats ? periodicity : TaskPeriodicity.PERSONALIZADA,
@@ -200,19 +232,36 @@ export class TasksRepository {
                     ...(data.dueAt !== undefined && !repeats
                         ? { data_inicio: dateOnly(dueAt), data_fim: dateOnly(dueAt) }
                         : {}),
-                    ...(assignee !== undefined
+                    ...(assignee !== undefined && assignmentType === TaskAssignmentType.FIXA
                         ? { responsavel_fixo_participacao_id: assignee?.id ?? null }
                         : {}),
                 },
             });
+            if (rotationIds !== undefined) {
+                await transaction.fila_rodizio.deleteMany({
+                    where: { definicao_tarefa_id: existing.definicao_tarefa_id },
+                });
+                if (assignmentType === TaskAssignmentType.RODIZIO) {
+                    await transaction.fila_rodizio.createMany({
+                        data: rotationIds.map((memberId, ordem) => ({
+                            definicao_tarefa_id: existing.definicao_tarefa_id,
+                            participacao_id: memberId,
+                            ordem,
+                        })),
+                    });
+                }
+            }
             await transaction.instancia_tarefa.update({
                 where: { id: taskId },
                 data: {
                     ...(data.dueAt !== undefined
                         ? { data_prevista: dateOnly(dueAt), prazo_limite: dueAt }
                         : {}),
-                    ...(assignee !== undefined
-                        ? { responsavel_participacao_id: assignee?.id ?? null }
+                    ...(assignee !== undefined || rotationIds !== undefined || data.assignmentType !== undefined
+                        ? {
+                              responsavel_participacao_id: nextAssigneeId,
+                              ordem_rodizio: assignmentType === TaskAssignmentType.RODIZIO ? 0 : null,
+                          }
                         : {}),
                 },
             });
@@ -220,14 +269,21 @@ export class TasksRepository {
             if (
                 data.reminderMinutesBefore !== undefined ||
                 data.dueAt !== undefined ||
-                assignee !== undefined
+                assignee !== undefined || rotationIds !== undefined || data.assignmentType !== undefined
             ) {
                 await transaction.lembrete.deleteMany({ where: { instancia_tarefa_id: taskId } });
                 if (reminderMinutesBefore !== null && reminderMinutesBefore !== undefined) {
                     await transaction.lembrete.create({
                         data: {
                             usuario_id:
-                                assignee?.userId ??
+                                (assignmentType === TaskAssignmentType.RODIZIO
+                                    ? (rotationIds?.[0]
+                                          ? await transaction.participacao.findUnique({
+                                                where: { id: rotationIds[0] },
+                                                select: { usuario_id: true },
+                                            }).then((member) => member?.usuario_id)
+                                          : undefined)
+                                    : assignee?.userId) ??
                                 existing
                                     .participacao_instancia_tarefa_responsavel_participacao_idToparticipacao
                                     ?.usuario.id ??
@@ -279,12 +335,25 @@ export class TasksRepository {
                     nextDueAt.setUTCMonth(nextDueAt.getUTCMonth() + 1);
                 }
 
+                const rotation = task.definicao_tarefa.tipo_atribuicao === TaskAssignmentType.RODIZIO
+                    ? task.definicao_tarefa.fila_rodizio
+                    : [];
+                const currentOrder = task.ordem_rodizio ?? 0;
+                const nextOrder = rotation.length ? (currentOrder + 1) % rotation.length : 0;
+                const nextAssigneeId = rotation[nextOrder]?.participacao_id ?? task.responsavel_participacao_id;
+                const nextAssignee = nextAssigneeId
+                    ? await transaction.participacao.findUnique({
+                          where: { id: nextAssigneeId },
+                          select: { usuario_id: true },
+                      })
+                    : null;
                 const nextInstance = await transaction.instancia_tarefa.create({
                     data: {
                         definicao_tarefa_id: task.definicao_tarefa_id,
                         data_prevista: dateOnly(nextDueAt),
                         prazo_limite: nextDueAt,
-                        responsavel_participacao_id: task.responsavel_participacao_id,
+                        responsavel_participacao_id: nextAssigneeId,
+                        ordem_rodizio: rotation.length ? nextOrder : null,
                     },
                 });
                 if (reminders[0]) {
@@ -295,6 +364,7 @@ export class TasksRepository {
                     await transaction.lembrete.create({
                         data: {
                             usuario_id:
+                                nextAssignee?.usuario_id ??
                                 task
                                     .participacao_instancia_tarefa_responsavel_participacao_idToparticipacao
                                     ?.usuario.id ?? currentUserId,

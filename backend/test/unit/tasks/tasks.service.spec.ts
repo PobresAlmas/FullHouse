@@ -6,20 +6,24 @@ const residenceId = "residence-id";
 const userId = "user-id";
 const taskId = "task-id";
 const memberId = "member-id";
-const dueAt = new Date("2026-10-20T18:00:00.000Z");
+const dueAt = new Date("2099-10-20T18:00:00.000Z");
 
 function makeTask(overrides: Record<string, unknown> = {}) {
     return {
         id: taskId,
         definicao_tarefa_id: "definition-id",
         prazo_limite: dueAt,
-        data_prevista: new Date("2026-10-20T00:00:00.000Z"),
+        data_prevista: new Date("2099-10-20T00:00:00.000Z"),
+        responsavel_participacao_id: memberId,
         status: "PENDENTE",
         concluida_em: null,
         definicao_tarefa: {
             titulo: "Limpar cozinha",
             descricao: "Limpar bancada e pia",
             tags: ["cozinha"],
+            cor: null,
+            tipo_atribuicao: "FIXA",
+            fila_rodizio: [],
             casa_id: residenceId,
             periodicidade: TaskPeriodicity.PERSONALIZADA,
             regra_recorrencia: { repeats: false },
@@ -28,7 +32,7 @@ function makeTask(overrides: Record<string, unknown> = {}) {
             id: memberId,
             usuario: { nome: "Ana Souza", apelido: "Ana" },
         },
-        lembrete: [{ lembrar_em: new Date("2026-10-20T17:30:00.000Z") }],
+        lembrete: [{ lembrar_em: new Date("2099-10-20T17:30:00.000Z") }],
         ...overrides,
     };
 }
@@ -51,7 +55,7 @@ describe("TasksService business rules", () => {
         repository = {
             findResidenceMembership: vi
                 .fn()
-                .mockResolvedValue({ id: residenceId, participacao: [{ id: memberId }] }),
+                .mockResolvedValue({ id: residenceId, participacao: [{ id: memberId, papel: "MORADOR" }] }),
             findMembers: vi.fn().mockResolvedValue([
                 { id: memberId, papel: "MORADOR", usuario: { nome: "Ana Souza", apelido: "Ana" } },
                 { id: "member-2", papel: "LIDER", usuario: { nome: "Bruno Lima", apelido: null } },
@@ -79,12 +83,15 @@ describe("TasksService business rules", () => {
                 title: "Limpar cozinha",
                 description: "Limpar bancada e pia",
                 tags: ["cozinha"],
+                color: null,
+                assignmentType: "FIXA",
+                rotationMemberIds: [],
                 residenceId,
                 assignee: { id: memberId, name: "Ana" },
                 dueAt: dueAt.toISOString(),
                 periodicity: TaskPeriodicity.PERSONALIZADA,
                 repeats: false,
-                reminderAt: "2026-10-20T17:30:00.000Z",
+                reminderAt: "2099-10-20T17:30:00.000Z",
                 status: "PENDENTE",
                 completedAt: null,
             },
@@ -104,7 +111,7 @@ describe("TasksService business rules", () => {
     it("creates a task after validating its active assignee", async () => {
         const input = {
             title: "Lavar louça",
-            dueAt: "2026-10-20T18:00:00.000Z",
+            dueAt: "2099-10-20T18:00:00.000Z",
             assigneeId: memberId,
             repeats: true,
             periodicity: TaskPeriodicity.SEMANAL,
@@ -199,7 +206,7 @@ describe("TasksService business rules", () => {
     });
 
     it("completes a task and returns its refreshed state", async () => {
-        const completedAt = new Date("2026-10-20T19:00:00.000Z");
+        const completedAt = new Date("2099-10-20T19:00:00.000Z");
         repository.findTask
             .mockResolvedValueOnce(makeTask())
             .mockResolvedValueOnce(makeTask({ status: "CONCLUIDA", concluida_em: completedAt }));
