@@ -8,7 +8,10 @@ export class ExpensesService {
     constructor(private readonly repository: ExpensesRepository) {}
 
     async findAvailableHomes(userId: string) {
-        return (await this.repository.findAvailableHomes(userId)).map((home) => ({ id: home.id, name: home.nome }));
+        return (await this.repository.findAvailableHomes(userId)).map((home) => ({
+            id: home.id,
+            name: home.nome,
+        }));
     }
 
     async findAvailableSubgroups(userId: string) {
@@ -19,8 +22,8 @@ export class ExpensesService {
             name: group.nome,
             homeId: group.casa.id,
             homeName: group.casa.nome,
-            members: group.membro_subgrupo.map(({ participacao }) =>
-                participacao.usuario.apelido || participacao.usuario.nome
+            members: group.membro_subgrupo.map(
+                ({ participacao }) => participacao.usuario.apelido || participacao.usuario.nome
             ),
         }));
     }
@@ -33,9 +36,15 @@ export class ExpensesService {
             throw new NotFoundException("O subgrupo selecionado não está disponível.");
         }
 
-        const homeId = data.homeId ?? subgroup?.casa_id ?? (await this.repository.findAvailableHomes(userId))[0]?.id;
+        const homeId =
+            data.homeId ??
+            subgroup?.casa_id ??
+            (await this.repository.findAvailableHomes(userId))[0]?.id;
         const home = homeId ? await this.repository.findHomeForUser(homeId, userId) : null;
-        if (!home) throw new NotFoundException("Não foi encontrada uma casa ativa para registrar a despesa.");
+        if (!home)
+            throw new NotFoundException(
+                "Não foi encontrada uma casa ativa para registrar a despesa."
+            );
 
         if (subgroup && subgroup.casa_id !== home.id) {
             throw new NotFoundException("O subgrupo selecionado não está disponível.");
@@ -44,7 +53,7 @@ export class ExpensesService {
         const expense = await this.repository.create(
             data,
             home.id,
-            subgroup?.membro_subgrupo[0]?.participacao_id ?? home.participacao[0].id,
+            subgroup?.membro_subgrupo[0]?.participacao_id ?? home.participacao[0].id
         );
 
         return this.mapExpense(expense);
@@ -82,12 +91,14 @@ export class ExpensesService {
         const paidByParticipationId = !paid
             ? null
             : existing.status === "QUITADA" && samePaidSubgroup
-              ? existing.pago_por_participacao_id ?? subgroup?.membro_subgrupo[0]?.participacao_id ?? home.participacao[0].id
-              : subgroup?.membro_subgrupo[0]?.participacao_id ?? home.participacao[0].id;
+              ? (existing.pago_por_participacao_id ??
+                subgroup?.membro_subgrupo[0]?.participacao_id ??
+                home.participacao[0].id)
+              : (subgroup?.membro_subgrupo[0]?.participacao_id ?? home.participacao[0].id);
         const paidAt = !paid
             ? null
             : existing.status === "QUITADA"
-              ? existing.quitada_em ?? new Date()
+              ? (existing.quitada_em ?? new Date())
               : new Date();
 
         const updated = await this.repository.update(
@@ -95,7 +106,7 @@ export class ExpensesService {
             data,
             home.id,
             paidByParticipationId,
-            paidAt,
+            paidAt
         );
 
         return this.mapExpense(updated);
@@ -134,8 +145,7 @@ export class ExpensesService {
             homeName: expense.casa?.nome,
             subgroup: expense.subgrupo,
             paidBy: expense.participacao
-                ? expense.participacao.usuario.apelido ||
-                  expense.participacao.usuario.nome
+                ? expense.participacao.usuario.apelido || expense.participacao.usuario.nome
                 : null,
             paidAt: expense.quitada_em?.toISOString() ?? null,
             paymentStatus:

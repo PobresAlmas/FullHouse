@@ -4,7 +4,13 @@ import { PetsService } from "./pets.service.js";
 
 describe("PetsService", () => {
     const membership = { id: "participation-1", papel: "MORADOR" };
-    const residence = { id: "residence-1", nome: "Casa do Vale", cidade: "Fortaleza", bairro: "Centro", participacao: [membership] };
+    const residence = {
+        id: "residence-1",
+        nome: "Casa do Vale",
+        cidade: "Fortaleza",
+        bairro: "Centro",
+        participacao: [membership],
+    };
     const pet = {
         id: "pet-1",
         casa_id: "residence-1",
@@ -58,23 +64,29 @@ describe("PetsService", () => {
     });
 
     it("creates a pet under the authenticated member's active residence", async () => {
-        await expect(service.create("residence-1", { name: "Mel", species: "Cachorro" }, "user-1"))
-            .resolves.toMatchObject({ id: "pet-1", name: "Mel", residenceId: "residence-1" });
-        expect(repository.createPet).toHaveBeenCalledWith(expect.objectContaining({
-            residenceId: "residence-1",
-            createdById: membership.id,
-        }));
+        await expect(
+            service.create("residence-1", { name: "Mel", species: "Cachorro" }, "user-1")
+        ).resolves.toMatchObject({ id: "pet-1", name: "Mel", residenceId: "residence-1" });
+        expect(repository.createPet).toHaveBeenCalledWith(
+            expect.objectContaining({
+                residenceId: "residence-1",
+                createdById: membership.id,
+            })
+        );
     });
 
     it("does not expose a residence outside the user's active memberships", async () => {
         repository.findResidenceMembership.mockResolvedValue(null);
-        await expect(service.findAll("other-residence", "user-1")).rejects.toBeInstanceOf(NotFoundException);
+        await expect(service.findAll("other-residence", "user-1")).rejects.toBeInstanceOf(
+            NotFoundException
+        );
         expect(repository.findPets).not.toHaveBeenCalled();
     });
 
     it("updates pet fields without allowing residence or creator changes", async () => {
-        await expect(service.update("residence-1", "pet-1", { name: "Luna" }, "user-1"))
-            .resolves.toMatchObject({ id: "pet-1", residenceId: "residence-1" });
+        await expect(
+            service.update("residence-1", "pet-1", { name: "Luna" }, "user-1")
+        ).resolves.toMatchObject({ id: "pet-1", residenceId: "residence-1" });
         expect(repository.updatePet).toHaveBeenCalledWith("pet-1", { name: "Luna" });
     });
 
@@ -84,7 +96,9 @@ describe("PetsService", () => {
             participacao: { usuario_id: "another-user" },
             casa: { id: residence.id, participacao: [membership] },
         });
-        await expect(service.remove("residence-1", "pet-1", "user-1")).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(service.remove("residence-1", "pet-1", "user-1")).rejects.toBeInstanceOf(
+            ForbiddenException
+        );
         expect(repository.deletePet).not.toHaveBeenCalled();
 
         repository.findPetForUser.mockResolvedValue({
@@ -101,40 +115,60 @@ describe("PetsService", () => {
 
     it("rejects a care log with a payer from another residence", async () => {
         repository.findActiveParticipation.mockResolvedValue(null);
-        await expect(service.createCareLog("pet-1", {
-            type: PetCareType.VACCINE,
-            title: "Vacina anual",
-            date: "2026-10-11",
-            paidById: "foreign-participation",
-        }, "user-1")).rejects.toBeInstanceOf(BadRequestException);
+        await expect(
+            service.createCareLog(
+                "pet-1",
+                {
+                    type: PetCareType.VACCINE,
+                    title: "Vacina anual",
+                    date: "2026-10-11",
+                    paidById: "foreign-participation",
+                },
+                "user-1"
+            )
+        ).rejects.toBeInstanceOf(BadRequestException);
         expect(repository.createCareLog).not.toHaveBeenCalled();
     });
 
     it("validates optional expenses before persisting care", async () => {
         repository.findResidenceExpense.mockResolvedValue(null);
-        await expect(service.createCareLog("pet-1", {
-            type: PetCareType.FOOD,
-            title: "Ração",
-            date: "2026-10-11",
-            expenseId: "foreign-expense",
-        }, "user-1")).rejects.toBeInstanceOf(BadRequestException);
+        await expect(
+            service.createCareLog(
+                "pet-1",
+                {
+                    type: PetCareType.FOOD,
+                    title: "Ração",
+                    date: "2026-10-11",
+                    expenseId: "foreign-expense",
+                },
+                "user-1"
+            )
+        ).rejects.toBeInstanceOf(BadRequestException);
         expect(repository.createCareLog).not.toHaveBeenCalled();
     });
 
     it("creates care records with the active participation as author", async () => {
-        await expect(service.createCareLog("pet-1", {
-            type: PetCareType.VACCINE,
-            title: "Vacina anual",
-            date: "2026-10-11",
-        }, "user-1")).resolves.toMatchObject({
+        await expect(
+            service.createCareLog(
+                "pet-1",
+                {
+                    type: PetCareType.VACCINE,
+                    title: "Vacina anual",
+                    date: "2026-10-11",
+                },
+                "user-1"
+            )
+        ).resolves.toMatchObject({
             petId: "pet-1",
             createdById: membership.id,
             type: PetCareType.VACCINE,
         });
-        expect(repository.createCareLog).toHaveBeenCalledWith(expect.objectContaining({
-            petId: "pet-1",
-            createdById: membership.id,
-        }));
+        expect(repository.createCareLog).toHaveBeenCalledWith(
+            expect.objectContaining({
+                petId: "pet-1",
+                createdById: membership.id,
+            })
+        );
     });
 
     it("updates and removes care records only after checking the pet scope", async () => {
@@ -152,10 +186,14 @@ describe("PetsService", () => {
             criado_em: new Date("2026-10-11T12:00:00.000Z"),
         };
         repository.updateCareLog.mockResolvedValue(updatedCare);
-        await expect(service.updateCareLog("pet-1", "care-1", { title: "Dose reforço" }, "user-1"))
-            .resolves.toMatchObject({ title: "Dose reforço" });
+        await expect(
+            service.updateCareLog("pet-1", "care-1", { title: "Dose reforço" }, "user-1")
+        ).resolves.toMatchObject({ title: "Dose reforço" });
         expect(repository.findCareLog).toHaveBeenCalledWith("pet-1", "care-1");
-        expect(repository.updateCareLog).toHaveBeenCalledWith("care-1", { title: "Dose reforço", type: undefined });
+        expect(repository.updateCareLog).toHaveBeenCalledWith("care-1", {
+            title: "Dose reforço",
+            type: undefined,
+        });
 
         await expect(service.removeCareLog("pet-1", "care-1", "user-1")).resolves.toEqual({
             id: "care-1",

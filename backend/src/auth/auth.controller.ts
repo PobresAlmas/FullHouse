@@ -17,7 +17,9 @@ export class AuthController {
     @UseGuards(JwtAuthGuard)
     me(
         @CurrentUser()
-        user: { id: string }
+        user: {
+            id: string;
+        }
     ) {
         return user;
     }

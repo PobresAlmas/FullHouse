@@ -23,7 +23,12 @@ describe("UsersService", () => {
         password = { hash: vi.fn().mockResolvedValue("hash") };
         codes = { generate: vi.fn().mockReturnValue("ABC123") };
         storage = { upload: vi.fn().mockResolvedValue("https://cdn/avatar.png") };
-        service = new UsersService(repository as never, password as never, codes as never, storage as never);
+        service = new UsersService(
+            repository as never,
+            password as never,
+            codes as never,
+            storage as never
+        );
     });
 
     it("delegates listing and email lookup", async () => {

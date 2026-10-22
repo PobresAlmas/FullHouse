@@ -9,8 +9,6 @@ import {
     Param,
     ParseUUIDPipe,
     UseGuards,
-    UsePipes,
-    ValidationPipe,
     Query,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth-guard.js";
@@ -35,31 +33,26 @@ export class ExpensesController {
     }
 
     @Get()
-    findAll(
-        @CurrentUser() user: { id: string },
-        @Query("paymentStatus") paymentStatus?: string,
-    ) {
+    findAll(@CurrentUser() user: { id: string }, @Query("paymentStatus") paymentStatus?: string) {
         if (paymentStatus && paymentStatus !== "PENDING" && paymentStatus !== "PAID") {
             throw new BadRequestException("Filtre de pagamento inválido.");
         }
         return this.expensesService.findAll(
             user.id,
-            paymentStatus as "PENDING" | "PAID" | undefined,
+            paymentStatus as "PENDING" | "PAID" | undefined
         );
     }
 
     @Post()
-    @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
     create(@Body() data: CreateExpenseDto, @CurrentUser() user: { id: string }) {
         return this.expensesService.create(data, user.id);
     }
 
     @Put(":id")
-    @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
     update(
         @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
         @Body() data: UpdateExpenseDto,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.expensesService.update(id, data, user.id);
     }
@@ -67,7 +60,7 @@ export class ExpensesController {
     @Delete(":id")
     remove(
         @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.expensesService.remove(id, user.id);
     }

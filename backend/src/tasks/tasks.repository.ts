@@ -83,9 +83,7 @@ export class TasksRepository {
                 definicao_tarefa: {
                     casa_id: residenceId,
                     escopo: "CASA",
-                    ...(query.periodicity
-                        ? { periodicidade: query.periodicity }
-                        : {}),
+                    ...(query.periodicity ? { periodicidade: query.periodicity } : {}),
                     ...(query.search
                         ? {
                               OR: [
@@ -97,9 +95,7 @@ export class TasksRepository {
                         : {}),
                 },
                 ...(query.status ? { status: query.status } : { status: { not: "CANCELADA" } }),
-                ...(query.assigneeId
-                    ? { responsavel_participacao_id: query.assigneeId }
-                    : {}),
+                ...(query.assigneeId ? { responsavel_participacao_id: query.assigneeId } : {}),
             },
             include: taskInclude,
             orderBy: [{ prazo_limite: "asc" }, { data_prevista: "asc" }, { id: "asc" }],
@@ -176,9 +172,13 @@ export class TasksRepository {
         reminderMinutesBefore: number | null | undefined,
         currentUserId: string
     ) {
-        const dueAt = data.dueAt ? dateFromIso(data.dueAt) : existing.prazo_limite ?? existing.data_prevista;
-        const recurrence = existing.definicao_tarefa.regra_recorrencia as { repeats?: boolean } | null;
-        const repeats = data.repeats ?? (recurrence?.repeats ?? false);
+        const dueAt = data.dueAt
+            ? dateFromIso(data.dueAt)
+            : (existing.prazo_limite ?? existing.data_prevista);
+        const recurrence = existing.definicao_tarefa.regra_recorrencia as {
+            repeats?: boolean;
+        } | null;
+        const repeats = data.repeats ?? recurrence?.repeats ?? false;
         const periodicity = data.periodicity ?? existing.definicao_tarefa.periodicidade;
         const title = data.title ?? existing.definicao_tarefa.titulo;
 
@@ -191,9 +191,7 @@ export class TasksRepository {
                     ...(data.tags !== undefined ? { tags: data.tags } : {}),
                     ...(data.repeats !== undefined || data.periodicity !== undefined
                         ? {
-                              periodicidade: repeats
-                                  ? periodicity
-                                  : TaskPeriodicity.PERSONALIZADA,
+                              periodicidade: repeats ? periodicity : TaskPeriodicity.PERSONALIZADA,
                               intervalo_dias: null,
                               regra_recorrencia: recurrenceRule(repeats),
                               data_fim: repeats ? null : dateOnly(dueAt),
@@ -219,14 +217,20 @@ export class TasksRepository {
                 },
             });
 
-            if (data.reminderMinutesBefore !== undefined || data.dueAt !== undefined || assignee !== undefined) {
+            if (
+                data.reminderMinutesBefore !== undefined ||
+                data.dueAt !== undefined ||
+                assignee !== undefined
+            ) {
                 await transaction.lembrete.deleteMany({ where: { instancia_tarefa_id: taskId } });
                 if (reminderMinutesBefore !== null && reminderMinutesBefore !== undefined) {
                     await transaction.lembrete.create({
                         data: {
                             usuario_id:
                                 assignee?.userId ??
-                                existing.participacao_instancia_tarefa_responsavel_participacao_idToparticipacao?.usuario.id ??
+                                existing
+                                    .participacao_instancia_tarefa_responsavel_participacao_idToparticipacao
+                                    ?.usuario.id ??
                                 currentUserId,
                             titulo: title,
                             lembrar_em: new Date(dueAt.getTime() - reminderMinutesBefore * 60_000),
@@ -260,9 +264,9 @@ export class TasksRepository {
                 },
             });
 
-            const recurrence = task.definicao_tarefa.regra_recorrencia as
-                | { repeats?: boolean }
-                | null;
+            const recurrence = task.definicao_tarefa.regra_recorrencia as {
+                repeats?: boolean;
+            } | null;
             if (recurrence?.repeats) {
                 const nextDueAt = new Date(dueAt);
                 if (task.definicao_tarefa.periodicidade === "DIARIA") {
@@ -291,8 +295,9 @@ export class TasksRepository {
                     await transaction.lembrete.create({
                         data: {
                             usuario_id:
-                                task.participacao_instancia_tarefa_responsavel_participacao_idToparticipacao?.usuario.id ??
-                                currentUserId,
+                                task
+                                    .participacao_instancia_tarefa_responsavel_participacao_idToparticipacao
+                                    ?.usuario.id ?? currentUserId,
                             titulo: task.definicao_tarefa.titulo,
                             lembrar_em: new Date(
                                 nextDueAt.getTime() - reminderMinutesBefore * 60_000

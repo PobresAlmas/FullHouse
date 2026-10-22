@@ -30,7 +30,9 @@ describe("Tasks HTTP API (e2e)", () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        tasksService.findMembers.mockResolvedValue([{ id: "member-id", name: "Morador", role: "MORADOR" }]);
+        tasksService.findMembers.mockResolvedValue([
+            { id: "member-id", name: "Morador", role: "MORADOR" },
+        ]);
         tasksService.findAll.mockResolvedValue([]);
         tasksService.findOne.mockResolvedValue({ id: TASK_ID, title: "Limpar cozinha" });
         tasksService.create.mockResolvedValue({ id: TASK_ID, title: "Limpar cozinha" });
@@ -63,9 +65,7 @@ describe("Tasks HTTP API (e2e)", () => {
     }
 
     it("requires authentication to access household tasks", async () => {
-        await request(app.getHttpServer())
-            .get(`/residences/${RESIDENCE_ID}/tasks`)
-            .expect(401);
+        await request(app.getHttpServer()).get(`/residences/${RESIDENCE_ID}/tasks`).expect(401);
     });
 
     it("lists tasks using validated filters", async () => {

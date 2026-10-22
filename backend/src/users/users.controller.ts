@@ -20,6 +20,7 @@ export class UsersController {
     constructor(private readonly userService: UsersService) {}
 
     @Get()
+    @UseGuards(JwtAuthGuard)
     findAll() {
         return this.userService.findAll();
     }

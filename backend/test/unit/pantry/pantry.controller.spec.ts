@@ -1,5 +1,4 @@
-import { ValidationPipe } from "@nestjs/common";
-import { GUARDS_METADATA, PATH_METADATA, PIPES_METADATA } from "@nestjs/common/constants";
+import { GUARDS_METADATA, PATH_METADATA } from "@nestjs/common/constants";
 import { JwtAuthGuard } from "../../../src/auth/guards/jwt-auth-guard.js";
 import { PantryController } from "../../../src/pantry/pantry.controller.js";
 
@@ -19,15 +18,11 @@ describe("PantryController", () => {
         controller = new PantryController(service as never);
     });
 
-    it("protects pantry endpoints with JWT authentication and request validation", () => {
+    it("protects pantry endpoints with JWT authentication", () => {
         expect(Reflect.getMetadata(PATH_METADATA, PantryController)).toBe(
             "residences/:residenceId/pantry"
         );
         expect(Reflect.getMetadata(GUARDS_METADATA, PantryController)).toContain(JwtAuthGuard);
-        const [pipe] = Reflect.getMetadata(PIPES_METADATA, PantryController) as ValidationPipe[];
-        expect(pipe).toBeInstanceOf(ValidationPipe);
-        expect(pipe.validatorOptions.whitelist).toBe(true);
-        expect(pipe.isTransformEnabled).toBe(true);
     });
 
     it("keeps the pantry endpoint paths attached to their handlers", () => {

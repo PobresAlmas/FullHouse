@@ -23,11 +23,14 @@ describe("ExpensesRepository.findForUser", () => {
     it.each([
         ["PAID", "QUITADA"],
         ["PENDING", "ABERTA"],
-    ] as const)("filters %s expenses by persisted status", async (paymentStatus, persistedStatus) => {
-        await repository.findForUser("user-1", paymentStatus);
+    ] as const)(
+        "filters %s expenses by persisted status",
+        async (paymentStatus, persistedStatus) => {
+            await repository.findForUser("user-1", paymentStatus);
 
-        expect(findMany.mock.calls[0][0].where.status).toBe(persistedStatus);
-    });
+            expect(findMany.mock.calls[0][0].where.status).toBe(persistedStatus);
+        }
+    );
 
     it("returns history ordered by expense date, newest first", async () => {
         await repository.findForUser("user-1");

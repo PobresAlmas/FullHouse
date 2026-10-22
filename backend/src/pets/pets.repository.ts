@@ -75,7 +75,9 @@ export class PetsRepository {
                 ...(search ? { nome: { contains: search, mode: "insensitive" } } : {}),
             },
             include: {
-                participacao: { select: { usuario: { select: { id: true, nome: true, apelido: true } } } },
+                participacao: {
+                    select: { usuario: { select: { id: true, nome: true, apelido: true } } },
+                },
             },
             orderBy: [{ nome: "asc" }, { id: "asc" }],
         });
@@ -85,15 +87,22 @@ export class PetsRepository {
         return this.prisma.pet.findFirst({
             where: { id: petId, casa_id: residenceId },
             include: {
-                participacao: { select: { usuario: { select: { id: true, nome: true, apelido: true } } } },
+                participacao: {
+                    select: { usuario: { select: { id: true, nome: true, apelido: true } } },
+                },
                 cuidado_pet: {
                     orderBy: [{ data_cuidado: "desc" }, { criado_em: "desc" }],
                     include: {
                         participacao_cuidado_pet_pago_por_participacao_idToparticipacao: {
-                            select: { usuario: { select: { id: true, nome: true, apelido: true } } },
+                            select: {
+                                usuario: { select: { id: true, nome: true, apelido: true } },
+                            },
                         },
                         participacao_cuidado_pet_registrado_por_participacao_idToparticipacao: {
-                            select: { id: true, usuario: { select: { id: true, nome: true, apelido: true } } },
+                            select: {
+                                id: true,
+                                usuario: { select: { id: true, nome: true, apelido: true } },
+                            },
                         },
                     },
                 },
@@ -159,7 +168,7 @@ export class PetsRepository {
             breed?: string | null;
             birthDate?: string | null;
             photoUrl?: string | null;
-        },
+        }
     ) {
         return this.prisma.pet.update({
             where: { id: petId },
@@ -179,7 +188,10 @@ export class PetsRepository {
         return this.prisma.pet.delete({ where: { id: petId } });
     }
 
-    findPetCareLogs(petId: string, filters: { type?: tipo_cuidado_pet_enum; from?: string; to?: string }) {
+    findPetCareLogs(
+        petId: string,
+        filters: { type?: tipo_cuidado_pet_enum; from?: string; to?: string }
+    ) {
         return this.prisma.cuidado_pet.findMany({
             where: {
                 pet_id: petId,
@@ -198,7 +210,10 @@ export class PetsRepository {
                     select: { usuario: { select: { id: true, nome: true, apelido: true } } },
                 },
                 participacao_cuidado_pet_registrado_por_participacao_idToparticipacao: {
-                    select: { id: true, usuario: { select: { id: true, nome: true, apelido: true } } },
+                    select: {
+                        id: true,
+                        usuario: { select: { id: true, nome: true, apelido: true } },
+                    },
                 },
             },
             orderBy: [{ data_cuidado: "desc" }, { criado_em: "desc" }],
@@ -248,7 +263,10 @@ export class PetsRepository {
                 titulo: data.title,
                 descricao: data.description ?? null,
                 data_cuidado: dateFromString(data.date),
-                valor: data.cost === undefined || data.cost === null ? null : new Prisma.Decimal(data.cost),
+                valor:
+                    data.cost === undefined || data.cost === null
+                        ? null
+                        : new Prisma.Decimal(data.cost),
                 pago_por_participacao_id: data.paidById ?? null,
                 despesa_id: data.expenseId ?? null,
             },
@@ -265,7 +283,7 @@ export class PetsRepository {
             cost?: number | null;
             paidById?: string | null;
             expenseId?: string | null;
-        },
+        }
     ) {
         return this.prisma.cuidado_pet.update({
             where: { id: careLogId },

@@ -1,8 +1,4 @@
-import {
-    BadRequestException,
-    Injectable,
-    NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { CreateTaskDto, TaskPeriodicity } from "./dto/create-task.dto.js";
 import { TaskListQueryDto } from "./dto/task-list-query.dto.js";
 import { UpdateTaskDto } from "./dto/update-task.dto.js";
@@ -57,13 +53,15 @@ export class TasksService {
         await this.requireResidence(residenceId, userId);
         const existing = await this.requireTask(residenceId, taskId);
         if (existing.status === "CONCLUIDA" || existing.status === "CANCELADA") {
-            throw new BadRequestException("NÃ£o Ã© possÃ­vel editar uma tarefa concluÃ­da ou cancelada.");
+            throw new BadRequestException(
+                "NÃ£o Ã© possÃ­vel editar uma tarefa concluÃ­da ou cancelada."
+            );
         }
 
-        const currentRecurrence = existing.definicao_tarefa.regra_recorrencia as
-            | { repeats?: boolean }
-            | null;
-        const willRepeat = data.repeats ?? (currentRecurrence?.repeats ?? false);
+        const currentRecurrence = existing.definicao_tarefa.regra_recorrencia as {
+            repeats?: boolean;
+        } | null;
+        const willRepeat = data.repeats ?? currentRecurrence?.repeats ?? false;
         const frequency = data.periodicity ?? existing.definicao_tarefa.periodicidade;
         if (willRepeat && frequency === TaskPeriodicity.PERSONALIZADA) {
             throw new BadRequestException("Selecione uma frequÃªncia para a repetiÃ§Ã£o.");
@@ -147,9 +145,7 @@ export class TasksService {
         const dueAt = task.prazo_limite ?? task.data_prevista;
         const assignee =
             task.participacao_instancia_tarefa_responsavel_participacao_idToparticipacao;
-        const recurrence = task.definicao_tarefa.regra_recorrencia as
-            | { repeats?: boolean }
-            | null;
+        const recurrence = task.definicao_tarefa.regra_recorrencia as { repeats?: boolean } | null;
         const reminder = task.lembrete[0] ?? null;
 
         return {

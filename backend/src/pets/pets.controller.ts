@@ -9,8 +9,6 @@ import {
     Post,
     Query,
     UseGuards,
-    UsePipes,
-    ValidationPipe,
     BadRequestException,
 } from "@nestjs/common";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
@@ -25,7 +23,6 @@ import { PetsService } from "./pets.service.js";
 
 @Controller()
 @UseGuards(JwtAuthGuard)
-@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class PetsController {
     constructor(private readonly petsService: PetsService) {}
 
@@ -37,7 +34,7 @@ export class PetsController {
     @Get("residences/:residenceId/members")
     findResidenceMembers(
         @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.petsService.findResidenceMembers(residenceId, user.id);
     }
@@ -46,7 +43,7 @@ export class PetsController {
     findAll(
         @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
         @Query() query: PetListQueryDto,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.petsService.findAll(residenceId, user.id, query.search);
     }
@@ -55,7 +52,7 @@ export class PetsController {
     create(
         @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
         @Body() data: CreatePetDto,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.petsService.create(residenceId, data, user.id);
     }
@@ -64,7 +61,7 @@ export class PetsController {
     findOne(
         @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
         @Param("petId", new ParseUUIDPipe({ version: "4" })) petId: string,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.petsService.findOne(residenceId, petId, user.id);
     }
@@ -74,7 +71,7 @@ export class PetsController {
         @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
         @Param("petId", new ParseUUIDPipe({ version: "4" })) petId: string,
         @Body() data: UpdatePetDto,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.petsService.update(residenceId, petId, data, user.id);
     }
@@ -83,7 +80,7 @@ export class PetsController {
     remove(
         @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
         @Param("petId", new ParseUUIDPipe({ version: "4" })) petId: string,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.petsService.remove(residenceId, petId, user.id);
     }
@@ -92,10 +89,12 @@ export class PetsController {
     findCareLogs(
         @Param("petId", new ParseUUIDPipe({ version: "4" })) petId: string,
         @Query() query: PetCareLogQueryDto,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         if (query.from && query.to && query.from > query.to) {
-            throw new BadRequestException("A data inicial deve ser anterior ou igual à data final.");
+            throw new BadRequestException(
+                "A data inicial deve ser anterior ou igual à data final."
+            );
         }
         return this.petsService.findCareLogs(petId, user.id, query);
     }
@@ -104,7 +103,7 @@ export class PetsController {
     createCareLog(
         @Param("petId", new ParseUUIDPipe({ version: "4" })) petId: string,
         @Body() data: CreatePetCareLogDto,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.petsService.createCareLog(petId, data, user.id);
     }
@@ -114,7 +113,7 @@ export class PetsController {
         @Param("petId", new ParseUUIDPipe({ version: "4" })) petId: string,
         @Param("careLogId", new ParseUUIDPipe({ version: "4" })) careLogId: string,
         @Body() data: UpdatePetCareLogDto,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.petsService.updateCareLog(petId, careLogId, data, user.id);
     }
@@ -123,7 +122,7 @@ export class PetsController {
     removeCareLog(
         @Param("petId", new ParseUUIDPipe({ version: "4" })) petId: string,
         @Param("careLogId", new ParseUUIDPipe({ version: "4" })) careLogId: string,
-        @CurrentUser() user: { id: string },
+        @CurrentUser() user: { id: string }
     ) {
         return this.petsService.removeCareLog(petId, careLogId, user.id);
     }

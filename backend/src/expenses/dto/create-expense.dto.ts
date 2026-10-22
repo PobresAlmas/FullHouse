@@ -1,5 +1,14 @@
 import { Transform } from "class-transformer";
-import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, Matches, MaxLength } from "class-validator";
+import {
+    IsDateString,
+    IsEnum,
+    IsNotEmpty,
+    IsOptional,
+    IsString,
+    IsUUID,
+    Matches,
+    MaxLength,
+} from "class-validator";
 
 export enum ExpensePaymentStatus {
     PENDING = "PENDING",

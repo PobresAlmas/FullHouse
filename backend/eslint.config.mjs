@@ -7,11 +7,6 @@ export default tseslint.config(
     ...tseslint.configs.recommended,
     prettier,
     {
-        ignores: [
-            'generated/**',
-            'node_modules/**',
-            'dist/**',
-            'coverage/**',
-        ]
+        ignores: ["generated/**", "node_modules/**", "dist/**", "coverage/**"],
     }
 );

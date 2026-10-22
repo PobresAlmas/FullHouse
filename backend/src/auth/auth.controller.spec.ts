@@ -32,7 +32,9 @@ describe("AuthController", () => {
 
     it("registers and sets an http-only access cookie", async () => {
         const registerDto = { email: "a@example.com" } as Parameters<AuthService["register"]>[0];
-        await expect(controller.register(registerDto, response)).resolves.toEqual({ user: result.user });
+        await expect(controller.register(registerDto, response)).resolves.toEqual({
+            user: result.user,
+        });
         expect(auth.register).toHaveBeenCalled();
         expect(response.cookie).toHaveBeenCalledWith("access_token", "token", {
             httpOnly: true,

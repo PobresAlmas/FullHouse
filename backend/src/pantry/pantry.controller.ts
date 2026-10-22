@@ -9,8 +9,6 @@ import {
     Post,
     Query,
     UseGuards,
-    UsePipes,
-    ValidationPipe,
 } from "@nestjs/common";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth-guard.js";
@@ -22,7 +20,6 @@ import { PantryService } from "./pantry.service.js";
 
 @Controller("residences/:residenceId/pantry")
 @UseGuards(JwtAuthGuard)
-@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class PantryController {
     constructor(private readonly pantryService: PantryService) {}
 

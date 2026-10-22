@@ -1,5 +1,16 @@
 import { Transform, Type } from "class-transformer";
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Matches, MaxLength, Min, MinLength } from "class-validator";
+import {
+    IsDateString,
+    IsEnum,
+    IsNumber,
+    IsOptional,
+    IsString,
+    IsUUID,
+    Matches,
+    MaxLength,
+    Min,
+    MinLength,
+} from "class-validator";
 
 export enum PetCareType {
     VACCINE = "VACCINE",
@@ -30,7 +41,10 @@ export class CreatePetCareLogDto {
 
     @IsOptional()
     @Type(() => Number)
-    @IsNumber({ maxDecimalPlaces: 2 }, { message: "Informe um valor numérico com até duas casas decimais." })
+    @IsNumber(
+        { maxDecimalPlaces: 2 },
+        { message: "Informe um valor numérico com até duas casas decimais." }
+    )
     @Min(0, { message: "O valor não pode ser negativo." })
     cost?: number | null;
 

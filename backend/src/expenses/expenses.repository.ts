@@ -10,7 +10,11 @@ export class ExpensesRepository {
 
     findAvailableHomes(userId: string) {
         return this.prisma.casa.findMany({
-            where: { status: "ATIVA", excluido_em: null, participacao: { some: { usuario_id: userId, data_saida: null } } },
+            where: {
+                status: "ATIVA",
+                excluido_em: null,
+                participacao: { some: { usuario_id: userId, data_saida: null } },
+            },
             select: { id: true, nome: true },
             orderBy: { nome: "asc" },
         });
@@ -18,8 +22,20 @@ export class ExpensesRepository {
 
     findHomeForUser(homeId: string, userId: string) {
         return this.prisma.casa.findFirst({
-            where: { id: homeId, status: "ATIVA", excluido_em: null, participacao: { some: { usuario_id: userId, data_saida: null } } },
-            select: { id: true, participacao: { where: { usuario_id: userId, data_saida: null }, select: { id: true }, take: 1 } },
+            where: {
+                id: homeId,
+                status: "ATIVA",
+                excluido_em: null,
+                participacao: { some: { usuario_id: userId, data_saida: null } },
+            },
+            select: {
+                id: true,
+                participacao: {
+                    where: { usuario_id: userId, data_saida: null },
+                    select: { id: true },
+                    take: 1,
+                },
+            },
         });
     }
 
@@ -73,7 +89,7 @@ export class ExpensesRepository {
                         participacao: { usuario_id: userId, data_saida: null },
                     },
                 },
-                },
+            },
             select: {
                 id: true,
                 casa_id: true,
@@ -121,10 +137,27 @@ export class ExpensesRepository {
             where: {
                 id,
                 status: { not: "CANCELADA" },
-                casa: { is: { excluido_em: null, participacao: { some: { usuario_id: userId, data_saida: null } } } },
+                casa: {
+                    is: {
+                        excluido_em: null,
+                        participacao: { some: { usuario_id: userId, data_saida: null } },
+                    },
+                },
                 OR: [
                     { subgrupo_id: null },
-                    { subgrupo: { is: { excluido_em: null, membro_subgrupo: { some: { saiu_em: null, participacao: { usuario_id: userId, data_saida: null } } } } } },
+                    {
+                        subgrupo: {
+                            is: {
+                                excluido_em: null,
+                                membro_subgrupo: {
+                                    some: {
+                                        saiu_em: null,
+                                        participacao: { usuario_id: userId, data_saida: null },
+                                    },
+                                },
+                            },
+                        },
+                    },
                 ],
             },
             select: {
@@ -143,7 +176,7 @@ export class ExpensesRepository {
         data: UpdateExpenseDto,
         casaId: string,
         paidByParticipationId: string | null,
-        paidAt: Date | null,
+        paidAt: Date | null
     ) {
         const paid = data.paymentStatus === ExpensePaymentStatus.PAID;
 
@@ -179,10 +212,27 @@ export class ExpensesRepository {
     findForUser(userId: string, paymentStatus?: "PENDING" | "PAID") {
         return this.prisma.despesa.findMany({
             where: {
-                casa: { is: { excluido_em: null, participacao: { some: { usuario_id: userId, data_saida: null } } } },
+                casa: {
+                    is: {
+                        excluido_em: null,
+                        participacao: { some: { usuario_id: userId, data_saida: null } },
+                    },
+                },
                 OR: [
                     { subgrupo_id: null },
-                    { subgrupo: { is: { excluido_em: null, membro_subgrupo: { some: { saiu_em: null, participacao: { usuario_id: userId, data_saida: null } } } } } },
+                    {
+                        subgrupo: {
+                            is: {
+                                excluido_em: null,
+                                membro_subgrupo: {
+                                    some: {
+                                        saiu_em: null,
+                                        participacao: { usuario_id: userId, data_saida: null },
+                                    },
+                                },
+                            },
+                        },
+                    },
                 ],
                 status: paymentStatus
                     ? paymentStatus === "PAID"

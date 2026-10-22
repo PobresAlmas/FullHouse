@@ -74,7 +74,7 @@ describe("ExpensesService CRUD", () => {
                 dto,
                 "home-id",
                 memberParticipationId,
-                new Date("2026-10-11T12:00:00.000Z"),
+                new Date("2026-10-11T12:00:00.000Z")
             );
         } finally {
             vi.useRealTimers();
@@ -84,14 +84,18 @@ describe("ExpensesService CRUD", () => {
     it("does not update an expense outside the active residence membership", async () => {
         repository.findEditableExpense.mockResolvedValue(null);
 
-        await expect(service.update("expense-id", dto, "user-id")).rejects.toBeInstanceOf(NotFoundException);
+        await expect(service.update("expense-id", dto, "user-id")).rejects.toBeInstanceOf(
+            NotFoundException
+        );
         expect(repository.update).not.toHaveBeenCalled();
     });
 
     it("does not move an expense to a subgroup the user cannot access", async () => {
         repository.findSubgroupForUser.mockResolvedValue(null);
 
-        await expect(service.update("expense-id", dto, "user-id")).rejects.toBeInstanceOf(NotFoundException);
+        await expect(service.update("expense-id", dto, "user-id")).rejects.toBeInstanceOf(
+            NotFoundException
+        );
         expect(repository.update).not.toHaveBeenCalled();
     });
 

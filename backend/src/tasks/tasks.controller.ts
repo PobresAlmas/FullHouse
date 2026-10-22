@@ -9,8 +9,6 @@ import {
     Post,
     Query,
     UseGuards,
-    UsePipes,
-    ValidationPipe,
 } from "@nestjs/common";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth-guard.js";
@@ -21,7 +19,6 @@ import { TasksService } from "./tasks.service.js";
 
 @Controller("residences/:residenceId/tasks")
 @UseGuards(JwtAuthGuard)
-@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class TasksController {
     constructor(private readonly tasksService: TasksService) {}
 

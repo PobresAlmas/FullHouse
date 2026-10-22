@@ -42,7 +42,9 @@ describe("Pets API (e2e)", () => {
         })
             .overrideGuard(JwtAuthGuard)
             .useValue({
-                canActivate: (context: { switchToHttp: () => { getRequest: () => { user?: unknown } } }) => {
+                canActivate: (context: {
+                    switchToHttp: () => { getRequest: () => { user?: unknown } };
+                }) => {
                     context.switchToHttp().getRequest().user = { id: "user-1" };
                     return true;
                 },
@@ -73,7 +75,7 @@ describe("Pets API (e2e)", () => {
         expect(service.create).toHaveBeenCalledWith(
             pet.residenceId,
             { name: "Mel", species: "Cachorro" },
-            "user-1",
+            "user-1"
         );
     });
 
