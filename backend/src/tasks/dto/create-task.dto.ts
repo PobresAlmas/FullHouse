@@ -13,6 +13,7 @@ import {
     MaxLength,
     Min,
     MinLength,
+    Matches,
 } from "class-validator";
 
 export enum TaskPeriodicity {
@@ -21,6 +22,11 @@ export enum TaskPeriodicity {
     QUINZENAL = "QUINZENAL",
     MENSAL = "MENSAL",
     PERSONALIZADA = "PERSONALIZADA",
+}
+
+export enum TaskAssignmentType {
+    FIXA = "FIXA",
+    RODIZIO = "RODIZIO",
 }
 
 export class CreateTaskDto {
@@ -46,6 +52,21 @@ export class CreateTaskDto {
     @IsOptional()
     @IsUUID("4", { message: "Selecione um responsÃ¡vel vÃ¡lido." })
     assigneeId?: string | null;
+
+    @IsOptional()
+    @IsEnum(TaskAssignmentType)
+    assignmentType?: TaskAssignmentType;
+
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(50)
+    @IsUUID("4", { each: true })
+    assigneeIds?: string[];
+
+    @IsOptional()
+    @IsString()
+    @Matches(/^#[0-9A-Fa-f]{6}$/)
+    color?: string | null;
 
     @IsDateString({}, { message: "Informe uma data e horÃ¡rio vÃ¡lidos." })
     dueAt!: string;
