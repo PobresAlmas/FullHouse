@@ -31,8 +31,10 @@ import {
     getTasks,
     updateTask,
 } from "@/features/tasks/api/tasks.api";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import type {
     Task,
+    TaskAssignmentType,
     TaskInput,
     TaskMember,
     TaskPeriodicity,
@@ -44,6 +46,9 @@ type TaskFormState = {
     description: string;
     tags: string;
     assigneeId: string;
+    assignmentType: TaskAssignmentType;
+    assigneeIds: string[];
+    color: string;
     dueAt: string;
     repeats: boolean;
     periodicity: TaskPeriodicity;
@@ -57,6 +62,9 @@ const initialForm: TaskFormState = {
     description: "",
     tags: "",
     assigneeId: "",
+    assignmentType: "FIXA",
+    assigneeIds: [],
+    color: "#4f7f63",
     dueAt: "",
     repeats: false,
     periodicity: "SEMANAL",
@@ -80,7 +88,6 @@ const tagColors = [
 ];
 const inputClass =
     "w-full rounded-lg border border-[#d3cbd7] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#4f7f63] focus:ring-2 focus:ring-[#4f7f63]/15";
-const personalTasksStorageKey = "fullhouse:personal-tasks";
 
 function getErrorMessage(error: unknown) {
     if (typeof error === "object" && error !== null && "response" in error) {
@@ -118,6 +125,9 @@ function taskToForm(task: Task): TaskFormState {
         description: task.description ?? "",
         tags: task.tags.join(", "),
         assigneeId: task.assignee?.id ?? "",
+        assignmentType: task.assignmentType ?? "FIXA",
+        assigneeIds: task.rotationMemberIds ?? [],
+        color: task.color ?? "#4f7f63",
         dueAt: toDateTimeLocal(task.dueAt),
         repeats: task.repeats,
         periodicity: task.periodicity,
@@ -142,6 +152,9 @@ function toTaskInput(form: TaskFormState): TaskInput {
             .map((tag) => tag.trim())
             .filter(Boolean),
         assigneeId: form.assigneeId || null,
+        assignmentType: form.assignmentType,
+        assigneeIds: form.assignmentType === "RODIZIO" ? form.assigneeIds : [],
+        color: form.color,
         dueAt: new Date(form.dueAt).toISOString(),
         repeats: form.repeats,
         ...(form.repeats ? { periodicity: form.periodicity } : {}),
@@ -149,9 +162,9 @@ function toTaskInput(form: TaskFormState): TaskInput {
     };
 }
 
-function readPersonalTasks(): Task[] {
+function readPersonalTasks(userId: string): Task[] {
     try {
-        const stored = window.localStorage.getItem(personalTasksStorageKey);
+        const stored = window.localStorage.getItem(`fullhouse:personal-tasks:${userId}`);
         const parsed: unknown = stored ? JSON.parse(stored) : [];
         return Array.isArray(parsed) ? (parsed as Task[]) : [];
     } catch {
@@ -159,9 +172,9 @@ function readPersonalTasks(): Task[] {
     }
 }
 
-function savePersonalTasks(tasks: Task[]) {
+function savePersonalTasks(userId: string, tasks: Task[]) {
     try {
-        window.localStorage.setItem(personalTasksStorageKey, JSON.stringify(tasks));
+        window.localStorage.setItem(`fullhouse:personal-tasks:${userId}`, JSON.stringify(tasks));
     } catch {
         /* A tarefa continua disponível na tela enquanto esta sessão estiver aberta. */
     }
@@ -183,6 +196,9 @@ function toPersonalTask(input: TaskInput, existing?: Task): Task {
         title: input.title,
         description: input.description ?? null,
         tags: input.tags ?? [],
+        color: input.color ?? null,
+        assignmentType: input.assignmentType ?? "FIXA",
+        rotationMemberIds: input.assigneeIds ?? [],
         residenceId: null,
         assignee: null,
         dueAt: input.dueAt,
@@ -195,6 +211,8 @@ function toPersonalTask(input: TaskInput, existing?: Task): Task {
 }
 
 export default function TasksPage() {
+    const { user } = useAuth();
+    const userId = user?.id ?? "anonymous";
     const [residences, setResidences] = useState<TaskResidence[]>([]);
     const [residenceId, setResidenceId] = useState("");
     const [members, setMembers] = useState<TaskMember[]>([]);
@@ -203,6 +221,7 @@ export default function TasksPage() {
     const [saving, setSaving] = useState(false);
     const [search, setSearch] = useState("");
     const [activeTab, setActiveTab] = useState<TaskTab>("all");
+    const [scope, setScope] = useState<"personal" | "home">("personal");
     const [activeTag, setActiveTag] = useState("");
     const [selectedDate, setSelectedDate] = useState("");
     const [month, setMonth] = useState(
@@ -219,22 +238,26 @@ export default function TasksPage() {
     const houseName = residence?.name ?? "Minha casa";
     const myMemberId = residence?.membership?.id ?? "";
 
-    const loadResidenceData = useCallback(async (id: string) => {
-        const [nextMembers, nextTasks] = await Promise.all([getTaskMembers(id), getTasks(id)]);
-        const localTasks = readPersonalTasks();
-        setMembers(nextMembers);
-        setTasks([...nextTasks, ...localTasks]);
-    }, []);
+    const loadResidenceData = useCallback(
+        async (id: string) => {
+            const [nextMembers, nextTasks] = await Promise.all([getTaskMembers(id), getTasks(id)]);
+            const localTasks = readPersonalTasks(userId);
+            setMembers(nextMembers);
+            setTasks([...nextTasks, ...localTasks]);
+        },
+        [userId]
+    );
 
     useEffect(() => {
         let active = true;
-        const localTasks = readPersonalTasks();
+        const localTasks = readPersonalTasks(userId);
         getTaskResidences()
             .then(async (available) => {
                 if (!active) return;
                 setResidences(available);
                 const id = available[0]?.id ?? "";
                 setResidenceId(id);
+                setScope(id ? "home" : "personal");
                 if (id) {
                     const [nextMembers, nextTasks] = await Promise.all([
                         getTaskMembers(id),
@@ -270,7 +293,7 @@ export default function TasksPage() {
         return () => {
             active = false;
         };
-    }, []);
+    }, [userId]);
 
     useEffect(() => {
         if (!showForm) return;
@@ -309,6 +332,8 @@ export default function TasksPage() {
         const normalized = search.trim().toLocaleLowerCase("pt-BR");
         return tasks
             .filter((task) => {
+                if (scope === "personal" && !isPersonalTask(task)) return false;
+                if (scope === "home" && isPersonalTask(task)) return false;
                 if (
                     activeTab === "mine" &&
                     !isPersonalTask(task) &&
@@ -334,10 +359,11 @@ export default function TasksPage() {
                 return true;
             })
             .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
-    }, [activeTab, activeTag, myMemberId, search, selectedDate, tasks]);
+    }, [activeTab, activeTag, myMemberId, scope, search, selectedDate, tasks]);
 
     async function changeResidence(id: string) {
         setResidenceId(id);
+        setScope("home");
         setError("");
         setNotice("");
         setLoading(true);
@@ -374,11 +400,11 @@ export default function TasksPage() {
             const data = toTaskInput(form);
             if (!residenceId || (editingTask && isPersonalTask(editingTask))) {
                 const savedTask = toPersonalTask(data, editingTask ?? undefined);
-                const localTasks = readPersonalTasks();
+                const localTasks = readPersonalTasks(userId);
                 const nextLocalTasks = editingTask
                     ? localTasks.map((task) => (task.id === savedTask.id ? savedTask : task))
                     : [...localTasks, savedTask];
-                savePersonalTasks(nextLocalTasks);
+                savePersonalTasks(userId, nextLocalTasks);
                 setTasks((items) =>
                     editingTask
                         ? items.map((task) => (task.id === savedTask.id ? savedTask : task))
@@ -421,10 +447,10 @@ export default function TasksPage() {
                     status: "CONCLUIDA",
                     completedAt: new Date().toISOString(),
                 };
-                const nextLocalTasks = readPersonalTasks().map((item) =>
+                const nextLocalTasks = readPersonalTasks(userId).map((item) =>
                     item.id === task.id ? completed : item
                 );
-                savePersonalTasks(nextLocalTasks);
+                savePersonalTasks(userId, nextLocalTasks);
                 setTasks((items) =>
                     items.map((item) => (item.id === completed.id ? completed : item))
                 );
@@ -444,8 +470,10 @@ export default function TasksPage() {
         try {
             const task = tasks.find((item) => item.id === taskId);
             if (task && isPersonalTask(task)) {
-                const nextLocalTasks = readPersonalTasks().filter((item) => item.id !== taskId);
-                savePersonalTasks(nextLocalTasks);
+                const nextLocalTasks = readPersonalTasks(userId).filter(
+                    (item) => item.id !== taskId
+                );
+                savePersonalTasks(userId, nextLocalTasks);
                 setTasks((items) => items.filter((item) => item.id !== taskId));
                 setConfirmDeleteId("");
                 setNotice("Tarefa removida.");
@@ -508,12 +536,14 @@ export default function TasksPage() {
                         className="flex items-center gap-1 rounded-xl bg-[#e8e5e9] p-0.5 text-xs"
                         aria-label="Escopo da casa"
                     >
-                        <span
-                            aria-current={!residenceId ? "true" : undefined}
-                            className={`rounded-lg px-4 py-2 ${residenceId ? "text-[#77717c]" : "bg-[#4e812f] font-medium text-white"}`}
+                        <button
+                            type="button"
+                            aria-pressed={scope === "personal"}
+                            onClick={() => setScope("personal")}
+                            className={`rounded-lg px-4 py-2 ${scope === "personal" ? "bg-[#4e812f] font-medium text-white" : "text-[#77717c]"}`}
                         >
                             Pessoal
-                        </span>
+                        </button>
                         {residences.length > 1 ? (
                             <label className="sr-only" htmlFor="task-residence">
                                 Selecionar casa
@@ -537,22 +567,18 @@ export default function TasksPage() {
                                 ))}
                             </select>
                         ) : (
-                            <span
-                                aria-current={residenceId ? "true" : undefined}
-                                className={`max-w-[180px] truncate rounded-lg px-4 py-2 ${residenceId ? "bg-[#4e812f] font-medium text-white" : "text-[#a19ba5]"}`}
+                            <button
+                                type="button"
+                                aria-pressed={scope === "home"}
+                                disabled={!residenceId}
+                                onClick={() => setScope("home")}
+                                className={`max-w-[180px] truncate rounded-lg px-4 py-2 ${scope === "home" ? "bg-[#4e812f] font-medium text-white" : "text-[#a19ba5]"}`}
                             >
                                 {residenceId ? houseName : "Casa"}
-                            </span>
+                            </button>
                         )}
                     </div>
                     <div className="flex items-center gap-3 text-[#514c56]">
-                        <button
-                            type="button"
-                            aria-label="Notificações"
-                            className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
-                        >
-                            <Bell size={19} />
-                        </button>
                         <button
                             type="button"
                             aria-label="Configurações"
@@ -700,7 +726,11 @@ export default function TasksPage() {
                         <aside className="grid content-start gap-3">
                             <CalendarWidget
                                 month={month}
-                                tasks={tasks}
+                                tasks={tasks.filter((task) =>
+                                    scope === "personal"
+                                        ? isPersonalTask(task)
+                                        : !isPersonalTask(task)
+                                )}
                                 selectedDate={selectedDate}
                                 onMonthChange={setMonth}
                                 onDateChange={setSelectedDate}
@@ -948,7 +978,8 @@ function TaskRow({
     const completed = task.status === "CONCLUIDA";
     return (
         <article
-            className={`flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-[#d7ceda] px-3 py-2.5 ${completed ? "bg-[#eeebef]" : "bg-white"}`}
+            style={{ borderLeftColor: task.color ?? undefined }}
+            className={`flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-l-4 border-[#d7ceda] px-3 py-2.5 ${completed ? "bg-[#eeebef]" : "bg-white"}`}
         >
             <input
                 aria-label={`Concluir ${task.title}`}
@@ -1062,14 +1093,23 @@ function CalendarWidget({
     onDateChange: (date: string) => void;
     myMemberId: string;
 }) {
+    const [view, setView] = useState<"day" | "week" | "month">("month");
+    const anchor = selectedDate ? new Date(`${selectedDate}T12:00:00`) : new Date(month);
     const firstDay = new Date(month.getFullYear(), month.getMonth(), 1);
-    const startOffset = firstDay.getDay();
-    const gridStart = new Date(month.getFullYear(), month.getMonth(), 1 - startOffset);
-    const days = Array.from({ length: 42 }, (_, index) => {
+    const gridStart = new Date(month.getFullYear(), month.getMonth(), 1 - firstDay.getDay());
+    const monthDays = Array.from({ length: 42 }, (_, index) => {
         const day = new Date(gridStart);
         day.setDate(gridStart.getDate() + index);
         return day;
     });
+    const weekStart = new Date(anchor);
+    weekStart.setDate(anchor.getDate() - anchor.getDay());
+    const weekDays = Array.from({ length: 7 }, (_, index) => {
+        const day = new Date(weekStart);
+        day.setDate(weekStart.getDate() + index);
+        return day;
+    });
+    const days = view === "month" ? monthDays : view === "week" ? weekDays : [anchor];
     const taskMap = new Map<string, Task[]>();
     tasks.forEach((task) => {
         const key = taskDateKey(task);
@@ -1078,76 +1118,142 @@ function CalendarWidget({
     const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(
         month
     );
+    const detailKey = selectedDate || localDateKey(anchor);
+    const dayTasks = taskMap.get(detailKey) ?? [];
+    const move = (direction: number) => {
+        if (view === "month") {
+            onMonthChange(new Date(month.getFullYear(), month.getMonth() + direction, 1));
+            return;
+        }
+        const date = new Date(anchor);
+        date.setDate(date.getDate() + direction * (view === "week" ? 7 : 1));
+        const key = localDateKey(date);
+        onDateChange(key);
+        onMonthChange(new Date(date.getFullYear(), date.getMonth(), 1));
+    };
     return (
         <section className="rounded-xl border border-[#d6cdd9] bg-[#fffaff] p-4">
             <div className="mb-3 flex items-center justify-between">
                 <button
                     type="button"
-                    aria-label="Mês anterior"
-                    onClick={() =>
-                        onMonthChange(new Date(month.getFullYear(), month.getMonth() - 1, 1))
-                    }
+                    aria-label="Período anterior"
+                    onClick={() => move(-1)}
                     className="grid size-7 place-items-center rounded-lg border border-[#e1dbe4] text-[#4e812f]"
                 >
                     <ChevronLeft size={16} />
                 </button>
-                <h2 className="text-xs font-semibold capitalize">{monthLabel}</h2>
+                <h2 className="text-xs font-semibold capitalize">
+                    {view === "month"
+                        ? monthLabel
+                        : new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(anchor)}
+                </h2>
                 <button
                     type="button"
-                    aria-label="Próximo mês"
-                    onClick={() =>
-                        onMonthChange(new Date(month.getFullYear(), month.getMonth() + 1, 1))
-                    }
+                    aria-label="Próximo período"
+                    onClick={() => move(1)}
                     className="grid size-7 place-items-center rounded-lg border border-[#e1dbe4] text-[#4e812f]"
                 >
                     <ChevronRight size={16} />
                 </button>
             </div>
-            <div className="grid grid-cols-7 text-center text-[9px] text-[#77717c]">
-                {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
-                    <span key={day} className="py-1">
-                        {day}
-                    </span>
+            <div className="mb-3 flex justify-center gap-1" aria-label="Visualização do calendário">
+                {(
+                    [
+                        ["day", "Dia"],
+                        ["week", "Semana"],
+                        ["month", "Mês"],
+                    ] as const
+                ).map(([key, label]) => (
+                    <button
+                        key={key}
+                        type="button"
+                        onClick={() => setView(key)}
+                        aria-pressed={view === key}
+                        className={`rounded px-2.5 py-1 text-[10px] ${view === key ? "bg-[#4e812f] text-white" : "border border-[#e1dbe4]"}`}
+                    >
+                        {label}
+                    </button>
                 ))}
             </div>
-            <div className="grid grid-cols-7 gap-y-1">
+            {view !== "day" && (
+                <div className="grid grid-cols-7 text-center text-[9px] text-[#77717c]">
+                    {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day) => (
+                        <span key={day} className="py-1">
+                            {day}
+                        </span>
+                    ))}
+                </div>
+            )}
+            <div className={`grid ${view === "day" ? "grid-cols-1" : "grid-cols-7"} gap-1`}>
                 {days.map((day) => {
                     const key = localDateKey(day);
-                    const dayTasks = taskMap.get(key) ?? [];
-                    const inMonth = day.getMonth() === month.getMonth();
-                    const overdue = dayTasks.some(
+                    const dayTaskList = taskMap.get(key) ?? [];
+                    const isCurrentMonth = day.getMonth() === month.getMonth();
+                    const overdue = dayTaskList.some(
                         (task) =>
                             task.status === "ATRASADA" ||
                             (taskDateKey(task) < localDateKey(new Date()) &&
                                 task.status !== "CONCLUIDA")
                     );
-                    const mine = dayTasks.some((task) => task.assignee?.id === myMemberId);
+                    const mine = dayTaskList.some((task) => task.assignee?.id === myMemberId);
                     return (
                         <button
                             key={key}
                             type="button"
-                            onClick={() => onDateChange(selectedDate === key ? "" : key)}
-                            aria-label={`${day.getDate()} de ${monthLabel}${dayTasks.length ? `, ${dayTasks.length} tarefas` : ""}`}
-                            className={`relative mx-auto grid size-8 place-items-center rounded-lg text-[10px] ${!inMonth ? "text-[#b8b2bc]" : "text-[#302a32]"} ${selectedDate === key ? "bg-[#4e812f] font-bold text-white" : key === localDateKey(new Date()) ? "border border-[#4e812f]" : "hover:bg-[#f0ebf2]"}`}
+                            onClick={() => onDateChange(key)}
+                            aria-label={`${new Intl.DateTimeFormat("pt-BR", { dateStyle: "full" }).format(day)}; ${dayTaskList.length} tarefas`}
+                            className={`relative ${view === "month" ? "mx-auto grid size-8 place-items-center" : "min-h-12 p-1"} rounded-lg text-[10px] ${!isCurrentMonth && view === "month" ? "text-[#b8b2bc]" : "text-[#302a32]"} ${selectedDate === key ? "bg-[#4e812f] font-bold text-white" : key === localDateKey(new Date()) ? "border border-[#4e812f]" : "hover:bg-[#f0ebf2]"}`}
                         >
-                            {day.getDate()}
-                            {dayTasks.length > 0 && (
-                                <span
-                                    className={`absolute bottom-1 size-1 rounded-full ${overdue ? "bg-red-500" : mine ? "bg-[#4e812f]" : "bg-blue-500"}`}
-                                />
+                            {view === "month" ? (
+                                day.getDate()
+                            ) : (
+                                <span className="block">
+                                    {new Intl.DateTimeFormat("pt-BR", {
+                                        weekday: "short",
+                                        day: "numeric",
+                                    }).format(day)}
+                                    <small className="block">{dayTaskList.length} tarefas</small>
+                                </span>
+                            )}
+                            {view === "month" && dayTaskList.length > 0 && (
+                                <span className="absolute bottom-1 flex gap-0.5">
+                                    <i
+                                        className={`size-1 rounded-full ${overdue ? "bg-red-500" : mine ? "bg-[#4e812f]" : "bg-blue-500"}`}
+                                    />
+                                </span>
                             )}
                         </button>
                     );
                 })}
             </div>
-            <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[9px] text-[#625c66]">
+            <div className="mt-3 border-t border-[#e9e2eb] pt-3">
+                <h3 className="mb-2 text-[10px] font-semibold">
+                    Tarefas ·{" "}
+                    {new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(
+                        new Date(`${detailKey}T12:00:00`)
+                    )}
+                </h3>
+                {dayTasks.length === 0 ? (
+                    <p className="text-[10px] text-[#77717c]">Nenhuma tarefa para este dia.</p>
+                ) : (
+                    <ul className="grid gap-1.5 text-[10px]">
+                        {dayTasks.map((task) => (
+                            <li key={task.id} className="flex items-center gap-2">
+                                <i
+                                    className="size-2 rounded-full"
+                                    style={{ backgroundColor: task.color ?? "#4e812f" }}
+                                />
+                                Tarefa: {task.title}
+                                {task.assignee ? ` · ${task.assignee.name}` : ""}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+            <div className="mt-3 flex flex-wrap justify-center gap-3 text-[9px] text-[#625c66]">
                 <span className="inline-flex items-center gap-1">
                     <i className="size-1.5 rounded-full bg-[#4e812f]" />
-                    Minhas tarefas
-                </span>
-                <span className="inline-flex items-center gap-1">
-                    <i className="size-1.5 rounded-full bg-blue-500" />
-                    Outros moradores
+                    Tarefas
                 </span>
                 <span className="inline-flex items-center gap-1">
                     <i className="size-1.5 rounded-full bg-red-500" />
@@ -1314,21 +1420,76 @@ function TaskModal({
                             className={inputClass}
                         />
                     </label>
-                    <label className="grid gap-1.5 text-[11px] font-medium">
-                        Responsável
-                        <select
-                            value={form.assigneeId}
-                            onChange={(event) => onChange("assigneeId", event.target.value)}
-                            className={inputClass}
-                        >
-                            <option value="">Sem responsável</option>
-                            {members.map((member) => (
-                                <option key={member.id} value={member.id}>
-                                    {member.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                    {hasResidence && (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <label className="grid gap-1.5 text-[11px] font-medium">
+                                Atribuição
+                                <select
+                                    value={form.assignmentType}
+                                    onChange={(event) =>
+                                        onChange(
+                                            "assignmentType",
+                                            event.target.value as TaskAssignmentType
+                                        )
+                                    }
+                                    className={inputClass}
+                                >
+                                    <option value="FIXA">Responsável fixo</option>
+                                    <option value="RODIZIO">Rodízio entre moradores</option>
+                                </select>
+                            </label>
+                            <label className="grid gap-1.5 text-[11px] font-medium">
+                                Cor da tarefa
+                                <input
+                                    type="color"
+                                    value={form.color}
+                                    onChange={(event) => onChange("color", event.target.value)}
+                                    className="h-10 w-full rounded-lg border border-[#d3cbd7] bg-white p-1"
+                                />
+                            </label>
+                        </div>
+                    )}
+                    {form.assignmentType === "FIXA" ? (
+                        <label className="grid gap-1.5 text-[11px] font-medium">
+                            Responsável
+                            <select
+                                value={form.assigneeId}
+                                onChange={(event) => onChange("assigneeId", event.target.value)}
+                                className={inputClass}
+                            >
+                                <option value="">Sem responsável</option>
+                                {members.map((member) => (
+                                    <option key={member.id} value={member.id}>
+                                        {member.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    ) : (
+                        <label className="grid gap-1.5 text-[11px] font-medium">
+                            Ordem do rodízio (selecione ao menos dois moradores)
+                            <select
+                                multiple
+                                value={form.assigneeIds}
+                                onChange={(event) =>
+                                    onChange(
+                                        "assigneeIds",
+                                        Array.from(
+                                            event.currentTarget.selectedOptions,
+                                            (option) => option.value
+                                        )
+                                    )
+                                }
+                                className={`${inputClass} min-h-24`}
+                            >
+                                {members.map((member) => (
+                                    <option key={member.id} value={member.id}>
+                                        {member.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
                     <div className="grid gap-3 sm:grid-cols-2">
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Data e horário

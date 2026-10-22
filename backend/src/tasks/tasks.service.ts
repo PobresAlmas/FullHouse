@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { CreateTaskDto, TaskPeriodicity } from "./dto/create-task.dto.js";
+import { CreateTaskDto, TaskAssignmentType, TaskPeriodicity } from "./dto/create-task.dto.js";
 import { TaskListQueryDto } from "./dto/task-list-query.dto.js";
 import { UpdateTaskDto } from "./dto/update-task.dto.js";
 import { TasksRepository } from "./tasks.repository.js";
@@ -36,7 +36,14 @@ export class TasksService {
         if (repeats && (!data.periodicity || data.periodicity === TaskPeriodicity.PERSONALIZADA)) {
             throw new BadRequestException("Selecione uma frequÃªncia para a repetiÃ§Ã£o.");
         }
-        const assignee = data.assigneeId
+        const rotationIds = data.assigneeIds ?? [];
+        if (data.assignmentType === TaskAssignmentType.RODIZIO && rotationIds.length < 2) {
+            throw new BadRequestException("Selecione pelo menos dois moradores para o rodízio.");
+        }
+        const validatedRotation = await Promise.all(rotationIds.map((memberId) => this.requireActiveMember(residenceId, memberId)));
+        const assignee = data.assignmentType === TaskAssignmentType.RODIZIO
+            ? (validatedRotation[0] ?? null)
+            : data.assigneeId
             ? await this.requireActiveMember(residenceId, data.assigneeId)
             : null;
         const taskId = await this.repository.create(
@@ -73,6 +80,15 @@ export class TasksService {
                 : data.assigneeId === null
                   ? null
                   : await this.requireActiveMember(residenceId, data.assigneeId);
+        const rotationIds = data.assigneeIds;
+        const assignmentType = data.assignmentType ?? existing.definicao_tarefa.tipo_atribuicao;
+        if (assignmentType === TaskAssignmentType.RODIZIO) {
+            const ids = rotationIds ?? existing.definicao_tarefa.fila_rodizio.map((entry) => entry.participacao_id);
+            if (ids.length < 2) {
+                throw new BadRequestException("Selecione pelo menos dois moradores para o rodízio.");
+            }
+            await Promise.all(ids.map((memberId) => this.requireActiveMember(residenceId, memberId)));
+        }
         const previousReminderMinutes = existing.lembrete[0]
             ? Math.max(
                   0,
@@ -107,6 +123,11 @@ export class TasksService {
         }
         if (task.status === "CANCELADA") {
             throw new BadRequestException("NÃ£o Ã© possÃ­vel concluir uma tarefa cancelada.");
+        }
+        const member = residence.participacao[0];
+        const isManager = member.papel === "ADMINISTRADOR" || member.papel === "LIDER";
+        if (!isManager && task.responsavel_participacao_id !== member.id) {
+            throw new BadRequestException("Somente o responsÃ¡vel ou um administrador pode concluir esta tarefa.");
         }
         await this.repository.complete(task, residence.participacao[0].id, userId);
         return this.findOne(residenceId, taskId, userId);
@@ -143,6 +164,9 @@ export class TasksService {
 
     private mapTask(task: Awaited<ReturnType<TasksRepository["findTask"]>> & {}) {
         const dueAt = task.prazo_limite ?? task.data_prevista;
+        const isOverdue =
+            (task.status === "PENDENTE" || task.status === "EM_ANDAMENTO") &&
+            dueAt.getTime() < Date.now();
         const assignee =
             task.participacao_instancia_tarefa_responsavel_participacao_idToparticipacao;
         const recurrence = task.definicao_tarefa.regra_recorrencia as { repeats?: boolean } | null;
@@ -154,6 +178,9 @@ export class TasksService {
             title: task.definicao_tarefa.titulo,
             description: task.definicao_tarefa.descricao,
             tags: task.definicao_tarefa.tags,
+            color: task.definicao_tarefa.cor,
+            assignmentType: task.definicao_tarefa.tipo_atribuicao,
+            rotationMemberIds: task.definicao_tarefa.fila_rodizio?.map((entry) => entry.participacao_id) ?? [],
             residenceId: task.definicao_tarefa.casa_id,
             assignee: assignee
                 ? {
@@ -165,7 +192,7 @@ export class TasksService {
             periodicity: task.definicao_tarefa.periodicidade,
             repeats: recurrence?.repeats ?? false,
             reminderAt: reminder?.lembrar_em.toISOString() ?? null,
-            status: task.status,
+            status: isOverdue ? "ATRASADA" : task.status,
             completedAt: task.concluida_em?.toISOString() ?? null,
         };
     }

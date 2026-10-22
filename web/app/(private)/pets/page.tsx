@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
     Bell,
     CalendarDays,
@@ -987,9 +988,12 @@ function SidebarLink({
 
 function PetAvatar({ pet, large = false }: { pet: Pet; large?: boolean }) {
     return pet.photoUrl ? (
-        <img
+        <Image
             src={pet.photoUrl}
             alt=""
+            width={large ? 56 : 40}
+            height={large ? 56 : 40}
+            unoptimized
             className={
                 (large ? "size-14" : "size-10") +
                 " shrink-0 rounded-full border border-[#ded7e1] object-cover"

@@ -13,8 +13,9 @@ import {
     MaxLength,
     Min,
     MinLength,
+    Matches,
 } from "class-validator";
-import { TaskPeriodicity } from "./create-task.dto.js";
+import { TaskAssignmentType, TaskPeriodicity } from "./create-task.dto.js";
 
 export class UpdateTaskDto {
     @IsOptional()
@@ -40,6 +41,21 @@ export class UpdateTaskDto {
     @IsOptional()
     @IsUUID("4")
     assigneeId?: string | null;
+
+    @IsOptional()
+    @IsEnum(TaskAssignmentType)
+    assignmentType?: TaskAssignmentType;
+
+    @IsOptional()
+    @IsArray()
+    @ArrayMaxSize(50)
+    @IsUUID("4", { each: true })
+    assigneeIds?: string[];
+
+    @IsOptional()
+    @IsString()
+    @Matches(/^#[0-9A-Fa-f]{6}$/)
+    color?: string | null;
 
     @IsOptional()
     @IsDateString()
