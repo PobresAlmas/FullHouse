@@ -18,6 +18,7 @@ const payload = {
     description: "Conta de energia",
     amount: "119.87",
     date: "2026-10-11",
+    homeId: "home-id",
     subgroupId: null,
     paymentStatus: "PENDING",
 };

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ExpensesRepository } from "./expenses.repository.js";
 import { CreateExpenseDto, ExpensePaymentStatus } from "./dto/create-expense.dto.js";
 import { UpdateExpenseDto } from "./dto/update-expense.dto.js";
@@ -36,19 +36,20 @@ export class ExpensesService {
             throw new NotFoundException("O subgrupo selecionado não está disponível.");
         }
 
-        const homeId =
-            data.homeId ??
-            subgroup?.casa_id ??
-            (await this.repository.findAvailableHomes(userId))[0]?.id;
-        const home = homeId ? await this.repository.findHomeForUser(homeId, userId) : null;
+        if (subgroup && data.homeId && data.homeId !== subgroup.casa_id) {
+            throw new NotFoundException("O subgrupo selecionado não está disponível.");
+        }
+
+        const homeId = subgroup?.casa_id ?? data.homeId;
+        if (!homeId) {
+            throw new BadRequestException("Selecione uma casa para registrar a despesa.");
+        }
+
+        const home = await this.repository.findHomeForUser(homeId, userId);
         if (!home)
             throw new NotFoundException(
                 "Não foi encontrada uma casa ativa para registrar a despesa."
             );
-
-        if (subgroup && subgroup.casa_id !== home.id) {
-            throw new NotFoundException("O subgrupo selecionado não está disponível.");
-        }
 
         const expense = await this.repository.create(
             data,

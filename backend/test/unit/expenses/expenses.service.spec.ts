@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ExpensesService } from "../../../src/expenses/expenses.service.js";
 
 describe("ExpensesService CRUD", () => {
@@ -106,21 +106,47 @@ describe("ExpensesService CRUD", () => {
         expect(repository.create).not.toHaveBeenCalled();
     });
 
-    it("creates an expense without a subgroup or a client-supplied residence", async () => {
+    it("creates an expense in the explicitly selected residence without a subgroup", async () => {
         const body = {
             description: "Conta de energia",
             amount: "119.87",
             date: "2026-10-11",
             subgroupId: null,
+            homeId: "home-id",
             paymentStatus: "PENDING" as const,
         };
 
         await expect(service.create(body, "user-id")).resolves.toMatchObject({
             id: "expense-id",
         });
-        expect(repository.findAvailableHomes).toHaveBeenCalledWith("user-id");
+        expect(repository.findHomeForUser).toHaveBeenCalledWith("home-id", "user-id");
         expect(repository.create).toHaveBeenCalledWith(body, "home-id", memberParticipationId);
         expect(repository.findSubgroupForUser).not.toHaveBeenCalled();
+    });
+
+    it("requires a selected residence when creating an expense without a subgroup", async () => {
+        const body = { ...dto, subgroupId: null };
+
+        await expect(service.create(body, "user-id")).rejects.toBeInstanceOf(BadRequestException);
+        expect(repository.findAvailableHomes).not.toHaveBeenCalled();
+        expect(repository.findHomeForUser).not.toHaveBeenCalled();
+        expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it("uses the subgroup's residence when creating an expense", async () => {
+        await expect(service.create(dto, "user-id")).resolves.toMatchObject({
+            id: "expense-id",
+        });
+        expect(repository.findHomeForUser).toHaveBeenCalledWith("home-id", "user-id");
+        expect(repository.create).toHaveBeenCalledWith(dto, "home-id", memberParticipationId);
+    });
+
+    it("uses the subgroup residence and rejects a conflicting selected residence", async () => {
+        const body = { ...dto, homeId: "another-home-id" };
+
+        await expect(service.create(body, "user-id")).rejects.toBeInstanceOf(NotFoundException);
+        expect(repository.findHomeForUser).not.toHaveBeenCalled();
+        expect(repository.create).not.toHaveBeenCalled();
     });
 
     it("passes an optional status filter to the repository", async () => {

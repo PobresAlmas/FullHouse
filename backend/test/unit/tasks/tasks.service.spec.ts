@@ -53,12 +53,10 @@ describe("TasksService business rules", () => {
 
     beforeEach(() => {
         repository = {
-            findResidenceMembership: vi
-                .fn()
-                .mockResolvedValue({
-                    id: residenceId,
-                    participacao: [{ id: memberId, papel: "MORADOR" }],
-                }),
+            findResidenceMembership: vi.fn().mockResolvedValue({
+                id: residenceId,
+                participacao: [{ id: memberId, papel: "MORADOR" }],
+            }),
             findMembers: vi.fn().mockResolvedValue([
                 { id: memberId, papel: "MORADOR", usuario: { nome: "Ana Souza", apelido: "Ana" } },
                 { id: "member-2", papel: "LIDER", usuario: { nome: "Bruno Lima", apelido: null } },
