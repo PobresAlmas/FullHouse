@@ -21,11 +21,11 @@ describe("PasswordResetService", () => {
     });
 
     it("creates a six-digit code expiring in fifteen minutes and emails it", async () => {
-        vi.spyOn(Math, "random").mockReturnValue(0.5);
         const before = Date.now();
         await expect(service.create("u1", "a@example.com")).resolves.toBe(reset);
         const [data] = repository.create.mock.calls[0];
-        expect(data).toMatchObject({ usuario_id: "u1", codigo: "550000" });
+        expect(data.codigo).toMatch(/^\d{6}$/);
+        expect(email.sendResetPasswordEmail).toHaveBeenCalledWith("a@example.com", data.codigo);
         expect(data.expira_em.getTime()).toBeGreaterThanOrEqual(before + 15 * 60_000);
         expect(data.expira_em.getTime()).toBeLessThanOrEqual(Date.now() + 15 * 60_000);
         expect(email.sendResetPasswordEmail).toHaveBeenCalledWith("a@example.com", data.codigo);

@@ -89,9 +89,7 @@ export class AuthService {
 
         const passwordHash = await this.passwordService.hash(data.password);
 
-        await this.usersService.updatePassword(user.id, passwordHash);
-
-        await this.passwordResetService.consume(reset.id);
+        await this.passwordResetService.consumeAndUpdatePassword(reset.id, user.id, passwordHash);
 
         return { message: "Senha alterada com sucesso." };
     }

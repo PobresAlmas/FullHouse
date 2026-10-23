@@ -40,12 +40,15 @@ export class TasksService {
         if (data.assignmentType === TaskAssignmentType.RODIZIO && rotationIds.length < 2) {
             throw new BadRequestException("Selecione pelo menos dois moradores para o rodízio.");
         }
-        const validatedRotation = await Promise.all(rotationIds.map((memberId) => this.requireActiveMember(residenceId, memberId)));
-        const assignee = data.assignmentType === TaskAssignmentType.RODIZIO
-            ? (validatedRotation[0] ?? null)
-            : data.assigneeId
-            ? await this.requireActiveMember(residenceId, data.assigneeId)
-            : null;
+        const validatedRotation = await Promise.all(
+            rotationIds.map((memberId) => this.requireActiveMember(residenceId, memberId))
+        );
+        const assignee =
+            data.assignmentType === TaskAssignmentType.RODIZIO
+                ? (validatedRotation[0] ?? null)
+                : data.assigneeId
+                  ? await this.requireActiveMember(residenceId, data.assigneeId)
+                  : null;
         const taskId = await this.repository.create(
             residenceId,
             userId,
@@ -83,11 +86,17 @@ export class TasksService {
         const rotationIds = data.assigneeIds;
         const assignmentType = data.assignmentType ?? existing.definicao_tarefa.tipo_atribuicao;
         if (assignmentType === TaskAssignmentType.RODIZIO) {
-            const ids = rotationIds ?? existing.definicao_tarefa.fila_rodizio.map((entry) => entry.participacao_id);
+            const ids =
+                rotationIds ??
+                existing.definicao_tarefa.fila_rodizio.map((entry) => entry.participacao_id);
             if (ids.length < 2) {
-                throw new BadRequestException("Selecione pelo menos dois moradores para o rodízio.");
+                throw new BadRequestException(
+                    "Selecione pelo menos dois moradores para o rodízio."
+                );
             }
-            await Promise.all(ids.map((memberId) => this.requireActiveMember(residenceId, memberId)));
+            await Promise.all(
+                ids.map((memberId) => this.requireActiveMember(residenceId, memberId))
+            );
         }
         const previousReminderMinutes = existing.lembrete[0]
             ? Math.max(
@@ -127,7 +136,9 @@ export class TasksService {
         const member = residence.participacao[0];
         const isManager = member.papel === "ADMINISTRADOR" || member.papel === "LIDER";
         if (!isManager && task.responsavel_participacao_id !== member.id) {
-            throw new BadRequestException("Somente o responsÃ¡vel ou um administrador pode concluir esta tarefa.");
+            throw new BadRequestException(
+                "Somente o responsÃ¡vel ou um administrador pode concluir esta tarefa."
+            );
         }
         await this.repository.complete(task, residence.participacao[0].id, userId);
         return this.findOne(residenceId, taskId, userId);
@@ -180,7 +191,8 @@ export class TasksService {
             tags: task.definicao_tarefa.tags,
             color: task.definicao_tarefa.cor,
             assignmentType: task.definicao_tarefa.tipo_atribuicao,
-            rotationMemberIds: task.definicao_tarefa.fila_rodizio?.map((entry) => entry.participacao_id) ?? [],
+            rotationMemberIds:
+                task.definicao_tarefa.fila_rodizio?.map((entry) => entry.participacao_id) ?? [],
             residenceId: task.definicao_tarefa.casa_id,
             assignee: assignee
                 ? {

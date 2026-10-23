@@ -200,9 +200,14 @@ export class TasksRepository {
         const title = data.title ?? existing.definicao_tarefa.titulo;
         const assignmentType = data.assignmentType ?? existing.definicao_tarefa.tipo_atribuicao;
         const rotationIds = data.assigneeIds;
-        const nextAssigneeId = assignmentType === TaskAssignmentType.RODIZIO
-            ? (rotationIds?.[0] ?? existing.definicao_tarefa.fila_rodizio?.[0]?.participacao_id ?? null)
-            : (assignee === undefined ? undefined : (assignee?.id ?? null));
+        const nextAssigneeId =
+            assignmentType === TaskAssignmentType.RODIZIO
+                ? (rotationIds?.[0] ??
+                  existing.definicao_tarefa.fila_rodizio?.[0]?.participacao_id ??
+                  null)
+                : assignee === undefined
+                  ? undefined
+                  : (assignee?.id ?? null);
 
         await this.prisma.$transaction(async (transaction) => {
             await transaction.definicao_tarefa.update({
@@ -257,10 +262,13 @@ export class TasksRepository {
                     ...(data.dueAt !== undefined
                         ? { data_prevista: dateOnly(dueAt), prazo_limite: dueAt }
                         : {}),
-                    ...(assignee !== undefined || rotationIds !== undefined || data.assignmentType !== undefined
+                    ...(assignee !== undefined ||
+                    rotationIds !== undefined ||
+                    data.assignmentType !== undefined
                         ? {
                               responsavel_participacao_id: nextAssigneeId,
-                              ordem_rodizio: assignmentType === TaskAssignmentType.RODIZIO ? 0 : null,
+                              ordem_rodizio:
+                                  assignmentType === TaskAssignmentType.RODIZIO ? 0 : null,
                           }
                         : {}),
                 },
@@ -269,7 +277,9 @@ export class TasksRepository {
             if (
                 data.reminderMinutesBefore !== undefined ||
                 data.dueAt !== undefined ||
-                assignee !== undefined || rotationIds !== undefined || data.assignmentType !== undefined
+                assignee !== undefined ||
+                rotationIds !== undefined ||
+                data.assignmentType !== undefined
             ) {
                 await transaction.lembrete.deleteMany({ where: { instancia_tarefa_id: taskId } });
                 if (reminderMinutesBefore !== null && reminderMinutesBefore !== undefined) {
@@ -277,12 +287,14 @@ export class TasksRepository {
                         data: {
                             usuario_id:
                                 (assignmentType === TaskAssignmentType.RODIZIO
-                                    ? (rotationIds?.[0]
-                                          ? await transaction.participacao.findUnique({
-                                                where: { id: rotationIds[0] },
-                                                select: { usuario_id: true },
-                                            }).then((member) => member?.usuario_id)
-                                          : undefined)
+                                    ? rotationIds?.[0]
+                                        ? await transaction.participacao
+                                              .findUnique({
+                                                  where: { id: rotationIds[0] },
+                                                  select: { usuario_id: true },
+                                              })
+                                              .then((member) => member?.usuario_id)
+                                        : undefined
                                     : assignee?.userId) ??
                                 existing
                                     .participacao_instancia_tarefa_responsavel_participacao_idToparticipacao
@@ -335,12 +347,14 @@ export class TasksRepository {
                     nextDueAt.setUTCMonth(nextDueAt.getUTCMonth() + 1);
                 }
 
-                const rotation = task.definicao_tarefa.tipo_atribuicao === TaskAssignmentType.RODIZIO
-                    ? task.definicao_tarefa.fila_rodizio
-                    : [];
+                const rotation =
+                    task.definicao_tarefa.tipo_atribuicao === TaskAssignmentType.RODIZIO
+                        ? task.definicao_tarefa.fila_rodizio
+                        : [];
                 const currentOrder = task.ordem_rodizio ?? 0;
                 const nextOrder = rotation.length ? (currentOrder + 1) % rotation.length : 0;
-                const nextAssigneeId = rotation[nextOrder]?.participacao_id ?? task.responsavel_participacao_id;
+                const nextAssigneeId =
+                    rotation[nextOrder]?.participacao_id ?? task.responsavel_participacao_id;
                 const nextAssignee = nextAssigneeId
                     ? await transaction.participacao.findUnique({
                           where: { id: nextAssigneeId },
@@ -367,7 +381,8 @@ export class TasksRepository {
                                 nextAssignee?.usuario_id ??
                                 task
                                     .participacao_instancia_tarefa_responsavel_participacao_idToparticipacao
-                                    ?.usuario.id ?? currentUserId,
+                                    ?.usuario.id ??
+                                currentUserId,
                             titulo: task.definicao_tarefa.titulo,
                             lembrar_em: new Date(
                                 nextDueAt.getTime() - reminderMinutesBefore * 60_000

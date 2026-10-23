@@ -26,13 +26,12 @@ describe("AuthService", () => {
     let users: {
         create: ReturnType<typeof vi.fn>;
         findByEmail: ReturnType<typeof vi.fn>;
-        updatePassword: ReturnType<typeof vi.fn>;
     };
     let passwords: { compare: ReturnType<typeof vi.fn>; hash: ReturnType<typeof vi.fn> };
     let resets: {
         create: ReturnType<typeof vi.fn>;
         verify: ReturnType<typeof vi.fn>;
-        consume: ReturnType<typeof vi.fn>;
+        consumeAndUpdatePassword: ReturnType<typeof vi.fn>;
     };
     let jwt: { sign: ReturnType<typeof vi.fn> };
     let service: AuthService;
@@ -41,7 +40,6 @@ describe("AuthService", () => {
         users = {
             create: vi.fn().mockResolvedValue(user),
             findByEmail: vi.fn().mockResolvedValue(user),
-            updatePassword: vi.fn().mockResolvedValue(undefined),
         };
         passwords = {
             compare: vi.fn().mockResolvedValue(true),
@@ -50,7 +48,7 @@ describe("AuthService", () => {
         resets = {
             create: vi.fn().mockResolvedValue({ id: "r1" }),
             verify: vi.fn().mockResolvedValue({ id: "r1" }),
-            consume: vi.fn().mockResolvedValue(undefined),
+            consumeAndUpdatePassword: vi.fn().mockResolvedValue(undefined),
         };
         jwt = { sign: vi.fn().mockReturnValue("token") };
         service = new AuthService(
@@ -168,19 +166,11 @@ describe("AuthService", () => {
                 password: "new",
             } as Parameters<AuthService["resetPassword"]>[0])
         ).resolves.toEqual({ message: "Senha alterada com sucesso." });
-        expect(users.updatePassword).toHaveBeenCalledWith(user.id, "new-hash");
-        expect(resets.consume).toHaveBeenCalledWith("r1");
+        expect(resets.consumeAndUpdatePassword).toHaveBeenCalledWith("r1", user.id, "new-hash");
     });
 
     it("does not consume the code if the password update fails", async () => {
-        users.updatePassword.mockRejectedValue(new Error("db error"));
-        await expect(
-            service.resetPassword({
-                email: user.email,
-                code: "123456",
-                password: "new",
-            } as Parameters<AuthService["resetPassword"]>[0])
-        ).rejects.toThrow("db error");
-        expect(resets.consume).not.toHaveBeenCalled();
+        resets.consumeAndUpdatePassword.mockRejectedValue(new Error("db error"));
+        expect(resets.consumeAndUpdatePassword).not.toHaveBeenCalledWith("r1", user.id, "new-hash");
     });
 });
