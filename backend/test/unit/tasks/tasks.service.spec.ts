@@ -15,6 +15,7 @@ function makeTask(overrides: Record<string, unknown> = {}) {
         prazo_limite: dueAt,
         data_prevista: new Date("2099-10-20T00:00:00.000Z"),
         responsavel_participacao_id: memberId,
+        ordem_rodizio: 0,
         status: "PENDENTE",
         concluida_em: null,
         definicao_tarefa: {
@@ -228,7 +229,48 @@ describe("TasksService business rules", () => {
             status: "CONCLUIDA",
             completedAt: completedAt.toISOString(),
         });
-        expect(repository.complete).toHaveBeenCalledWith(makeTask(), memberId, userId);
+        expect(repository.complete).toHaveBeenCalledWith(
+            taskId,
+            memberId,
+            expect.objectContaining({ nextOccurrence: null })
+        );
+    });
+
+    it("plans the next recurring instance and reminder before persisting completion", async () => {
+        const recurringTask = makeTask({
+            definicao_tarefa: {
+                ...makeTask().definicao_tarefa,
+                periodicidade: TaskPeriodicity.MENSAL,
+                tipo_atribuicao: "RODIZIO",
+                regra_recorrencia: { repeats: true },
+                fila_rodizio: [
+                    { participacao_id: memberId, participacao: { usuario_id: userId } },
+                    { participacao_id: "member-2", participacao: { usuario_id: "user-2" } },
+                ],
+            },
+        });
+        repository.findTask
+            .mockResolvedValueOnce(recurringTask)
+            .mockResolvedValueOnce(makeTask({ status: "CONCLUIDA" }));
+
+        await service.complete(residenceId, taskId, userId);
+
+        expect(repository.complete).toHaveBeenCalledWith(
+            taskId,
+            memberId,
+            expect.objectContaining({
+                nextOccurrence: {
+                    dueAt: new Date("2099-11-20T18:00:00.000Z"),
+                    assigneeId: "member-2",
+                    rotationOrder: 1,
+                    reminder: {
+                        userId: "user-2",
+                        title: "Limpar cozinha",
+                        minutesBefore: 30,
+                    },
+                },
+            })
+        );
     });
 
     it.each(["CONCLUIDA", "CANCELADA"])("rejects completion for a %s task", async (status) => {

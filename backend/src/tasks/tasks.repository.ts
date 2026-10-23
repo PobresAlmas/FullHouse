@@ -3,11 +3,16 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { CreateTaskDto, TaskAssignmentType, TaskPeriodicity } from "./dto/create-task.dto.js";
 import { TaskListQueryDto } from "./dto/task-list-query.dto.js";
 import { UpdateTaskDto } from "./dto/update-task.dto.js";
+import type { TaskCompletionPlan } from "./task-completion.js";
 
 const taskInclude = {
     definicao_tarefa: {
         include: {
-            fila_rodizio: { where: { ativo: true }, orderBy: { ordem: "asc" as const } },
+            fila_rodizio: {
+                where: { ativo: true },
+                orderBy: { ordem: "asc" as const },
+                include: { participacao: { select: { usuario_id: true } } },
+            },
             participacao: {
                 select: { id: true, usuario: { select: { id: true, nome: true, apelido: true } } },
             },
@@ -280,83 +285,37 @@ export class TasksRepository {
         });
     }
 
-    complete(
-        task: NonNullable<Awaited<ReturnType<TasksRepository["findTask"]>>>,
-        memberId: string,
-        currentUserId: string
-    ) {
+    complete(taskId: string, memberId: string, plan: TaskCompletionPlan) {
         return this.prisma.$transaction(async (transaction) => {
-            const dueAt = task.prazo_limite ?? task.data_prevista;
-            const reminders = await transaction.lembrete.findMany({
-                where: { instancia_tarefa_id: task.id, enviado: false },
-                orderBy: { lembrar_em: "asc" },
-                take: 1,
-            });
-            await transaction.lembrete.deleteMany({ where: { instancia_tarefa_id: task.id } });
             const completed = await transaction.instancia_tarefa.update({
-                where: { id: task.id },
+                where: { id: taskId },
                 data: {
                     status: "CONCLUIDA",
-                    concluida_em: new Date(),
+                    concluida_em: plan.completedAt,
                     concluida_por_participacao_id: memberId,
                 },
             });
+            await transaction.lembrete.deleteMany({
+                where: { instancia_tarefa_id: taskId },
+            });
 
-            const recurrence = task.definicao_tarefa.regra_recorrencia as {
-                repeats?: boolean;
-            } | null;
-            if (recurrence?.repeats) {
-                const nextDueAt = new Date(dueAt);
-                if (task.definicao_tarefa.periodicidade === "DIARIA") {
-                    nextDueAt.setUTCDate(nextDueAt.getUTCDate() + 1);
-                } else if (task.definicao_tarefa.periodicidade === "SEMANAL") {
-                    nextDueAt.setUTCDate(nextDueAt.getUTCDate() + 7);
-                } else if (task.definicao_tarefa.periodicidade === "QUINZENAL") {
-                    nextDueAt.setUTCDate(nextDueAt.getUTCDate() + 14);
-                } else if (task.definicao_tarefa.periodicidade === "MENSAL") {
-                    nextDueAt.setUTCMonth(nextDueAt.getUTCMonth() + 1);
-                }
-
-                const rotation =
-                    task.definicao_tarefa.tipo_atribuicao === TaskAssignmentType.RODIZIO
-                        ? task.definicao_tarefa.fila_rodizio
-                        : [];
-                const currentOrder = task.ordem_rodizio ?? 0;
-                const nextOrder = rotation.length ? (currentOrder + 1) % rotation.length : 0;
-                const nextAssigneeId =
-                    rotation[nextOrder]?.participacao_id ?? task.responsavel_participacao_id;
-                const nextAssignee = nextAssigneeId
-                    ? await transaction.participacao.findUnique({
-                          where: { id: nextAssigneeId },
-                          select: { usuario_id: true },
-                      })
-                    : null;
+            if (plan.nextOccurrence) {
+                const { dueAt, assigneeId, rotationOrder, reminder } = plan.nextOccurrence;
                 const nextInstance = await transaction.instancia_tarefa.create({
                     data: {
-                        definicao_tarefa_id: task.definicao_tarefa_id,
-                        data_prevista: dateOnly(nextDueAt),
-                        prazo_limite: nextDueAt,
-                        responsavel_participacao_id: nextAssigneeId,
-                        ordem_rodizio: rotation.length ? nextOrder : null,
+                        definicao_tarefa_id: completed.definicao_tarefa_id,
+                        data_prevista: dateOnly(dueAt),
+                        prazo_limite: dueAt,
+                        responsavel_participacao_id: assigneeId,
+                        ordem_rodizio: rotationOrder,
                     },
                 });
-                if (reminders[0]) {
-                    const reminderMinutesBefore = Math.max(
-                        0,
-                        Math.round((dueAt.getTime() - reminders[0].lembrar_em.getTime()) / 60_000)
-                    );
+                if (reminder) {
                     await transaction.lembrete.create({
                         data: {
-                            usuario_id:
-                                nextAssignee?.usuario_id ??
-                                task
-                                    .participacao_instancia_tarefa_responsavel_participacao_idToparticipacao
-                                    ?.usuario.id ??
-                                currentUserId,
-                            titulo: task.definicao_tarefa.titulo,
-                            lembrar_em: new Date(
-                                nextDueAt.getTime() - reminderMinutesBefore * 60_000
-                            ),
+                            usuario_id: reminder.userId,
+                            titulo: reminder.title,
+                            lembrar_em: new Date(dueAt.getTime() - reminder.minutesBefore * 60_000),
                             instancia_tarefa_id: nextInstance.id,
                         },
                     });

@@ -7,6 +7,7 @@ import {
     isResidenceManager,
     ResidenceAccessService,
 } from "../residences/residence-access.service.js";
+import { planTaskCompletion } from "./task-completion.js";
 
 @Injectable()
 export class TasksService {
@@ -151,7 +152,29 @@ export class TasksService {
                 "Somente o responsável, um líder ou um administrador pode concluir esta tarefa."
             );
         }
-        await this.repository.complete(task, membership.memberId, userId);
+        const recurrence = task.definicao_tarefa.regra_recorrencia as {
+            repeats?: boolean;
+        } | null;
+        const plan = planTaskCompletion({
+            completedAt: new Date(),
+            dueAt: task.prazo_limite ?? task.data_prevista,
+            repeats: recurrence?.repeats ?? false,
+            periodicity: task.definicao_tarefa.periodicidade,
+            assignmentType: task.definicao_tarefa.tipo_atribuicao,
+            rotation: task.definicao_tarefa.fila_rodizio.map((entry) => ({
+                memberId: entry.participacao_id,
+                userId: entry.participacao.usuario_id,
+            })),
+            currentRotationOrder: task.ordem_rodizio,
+            currentAssigneeId: task.responsavel_participacao_id,
+            currentAssigneeUserId:
+                task.participacao_instancia_tarefa_responsavel_participacao_idToparticipacao
+                    ?.usuario.id,
+            reminderAt: task.lembrete[0]?.lembrar_em,
+            title: task.definicao_tarefa.titulo,
+            currentUserId: userId,
+        });
+        await this.repository.complete(taskId, membership.memberId, plan);
         return this.findOne(residenceId, taskId, userId);
     }
 
