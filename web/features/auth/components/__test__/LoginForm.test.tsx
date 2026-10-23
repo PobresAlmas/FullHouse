@@ -23,12 +23,12 @@ describe("LoginForm", () => {
         authState.loading = false;
     });
 
-    it("redirects an authenticated user to the pantry", async () => {
+    it("redirects an authenticated user to the home page", async () => {
         authState.user = { id: "user-id", email: "teste@email.com" };
 
         render(<LoginForm />);
 
-        await waitFor(() => expect(replace).toHaveBeenCalledWith("/pantry"));
+        await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
         expect(screen.queryByText("Entrar na sua conta")).not.toBeInTheDocument();
     });
 
@@ -44,7 +44,7 @@ describe("LoginForm", () => {
         authState.loading = false;
         rerender(<LoginForm />);
 
-        await waitFor(() => expect(replace).toHaveBeenCalledWith("/pantry"));
+        await waitFor(() => expect(replace).toHaveBeenCalledWith("/"));
     });
 
     it("renders fields, remember checkbox, and account links", () => {
@@ -59,7 +59,7 @@ describe("LoginForm", () => {
         );
     });
 
-    it("logs in, refreshes the user, and routes to the pantry", async () => {
+    it("logs in, refreshes the user, and routes to the home page", async () => {
         const user = userEvent.setup();
         login.mockResolvedValue({ user: { name: "Teste" } });
         render(<LoginForm />);
@@ -73,7 +73,7 @@ describe("LoginForm", () => {
             })
         );
         expect(refreshUser).toHaveBeenCalledOnce();
-        expect(push).toHaveBeenCalledWith("/pantry");
+        expect(replace).toHaveBeenCalledWith("/");
     });
 
     it("does not submit invalid credentials", async () => {

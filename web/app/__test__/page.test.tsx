@@ -5,6 +5,7 @@ import Home from "../page";
 describe("Home page", () => {
     it("shows the product name", () => {
         render(<Home />);
-        expect(screen.getByRole("heading", { name: "FullHouse" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Bem-vindo ao FullHouse" })).toBeInTheDocument();
+        expect(screen.getByText("Sua tela inicial está pronta.")).toBeInTheDocument();
     });
 });

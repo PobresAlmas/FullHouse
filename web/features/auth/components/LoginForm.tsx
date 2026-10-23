@@ -29,14 +29,14 @@ export default function LoginForm() {
     const { user, loading, refreshUser } = useAuth();
 
     useEffect(() => {
-        if (!loading && user) router.replace("/pantry");
+        if (!loading && user) router.replace("/");
     }, [loading, router, user]);
 
     async function onSubmit(data: LoginFormData) {
         try {
             await login(data);
             await refreshUser();
-            router.push("/pantry");
+            router.replace("/");
         } catch (error: unknown) {
             if (isApiError(error)) setErrorMessage(error.message);
         }
