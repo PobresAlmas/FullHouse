@@ -174,7 +174,7 @@ export default function FinancePage() {
 
     function openCreateModal() {
         if (homes.length === 0) return;
-        setForm(initialForm);
+        setForm({ ...initialForm, homeId: homes[0].id });
         setFormError("");
         setNotice("");
         setModal({ mode: "create" });
@@ -185,6 +185,7 @@ export default function FinancePage() {
             description: expense.description,
             amount: expense.amount,
             date: expense.date?.slice(0, 10) ?? "",
+            homeId: expense.homeId ?? homes[0]?.id,
             subgroupId: expense.subgroup?.id ?? "",
             paymentStatus: expense.paymentStatus === "PAID" ? "PAID" : "PENDING",
         });
@@ -216,10 +217,12 @@ export default function FinancePage() {
 
         setSaving(true);
         try {
+            const selectedSubgroup = subgroups.find((item) => item.id === form.subgroupId);
             const data = {
                 ...form,
                 description: form.description.trim(),
                 amount: form.amount.replace(",", "."),
+                homeId: selectedSubgroup?.homeId ?? form.homeId ?? homes[0]?.id,
                 subgroupId: form.subgroupId || null,
             };
             if (modal?.mode === "edit") {
@@ -487,6 +490,7 @@ export default function FinancePage() {
                     mode={modal.mode}
                     expense={modal.mode === "edit" ? modal.expense : null}
                     form={form}
+                    homes={homes}
                     subgroups={subgroups}
                     saving={saving}
                     error={formError}
@@ -748,6 +752,7 @@ function ExpenseModal({
     mode,
     expense,
     form,
+    homes,
     subgroups,
     saving,
     error,
@@ -759,6 +764,7 @@ function ExpenseModal({
     mode: "create" | "edit";
     expense: Expense | null;
     form: FormState;
+    homes: ExpenseHome[];
     subgroups: ExpenseSubgroup[];
     saving: boolean;
     error: string;
@@ -817,6 +823,35 @@ function ExpenseModal({
                             {error}
                         </div>
                     )}
+                    {homes.length > 1 && (
+                        <label className="grid max-w-[360px] gap-1.5 text-xs font-medium">
+                            Casa
+                            <select
+                                required
+                                value={form.homeId ?? ""}
+                                onChange={(event) => {
+                                    const homeId = event.target.value;
+                                    const selectedSubgroup = subgroups.find(
+                                        (item) => item.id === form.subgroupId
+                                    );
+                                    onChange({
+                                        ...form,
+                                        homeId,
+                                        ...(selectedSubgroup?.homeId !== homeId
+                                            ? { subgroupId: "" }
+                                            : {}),
+                                    });
+                                }}
+                                className="h-10 rounded-md border border-[#cfc6d1] bg-white px-3 text-sm font-normal outline-none focus:border-[#65a34b] focus:ring-2 focus:ring-[#65a34b]/20"
+                            >
+                                {homes.map((home) => (
+                                    <option key={home.id} value={home.id}>
+                                        {home.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
                     <label className="grid gap-1.5 text-xs font-medium">
                         Descrição
                         <input
@@ -853,9 +888,19 @@ function ExpenseModal({
                         Subgrupo / Categoria (opcional)
                         <select
                             value={form.subgroupId ?? ""}
-                            onChange={(event) =>
-                                onChange({ ...form, subgroupId: event.target.value || null })
-                            }
+                            onChange={(event) => {
+                                const subgroupId = event.target.value;
+                                const selectedSubgroup = subgroups.find(
+                                    (item) => item.id === subgroupId
+                                );
+                                onChange({
+                                    ...form,
+                                    subgroupId: subgroupId || null,
+                                    ...(selectedSubgroup
+                                        ? { homeId: selectedSubgroup.homeId }
+                                        : {}),
+                                });
+                            }}
                             className="h-9 rounded-full border border-[#cfc6d1] bg-white px-3 text-xs font-normal outline-none focus:border-[#65a34b]"
                         >
                             <option value="">Sem subgrupo</option>

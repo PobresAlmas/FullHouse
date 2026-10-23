@@ -30,6 +30,7 @@ export interface CreateExpenseInput {
     description: string;
     amount: string;
     date: string;
+    homeId?: string;
     subgroupId?: string | null;
     paymentStatus: "PENDING" | "PAID";
 }

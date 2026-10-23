@@ -24,6 +24,11 @@ export async function getResidences(): Promise<Residence[]> {
     return response.data;
 }
 
+export async function createResidence(name: string): Promise<Residence> {
+    const response = await api.post<Residence>("/residences", { name });
+    return response.data;
+}
+
 export async function getResidencePermissionSettings(
     residenceId: string
 ): Promise<ResidencePermissionSettings> {

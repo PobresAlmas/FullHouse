@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import {
-    Bell,
     CalendarDays,
     ChevronRight,
     DollarSign,
@@ -41,6 +39,7 @@ import { getExpenses } from "@/features/expenses/api/expenses.api";
 import type { Expense } from "@/features/expenses/api/expenses.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import {
     canCreateOrEditResidenceContent,
     isResidenceManager,
@@ -318,65 +317,51 @@ export default function PetsPage() {
     const canDelete = Boolean(selectedPet && canManageResidenceContent);
     const homePlace = [residence?.city, residence?.neighborhood].filter(Boolean).join(" • ");
     const memberName =
-        members.find((member) => member.id === currentMember?.id)?.name ?? user?.email ?? "Morador";
+        user?.name?.trim() ||
+        members.find((member) => member.id === currentMember?.id)?.name ||
+        user?.email ||
+        "Morador";
 
     return (
         <div className="min-h-screen bg-[#f8f4fa] text-[#29252d] md:flex">
             <AppSidebar activeSection="pets" residenceName={residence?.name} />
 
             <div className="min-w-0 flex-1">
-                <header className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] bg-[#fffaff] px-5 py-3 md:px-7">
-                    <div>
-                        <h1 className="text-xl font-bold">
-                            Bom dia{memberName ? ", " + memberName.split(" ")[0] : ""}
-                        </h1>
-                        <p className="flex items-center gap-1 text-xs text-[#77717c]">
-                            <House size={12} /> {residence?.name ?? "Nenhuma casa ativa"}
-                        </p>
-                    </div>
-                    {residences.length > 0 && (
-                        <label className="flex items-center gap-2 rounded-xl bg-[#e8e5e9] p-1 text-xs">
-                            <span className="sr-only">Casa selecionada</span>
-                            <select
-                                value={residenceId}
-                                onChange={(event) => void changeResidence(event.target.value)}
-                                className="max-w-56 rounded-lg border-0 bg-[#4e812f] px-4 py-2 text-white outline-none"
-                            >
-                                {residences.map((item) => (
-                                    <option
-                                        key={item.id}
-                                        value={item.id}
-                                        className="bg-white text-[#29252d]"
-                                    >
-                                        {item.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                    )}
-                    <div className="flex items-center gap-3 text-[#514c56]">
-                        <button
-                            type="button"
-                            aria-label="Notificações"
-                            className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
-                        >
-                            <Bell size={19} />
-                        </button>
-                        <Link
-                            href="/settings"
-                            aria-label="Configurações"
-                            className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
-                        >
-                            <Settings size={19} />
-                        </Link>
+                <AppPageHeader
+                    greetingName={memberName}
+                    residenceName={residence?.name ?? "Nenhuma casa ativa"}
+                    settingsHref="/settings"
+                    residenceControl={
+                        residences.length > 1 ? (
+                            <label className="flex items-center gap-2 rounded-xl bg-[#e8e5e9] p-1 text-xs">
+                                <span className="sr-only">Trocar residência</span>
+                                <select
+                                    value={residenceId}
+                                    onChange={(event) => void changeResidence(event.target.value)}
+                                    className="max-w-56 rounded-lg border-0 bg-[#4e812f] px-4 py-2 text-white outline-none"
+                                >
+                                    {residences.map((item) => (
+                                        <option
+                                            key={item.id}
+                                            value={item.id}
+                                            className="bg-white text-[#29252d]"
+                                        >
+                                            {item.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        ) : null
+                    }
+                    profile={
                         <span
                             className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white"
                             aria-label="Perfil"
                         >
                             {memberName.slice(0, 1).toUpperCase()}
                         </span>
-                    </div>
-                </header>
+                    }
+                />
 
                 <main className="mx-auto max-w-[1500px] p-4 md:p-6">
                     {error && (

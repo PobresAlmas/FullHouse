@@ -10,6 +10,7 @@ import {
 import type { PantryItem, PantryMember } from "@/features/pantry/api/pantry.api";
 import { getPetResidences } from "@/features/pets/api/pets.api";
 import type { PetResidence } from "@/features/pets/api/pets.api";
+import { createResidenceFixture } from "@/test/fixtures/residence";
 
 vi.mock("@/features/pantry/api/pantry.api", () => ({
     getPantryItems: vi.fn(),
@@ -19,18 +20,13 @@ vi.mock("@/features/pantry/api/pantry.api", () => ({
 
 vi.mock("@/features/pets/api/pets.api", () => ({ getPetResidences: vi.fn() }));
 vi.mock("@/features/auth/hooks/useAuth", () => ({
-    useAuth: () => ({ user: { id: "user-1", email: "emilson@example.com" }, loading: false }),
+    useAuth: () => ({
+        user: { id: "user-1", email: "emilson@example.com", name: "Emilson Apelido Silva" },
+        loading: false,
+    }),
 }));
 
-const residence: PetResidence = {
-    id: "00000000-0000-4000-8000-000000000002",
-    name: "Casa do Vale",
-    city: "Fortaleza",
-    neighborhood: "Centro",
-    status: "ATIVA",
-    membership: { id: "member-1", role: "ADMINISTRADOR" },
-    creationEditPolicy: "TODOS",
-};
+const residence: PetResidence = createResidenceFixture();
 
 const member: PantryMember = { id: "member-1", name: "Emilson" };
 const item: PantryItem = {
@@ -60,6 +56,11 @@ describe("PantryPage", () => {
         vi.mocked(registerPantryMovement).mockResolvedValue({ ...item, quantity: 1.25 });
         render(<PantryPage />);
 
+        expect(await screen.findAllByText("Casa do Vale")).not.toHaveLength(0);
+        expect(screen.getByRole("heading", { name: "Bom dia, Emilson" })).toBeInTheDocument();
+        expect(
+            screen.queryByRole("combobox", { name: "Trocar residência" })
+        ).not.toBeInTheDocument();
         await user.click(await screen.findByRole("button", { name: "Registrar consumo de Arroz" }));
         const quantity = screen.getByPlaceholderText("Ex.: 0,5");
         await user.clear(quantity);
@@ -77,6 +78,18 @@ describe("PantryPage", () => {
         expect(
             await screen.findByText("Consumo de 0,75 kg registrado para Arroz.")
         ).toBeInTheDocument();
+    }, 10_000);
+
+    it("shows a residence selector only when the user has multiple residences", async () => {
+        const user = userEvent.setup();
+        const otherResidence = { ...residence, id: "residence-2", name: "Casa da Praia" };
+        vi.mocked(getPetResidences).mockResolvedValue([residence, otherResidence]);
+        render(<PantryPage />);
+
+        const selector = await screen.findByRole("combobox", { name: "Trocar residência" });
+        await user.selectOptions(selector, otherResidence.id);
+
+        await waitFor(() => expect(getPantryItems).toHaveBeenCalledWith(otherResidence.id));
     });
 
     it("rejects movement quantities with more than two decimal places before sending", async () => {

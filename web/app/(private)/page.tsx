@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { HomePage } from "@/features/home/components/HomePage";
 
 export default function PrivateHomePage() {
-    redirect("/finance");
+    return <HomePage />;
 }

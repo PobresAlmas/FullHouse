@@ -68,11 +68,38 @@ describe("FinancePage expense CRUD", () => {
                 description: "Internet",
                 amount: "120.00",
                 date: "2026-10-12",
+                homeId: "home-id",
                 subgroupId: null,
                 paymentStatus: "PENDING",
             })
         );
         expect(await screen.findByRole("row", { name: /Internet/ })).toBeInTheDocument();
+    }, 15000);
+
+    it("uses the residence selected in the expense form when the user has more than one", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getExpenseHomes).mockResolvedValue([
+            { id: "home-id", name: "Grifinória" },
+            { id: "other-home-id", name: "Corvinal" },
+        ]);
+        vi.mocked(createExpense).mockResolvedValue(expense);
+        render(<FinancePage />);
+
+        await screen.findByText("Nenhuma despesa cadastrada");
+        await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
+        await user.selectOptions(screen.getByLabelText("Casa"), "other-home-id");
+        await user.type(screen.getByLabelText("Descrição"), "Internet");
+        await user.type(screen.getByLabelText(/valor total da despesa/i), "120,00");
+        fireEvent.change(screen.getByLabelText(/data de vencimento/i), {
+            target: { value: "2026-10-12" },
+        });
+        await user.click(screen.getByRole("button", { name: "Criar despesa" }));
+
+        await waitFor(() =>
+            expect(createExpense).toHaveBeenCalledWith(
+                expect.objectContaining({ homeId: "other-home-id", subgroupId: null })
+            )
+        );
     }, 15000);
 
     it("lists the expenses and totals the values displayed", async () => {

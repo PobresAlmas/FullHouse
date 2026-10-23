@@ -14,6 +14,7 @@ import {
 } from "@/features/pets/api/pets.api";
 import type { Pet, PetResidence } from "@/features/pets/api/pets.api";
 import { getExpenses } from "@/features/expenses/api/expenses.api";
+import { createResidenceFixture } from "@/test/fixtures/residence";
 
 vi.mock("@/features/pets/api/pets.api", () => ({
     createPet: vi.fn(),
@@ -31,18 +32,15 @@ vi.mock("@/features/pets/api/pets.api", () => ({
 
 vi.mock("@/features/expenses/api/expenses.api", () => ({ getExpenses: vi.fn() }));
 vi.mock("@/features/auth/hooks/useAuth", () => ({
-    useAuth: () => ({ user: { id: "user-1", email: "emilson@example.com" }, loading: false }),
+    useAuth: () => ({
+        user: { id: "user-1", email: "emilson@example.com", name: "Emilson Apelido Silva" },
+        loading: false,
+    }),
 }));
 
-const residence: PetResidence = {
-    id: "00000000-0000-4000-8000-000000000002",
-    name: "Casa do Vale",
-    city: "Fortaleza",
-    neighborhood: "Centro",
-    status: "ATIVA",
+const residence: PetResidence = createResidenceFixture({
     membership: { id: "participation-1", role: "ADMINISTRADOR" },
-    creationEditPolicy: "TODOS",
-};
+});
 const pet: Pet = {
     id: "00000000-0000-4000-8000-000000000001",
     name: "Mel",
@@ -75,6 +73,10 @@ describe("PetsPage", () => {
         render(<PetsPage />);
 
         expect(await screen.findAllByText("Casa do Vale")).not.toHaveLength(0);
+        expect(screen.getByRole("heading", { name: "Bom dia, Emilson" })).toBeInTheDocument();
+        expect(
+            screen.queryByRole("combobox", { name: "Trocar residência" })
+        ).not.toBeInTheDocument();
         await user.type(screen.getByLabelText(/Nome do pet/), "Mel");
         await user.selectOptions(screen.getByLabelText(/Espécie/), "Cachorro");
         await user.click(screen.getByRole("button", { name: /Salvar pet/ }));
@@ -88,6 +90,18 @@ describe("PetsPage", () => {
                 })
             )
         );
+    }, 10_000);
+
+    it("shows a residence selector only when the user has multiple residences", async () => {
+        const user = userEvent.setup();
+        const otherResidence = { ...residence, id: "residence-2", name: "Casa da Praia" };
+        vi.mocked(getPetResidences).mockResolvedValue([residence, otherResidence]);
+        render(<PetsPage />);
+
+        const selector = await screen.findByRole("combobox", { name: "Trocar residência" });
+        await user.selectOptions(selector, otherResidence.id);
+
+        await waitFor(() => expect(getPets).toHaveBeenCalledWith(otherResidence.id));
     });
 
     it("shows pet details and registers a care history record", async () => {
