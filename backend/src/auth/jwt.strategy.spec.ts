@@ -15,12 +15,13 @@ describe("JwtStrategy", () => {
         };
         const strategy = new JwtStrategy(config as never);
         expect(
-            strategy.validate({ sub: "u1", email: "a@example.com" } as Parameters<
+            strategy.validate({ sub: "u1", email: "a@example.com", name: "Ana" } as Parameters<
                 JwtStrategy["validate"]
             >[0])
         ).toEqual({
             id: "u1",
             email: "a@example.com",
+            name: "Ana",
         });
     });
 });

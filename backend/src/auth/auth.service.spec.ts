@@ -80,7 +80,7 @@ describe("AuthService", () => {
             },
         });
         expect(users.create).toHaveBeenCalled();
-        expect(jwt.sign).toHaveBeenCalledWith({ sub: user.id, email: user.email });
+        expect(jwt.sign).toHaveBeenCalledWith({ sub: user.id, email: user.email, name: "Ana" });
     });
 
     it("logs in with valid credentials", async () => {

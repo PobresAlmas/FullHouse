@@ -57,6 +57,33 @@ $ pnpm run test:e2e
 $ pnpm run test:cov
 ```
 
+## Testar a Home com dois moradores
+
+O script `prisma/seed-two-person-home-test.mjs` adiciona uma conta de teste a uma residência já existente e cria tarefas e despesas identificadas com `TESTE FULLHOUSE:`. Ele não apaga nem altera tarefas e despesas existentes. A conta principal precisa já ser moradora ativa da residência; se ela participar de mais de uma, informe também o ID da residência.
+
+No arquivo `backend/.env`, configure a conexão para seu banco de desenvolvimento e os dados das duas contas:
+
+```dotenv
+NODE_ENV=development
+HOME_TEST_SEED=1
+DATABASE_URL="<URL do banco local de desenvolvimento>"
+HOME_TEST_OWNER_EMAIL="<e-mail da sua conta>"
+HOME_TEST_MEMBER_EMAIL="<novo e-mail exclusivo para a conta de teste>"
+HOME_TEST_MEMBER_PASSWORD="<senha de teste com pelo menos 8 caracteres>"
+# Opcional: obrigatório se a conta principal tiver mais de uma residência ativa
+HOME_TEST_RESIDENCE_ID="<ID da residência>"
+```
+
+Depois, no PowerShell, execute a partir da pasta `backend`:
+
+```powershell
+pnpm run db:seed:home-test
+```
+
+O comando carrega as variáveis de `backend/.env` automaticamente.
+
+Entre na aplicação com a conta principal para testar tarefas e despesas da casa; depois entre com o e-mail e a senha de teste para conferir os dados pessoais do segundo morador. O script usa a senha somente ao criar a conta. Em execuções posteriores, informe a mesma senha para continuar usando a conta já criada. Ele recusa execução com `NODE_ENV=production`.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

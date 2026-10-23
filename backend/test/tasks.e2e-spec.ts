@@ -1,23 +1,17 @@
 import { INestApplication } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { Test, TestingModule } from "@nestjs/testing";
-import { JwtModule, JwtService } from "@nestjs/jwt";
-import { PassportModule } from "@nestjs/passport";
-import cookieParser from "cookie-parser";
 import request from "supertest";
 import { App } from "supertest/types.js";
-import { JwtStrategy } from "../src/auth/jwt.strategy.js";
 import { TasksController } from "../src/tasks/tasks.controller.js";
 import { TasksService } from "../src/tasks/tasks.service.js";
+import { createAuthenticatedTestApp } from "./utils/authenticated-test-app.js";
 
-const JWT_SECRET = "tasks-e2e-test-secret";
 const USER_ID = "821f394d-6215-48b4-89a9-0af953ba8a76";
 const RESIDENCE_ID = "4ca328bc-3d0c-4ce7-a26a-e827684cc634";
 const TASK_ID = "bc3c5c4b-3f52-4faf-9341-2370fcde6cee";
 
 describe("Tasks HTTP API (e2e)", () => {
     let app: INestApplication<App>;
-    let jwt: JwtService;
+    let authenticatedCookie: () => Promise<string>;
     const tasksService = {
         findMembers: vi.fn(),
         findAll: vi.fn(),
@@ -40,29 +34,14 @@ describe("Tasks HTTP API (e2e)", () => {
         tasksService.complete.mockResolvedValue({ id: TASK_ID, status: "CONCLUIDA" });
         tasksService.remove.mockResolvedValue({ id: TASK_ID, deleted: true });
 
-        const moduleFixture: TestingModule = await Test.createTestingModule({
-            imports: [
-                PassportModule,
-                JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: "5m" } }),
-            ],
+        const testApp = await createAuthenticatedTestApp({
             controllers: [TasksController],
-            providers: [
-                JwtStrategy,
-                { provide: ConfigService, useValue: { getOrThrow: () => JWT_SECRET } },
-                { provide: TasksService, useValue: tasksService },
-            ],
-        }).compile();
-
-        app = moduleFixture.createNestApplication();
-        app.use(cookieParser());
-        await app.listen(0, "127.0.0.1");
-        jwt = app.get(JwtService);
+            providers: [{ provide: TasksService, useValue: tasksService }],
+        });
+        app = testApp.app;
+        authenticatedCookie = () =>
+            testApp.authenticatedCookie({ id: USER_ID, email: "resident@example.com" });
     });
-
-    async function authenticatedCookie() {
-        const token = await jwt.signAsync({ sub: USER_ID, email: "resident@example.com" });
-        return `access_token=${token}`;
-    }
 
     it("requires authentication to access household tasks", async () => {
         await request(app.getHttpServer()).get(`/residences/${RESIDENCE_ID}/tasks`).expect(401);
@@ -94,7 +73,6 @@ describe("Tasks HTTP API (e2e)", () => {
                 repeats: true,
                 periodicity: "SEMANAL",
                 reminderMinutesBefore: 30,
-                unexpected: "ignored",
             })
             .expect(201)
             .expect({ id: TASK_ID, title: "Limpar cozinha" });

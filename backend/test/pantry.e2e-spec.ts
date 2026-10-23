@@ -1,16 +1,10 @@
 import { ForbiddenException, INestApplication, NotFoundException } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { Test, TestingModule } from "@nestjs/testing";
-import { JwtModule, JwtService } from "@nestjs/jwt";
-import { PassportModule } from "@nestjs/passport";
-import cookieParser from "cookie-parser";
 import request from "supertest";
 import { App } from "supertest/types.js";
-import { JwtStrategy } from "../src/auth/jwt.strategy.js";
 import { PantryController } from "../src/pantry/pantry.controller.js";
 import { PantryService } from "../src/pantry/pantry.service.js";
+import { createAuthenticatedTestApp } from "./utils/authenticated-test-app.js";
 
-const JWT_SECRET = "pantry-e2e-test-secret";
 const USER_ID = "821f394d-6215-48b4-89a9-0af953ba8a76";
 const RESIDENCE_ID = "4ca328bc-3d0c-4ce7-a26a-e827684cc634";
 const ITEM_ID = "bc3c5c4b-3f52-4faf-9341-2370fcde6cee";
@@ -30,7 +24,7 @@ const item = {
 
 describe("Pantry HTTP API (e2e)", () => {
     let app: INestApplication<App>;
-    let jwt: JwtService;
+    let authenticatedCookie: () => Promise<string>;
     const pantryService = {
         findMembers: vi.fn(),
         findItems: vi.fn(),
@@ -49,29 +43,14 @@ describe("Pantry HTTP API (e2e)", () => {
         pantryService.createMovement.mockResolvedValue(item);
         pantryService.removeItem.mockResolvedValue({ id: ITEM_ID, deleted: true });
 
-        const moduleFixture: TestingModule = await Test.createTestingModule({
-            imports: [
-                PassportModule,
-                JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: "5m" } }),
-            ],
+        const testApp = await createAuthenticatedTestApp({
             controllers: [PantryController],
-            providers: [
-                JwtStrategy,
-                { provide: ConfigService, useValue: { getOrThrow: () => JWT_SECRET } },
-                { provide: PantryService, useValue: pantryService },
-            ],
-        }).compile();
-
-        app = moduleFixture.createNestApplication();
-        app.use(cookieParser());
-        await app.init();
-        jwt = app.get(JwtService);
+            providers: [{ provide: PantryService, useValue: pantryService }],
+        });
+        app = testApp.app;
+        authenticatedCookie = () =>
+            testApp.authenticatedCookie({ id: USER_ID, email: "resident@example.com" });
     });
-
-    async function authenticatedCookie() {
-        const token = await jwt.signAsync({ sub: USER_ID, email: "resident@example.com" });
-        return `access_token=${token}`;
-    }
 
     it("requires an authenticated user", async () => {
         await request(app.getHttpServer())
@@ -103,7 +82,6 @@ describe("Pantry HTTP API (e2e)", () => {
             property: "COMUNITARIO",
             unit: "KG",
             initialQuantity: "2.5",
-            untrustedResidenceId: "another-home",
         };
         await request(app.getHttpServer())
             .post(`/residences/${RESIDENCE_ID}/pantry/items`)
@@ -142,7 +120,7 @@ describe("Pantry HTTP API (e2e)", () => {
         await request(app.getHttpServer())
             .post(`/residences/${RESIDENCE_ID}/pantry/items/${ITEM_ID}/movements`)
             .set("Cookie", cookie)
-            .send({ type: "CONSUMO", quantity: "0.5", unexpected: true })
+            .send({ type: "CONSUMO", quantity: "0.5" })
             .expect(201)
             .expect(item);
         expect(pantryService.createMovement).toHaveBeenCalledWith(
@@ -158,6 +136,23 @@ describe("Pantry HTTP API (e2e)", () => {
             .send({ type: "CONSUMO", quantity: "0.001" })
             .expect(400);
         expect(pantryService.createMovement).toHaveBeenCalledOnce();
+    });
+
+    it("rejects unknown body properties", async () => {
+        const cookie = await authenticatedCookie();
+        await request(app.getHttpServer())
+            .post(`/residences/${RESIDENCE_ID}/pantry/items`)
+            .set("Cookie", cookie)
+            .send({
+                name: "Arroz",
+                category: "Grãos",
+                property: "COMUNITARIO",
+                unit: "KG",
+                initialQuantity: 2.5,
+                untrustedResidenceId: "another-home",
+            })
+            .expect(400);
+        expect(pantryService.createItem).not.toHaveBeenCalled();
     });
 
     it("rejects invalid UUIDs and invalid item values before calling the service", async () => {

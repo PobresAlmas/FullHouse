@@ -14,6 +14,7 @@
         "start:debug": "nest start --debug --watch",
         "start:prod": "node dist/main",
         "db:seed:dev": "SEED_DEMO_DATA=1 node prisma/seed.mjs",
+        "db:seed:home-test": "node --env-file=.env prisma/seed-two-person-home-test.mjs",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:cov": "vitest run --coverage",

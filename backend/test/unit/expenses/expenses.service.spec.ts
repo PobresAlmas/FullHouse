@@ -124,11 +124,25 @@ describe("ExpensesService CRUD", () => {
         expect(repository.findSubgroupForUser).not.toHaveBeenCalled();
     });
 
-    it("requires a selected residence when creating an expense without a subgroup", async () => {
+    it("uses the user's only residence when creating an expense without a subgroup", async () => {
+        const body = { ...dto, subgroupId: null };
+
+        await expect(service.create(body, "user-id")).resolves.toMatchObject({
+            id: "expense-id",
+        });
+        expect(repository.findAvailableHomes).toHaveBeenCalledWith("user-id");
+        expect(repository.findHomeForUser).toHaveBeenCalledWith("home-id", "user-id");
+        expect(repository.create).toHaveBeenCalledWith(body, "home-id", memberParticipationId);
+    });
+
+    it("requires a residence selection if the user has multiple homes", async () => {
+        repository.findAvailableHomes.mockResolvedValue([
+            { id: "home-id", nome: "Grifinória" },
+            { id: "another-home-id", nome: "Corvinal" },
+        ]);
         const body = { ...dto, subgroupId: null };
 
         await expect(service.create(body, "user-id")).rejects.toBeInstanceOf(BadRequestException);
-        expect(repository.findAvailableHomes).not.toHaveBeenCalled();
         expect(repository.findHomeForUser).not.toHaveBeenCalled();
         expect(repository.create).not.toHaveBeenCalled();
     });

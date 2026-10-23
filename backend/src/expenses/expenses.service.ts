@@ -40,7 +40,11 @@ export class ExpensesService {
             throw new NotFoundException("O subgrupo selecionado não está disponível.");
         }
 
-        const homeId = subgroup?.casa_id ?? data.homeId;
+        let homeId = subgroup?.casa_id ?? data.homeId;
+        if (!homeId && !subgroup) {
+            const homes = await this.repository.findAvailableHomes(userId);
+            if (homes.length === 1) homeId = homes[0].id;
+        }
         if (!homeId) {
             throw new BadRequestException("Selecione uma casa para registrar a despesa.");
         }

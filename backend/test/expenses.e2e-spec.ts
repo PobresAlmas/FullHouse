@@ -1,24 +1,19 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { Test, TestingModule } from "@nestjs/testing";
-import { JwtModule, JwtService } from "@nestjs/jwt";
-import { PassportModule } from "@nestjs/passport";
-import cookieParser from "cookie-parser";
 import { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { App } from "supertest/types.js";
-import { JwtStrategy } from "../src/auth/jwt.strategy.js";
 import { ExpensesController } from "../src/expenses/expenses.controller.js";
 import { ExpensesService } from "../src/expenses/expenses.service.js";
+import { createAuthenticatedTestApp } from "./utils/authenticated-test-app.js";
 
-const JWT_SECRET = "expenses-e2e-secret";
 const USER_ID = "821f394d-6215-48b4-89a9-0af953ba8a76";
+const HOME_ID = "4ca328bc-3d0c-4ce7-a26a-e827684cc634";
 const EXPENSE_ID = "bc3c5c4b-3f52-4faf-9341-2370fcde6cee";
 const payload = {
     description: "Conta de energia",
     amount: "119.87",
     date: "2026-10-11",
-    homeId: "home-id",
+    homeId: HOME_ID,
     subgroupId: null,
     paymentStatus: "PENDING",
 };
@@ -35,7 +30,7 @@ const expense = {
 
 describe("Expenses HTTP API (e2e)", () => {
     let app: INestApplication<App>;
-    let jwt: JwtService;
+    let authenticatedCookie: () => Promise<string>;
     const expensesService = {
         findAvailableHomes: vi.fn(),
         findAvailableSubgroups: vi.fn(),
@@ -47,38 +42,21 @@ describe("Expenses HTTP API (e2e)", () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        expensesService.findAvailableHomes.mockResolvedValue([
-            { id: "home-id", name: "Grifinória" },
-        ]);
+        expensesService.findAvailableHomes.mockResolvedValue([{ id: HOME_ID, name: "Grifinória" }]);
         expensesService.findAvailableSubgroups.mockResolvedValue([]);
         expensesService.findAll.mockResolvedValue([expense]);
         expensesService.create.mockResolvedValue(expense);
         expensesService.update.mockResolvedValue({ ...expense, paymentStatus: "PAID" });
         expensesService.remove.mockResolvedValue({ id: EXPENSE_ID, deleted: true });
 
-        const moduleFixture: TestingModule = await Test.createTestingModule({
-            imports: [
-                PassportModule,
-                JwtModule.register({ secret: JWT_SECRET, signOptions: { expiresIn: "5m" } }),
-            ],
+        const testApp = await createAuthenticatedTestApp({
             controllers: [ExpensesController],
-            providers: [
-                JwtStrategy,
-                { provide: ConfigService, useValue: { getOrThrow: () => JWT_SECRET } },
-                { provide: ExpensesService, useValue: expensesService },
-            ],
-        }).compile();
-
-        app = moduleFixture.createNestApplication();
-        app.use(cookieParser());
-        await app.listen(0, "127.0.0.1");
-        jwt = app.get(JwtService);
+            providers: [{ provide: ExpensesService, useValue: expensesService }],
+        });
+        app = testApp.app;
+        authenticatedCookie = () =>
+            testApp.authenticatedCookie({ id: USER_ID, email: "resident@example.com" });
     });
-
-    async function authenticatedCookie() {
-        const token = await jwt.signAsync({ sub: USER_ID, email: "resident@example.com" });
-        return `access_token=${token}`;
-    }
 
     it("requires authentication", async () => {
         await request(app.getHttpServer()).get("/expenses").expect(401);
