@@ -3,13 +3,20 @@ import { CreateTaskDto, TaskAssignmentType, TaskPeriodicity } from "./dto/create
 import { TaskListQueryDto } from "./dto/task-list-query.dto.js";
 import { UpdateTaskDto } from "./dto/update-task.dto.js";
 import { TasksRepository } from "./tasks.repository.js";
+import {
+    isResidenceManager,
+    ResidenceAccessService,
+} from "../residences/residence-access.service.js";
 
 @Injectable()
 export class TasksService {
-    constructor(private readonly repository: TasksRepository) {}
+    constructor(
+        private readonly repository: TasksRepository,
+        private readonly residenceAccess: ResidenceAccessService
+    ) {}
 
     async findMembers(residenceId: string, userId: string) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireMembership(residenceId, userId);
         return (await this.repository.findMembers(residenceId)).map((member) => ({
             id: member.id,
             name: member.usuario.apelido || member.usuario.nome,
@@ -18,20 +25,23 @@ export class TasksService {
     }
 
     async findAll(residenceId: string, userId: string, query: TaskListQueryDto) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireMembership(residenceId, userId);
         return (await this.repository.findTasks(residenceId, query)).map((task) =>
             this.mapTask(task)
         );
     }
 
     async findOne(residenceId: string, taskId: string, userId: string) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireMembership(residenceId, userId);
         const task = await this.requireTask(residenceId, taskId);
         return this.mapTask(task);
     }
 
     async create(residenceId: string, data: CreateTaskDto, userId: string) {
-        const residence = await this.requireResidence(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const repeats = data.repeats ?? false;
         if (repeats && (!data.periodicity || data.periodicity === TaskPeriodicity.PERSONALIZADA)) {
             throw new BadRequestException("Selecione uma frequÃªncia para a repetiÃ§Ã£o.");
@@ -52,7 +62,7 @@ export class TasksService {
         const taskId = await this.repository.create(
             residenceId,
             userId,
-            residence.participacao[0].id,
+            membership.memberId,
             assignee,
             data
         );
@@ -60,7 +70,7 @@ export class TasksService {
     }
 
     async update(residenceId: string, taskId: string, data: UpdateTaskDto, userId: string) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireCreateEditPermission(residenceId, userId);
         const existing = await this.requireTask(residenceId, taskId);
         if (existing.status === "CONCLUIDA" || existing.status === "CANCELADA") {
             throw new BadRequestException(
@@ -125,7 +135,7 @@ export class TasksService {
     }
 
     async complete(residenceId: string, taskId: string, userId: string) {
-        const residence = await this.requireResidence(residenceId, userId);
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
         const task = await this.requireTask(residenceId, taskId);
         if (task.status === "CONCLUIDA") {
             throw new BadRequestException("A tarefa jÃ¡ foi concluÃ­da.");
@@ -133,34 +143,27 @@ export class TasksService {
         if (task.status === "CANCELADA") {
             throw new BadRequestException("NÃ£o Ã© possÃ­vel concluir uma tarefa cancelada.");
         }
-        const member = residence.participacao[0];
-        const isManager = member.papel === "ADMINISTRADOR" || member.papel === "LIDER";
-        if (!isManager && task.responsavel_participacao_id !== member.id) {
+        if (
+            !isResidenceManager(membership.role) &&
+            task.responsavel_participacao_id !== membership.memberId
+        ) {
             throw new BadRequestException(
-                "Somente o responsÃ¡vel ou um administrador pode concluir esta tarefa."
+                "Somente o responsável, um líder ou um administrador pode concluir esta tarefa."
             );
         }
-        await this.repository.complete(task, residence.participacao[0].id, userId);
+        await this.repository.complete(task, membership.memberId, userId);
         return this.findOne(residenceId, taskId, userId);
     }
 
     async remove(residenceId: string, taskId: string, userId: string) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireManager(residenceId, userId);
         const task = await this.requireTask(residenceId, taskId);
         await this.repository.remove(task.definicao_tarefa_id);
         return { id: taskId, deleted: true };
     }
 
-    private async requireResidence(residenceId: string, userId: string) {
-        const residence = await this.repository.findResidenceMembership(residenceId, userId);
-        if (!residence || residence.participacao.length === 0) {
-            throw new NotFoundException("A residÃªncia nÃ£o estÃ¡ disponÃ­vel.");
-        }
-        return residence;
-    }
-
     private async requireActiveMember(residenceId: string, memberId: string) {
-        const member = await this.repository.findActiveMember(residenceId, memberId);
+        const member = await this.residenceAccess.requireActiveMember(residenceId, memberId);
         if (!member) {
             throw new BadRequestException("O responsÃ¡vel nÃ£o pertence a esta residÃªncia ativa.");
         }

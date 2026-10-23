@@ -1,13 +1,7 @@
 import { api } from "@/services/api";
+import type { Residence } from "@/features/residences/api/residences.api";
 
-export interface PetResidence {
-    id: string;
-    name: string;
-    city: string | null;
-    neighborhood: string | null;
-    status: string;
-    membership: { id: string; role: "LIDER" | "ADMINISTRADOR" | "MORADOR" } | null;
-}
+export type PetResidence = Residence;
 
 export interface PetResidenceMember {
     id: string;

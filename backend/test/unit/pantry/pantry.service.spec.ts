@@ -3,7 +3,6 @@ import { PantryService } from "../../../src/pantry/pantry.service.js";
 
 describe("PantryService", () => {
     const member = { id: "member-1", papel: "MORADOR" };
-    const residence = { id: "home-1", nome: "Casa", participacao: [member] };
     const record = (overrides: Record<string, unknown> = {}) => ({
         id: "item-1",
         nome: "Arroz",
@@ -23,11 +22,11 @@ describe("PantryService", () => {
     });
 
     let repository: Record<string, ReturnType<typeof vi.fn>>;
+    let residenceAccess: Record<string, ReturnType<typeof vi.fn>>;
     let service: PantryService;
 
     beforeEach(() => {
         repository = {
-            findMembership: vi.fn().mockResolvedValue(residence),
             findMembers: vi
                 .fn()
                 .mockResolvedValue([
@@ -35,14 +34,22 @@ describe("PantryService", () => {
                 ]),
             findItems: vi.fn().mockResolvedValue([record()]),
             findItem: vi.fn().mockResolvedValue(record()),
-            findActiveMember: vi.fn().mockResolvedValue({ id: "member-2" }),
             createItem: vi.fn().mockResolvedValue("item-1"),
             updateItem: vi.fn().mockResolvedValue(undefined),
             countMovements: vi.fn().mockResolvedValue(0),
             createMovement: vi.fn().mockResolvedValue(undefined),
             deleteItem: vi.fn().mockResolvedValue(undefined),
         };
-        service = new PantryService(repository as never);
+        residenceAccess = {
+            requireMembership: vi.fn().mockResolvedValue({
+                residenceId: "home-1",
+                memberId: member.id,
+                role: member.papel,
+                creationEditPolicy: "TODOS",
+            }),
+            requireActiveMember: vi.fn().mockResolvedValue({ id: "member-2" }),
+        };
+        service = new PantryService(repository as never, residenceAccess as never);
     });
 
     it("lists household members using their preferred name", async () => {
@@ -88,7 +95,7 @@ describe("PantryService", () => {
     });
 
     it("does not read or create pantry data for a user outside the residence", async () => {
-        repository.findMembership.mockResolvedValue(null);
+        residenceAccess.requireMembership.mockRejectedValue(new NotFoundException());
         await expect(service.findItems("home-1", "outsider")).rejects.toBeInstanceOf(
             NotFoundException
         );
@@ -122,7 +129,7 @@ describe("PantryService", () => {
             })
         );
         expect(result).toMatchObject({ id: "item-1", quantity: 2, isMine: false });
-        expect(repository.findActiveMember).not.toHaveBeenCalled();
+        expect(residenceAccess.requireActiveMember).not.toHaveBeenCalled();
     });
 
     it("assigns private items to the authenticated member, ignoring a supplied owner", async () => {
@@ -145,11 +152,11 @@ describe("PantryService", () => {
                 ownerMemberId: member.id,
             })
         );
-        expect(repository.findActiveMember).toHaveBeenCalledWith("home-1", member.id);
+        expect(residenceAccess.requireActiveMember).toHaveBeenCalledWith("home-1", member.id);
     });
 
     it("rejects assigning an item to a member outside the active household", async () => {
-        repository.findActiveMember.mockResolvedValue(null);
+        residenceAccess.requireActiveMember.mockResolvedValue(null);
         await expect(
             service.createItem(
                 "home-1",
@@ -221,7 +228,7 @@ describe("PantryService", () => {
                 expirationDate: null,
             })
         );
-        expect(repository.findActiveMember).toHaveBeenCalledWith("home-1", "member-2");
+        expect(residenceAccess.requireActiveMember).toHaveBeenCalledWith("home-1", "member-2");
     });
 
     it("forces a private item to remain owned by the authenticated member", async () => {
@@ -272,7 +279,7 @@ describe("PantryService", () => {
             "item-1",
             expect.objectContaining({ property: "COMUNITARIO", ownerMemberId: null })
         );
-        expect(repository.findActiveMember).not.toHaveBeenCalled();
+        expect(residenceAccess.requireActiveMember).not.toHaveBeenCalled();
     });
 
     it("validates a new owner when reassigning an item", async () => {
@@ -293,7 +300,7 @@ describe("PantryService", () => {
             { property: "DONO_ESPECIFICO", ownerMemberId: "member-3" } as never,
             "user-1"
         );
-        expect(repository.findActiveMember).toHaveBeenCalledWith("home-1", "member-3");
+        expect(residenceAccess.requireActiveMember).toHaveBeenCalledWith("home-1", "member-3");
         expect(repository.updateItem).toHaveBeenCalledWith(
             "item-1",
             expect.objectContaining({ ownerMemberId: "member-3" })
@@ -352,9 +359,11 @@ describe("PantryService", () => {
     });
 
     it("allows the assigned owner to consume a specific-owner item", async () => {
-        repository.findMembership.mockResolvedValue({
-            ...residence,
-            participacao: [{ id: "member-2", papel: "MORADOR" }],
+        residenceAccess.requireMembership.mockResolvedValue({
+            residenceId: "home-1",
+            memberId: "member-2",
+            role: "MORADOR",
+            creationEditPolicy: "TODOS",
         });
         repository.findItem.mockResolvedValue(
             record({
@@ -412,9 +421,11 @@ describe("PantryService", () => {
         );
         expect(repository.deleteItem).not.toHaveBeenCalled();
 
-        repository.findMembership.mockResolvedValue({
-            ...residence,
-            participacao: [{ id: member.id, papel: "ADMINISTRADOR" }],
+        residenceAccess.requireMembership.mockResolvedValue({
+            residenceId: "home-1",
+            memberId: member.id,
+            role: "ADMINISTRADOR",
+            creationEditPolicy: "TODOS",
         });
         await expect(service.removeItem("home-1", "item-1", "user-1")).resolves.toEqual({
             id: "item-1",
@@ -423,15 +434,7 @@ describe("PantryService", () => {
         expect(repository.deleteItem).toHaveBeenCalledWith("item-1");
     });
 
-    it("allows the creator to delete a shared item", async () => {
-        await expect(service.removeItem("home-1", "item-1", "user-1")).resolves.toEqual({
-            id: "item-1",
-            deleted: true,
-        });
-        expect(repository.deleteItem).toHaveBeenCalledWith("item-1");
-    });
-
-    it("does not let a non-creator delete a shared item without a manager role", async () => {
+    it("allows any household member to delete a shared item", async () => {
         repository.findItem.mockResolvedValue(
             record({
                 participacao_item_despensa_criado_por_participacao_idToparticipacao: {
@@ -439,9 +442,10 @@ describe("PantryService", () => {
                 },
             })
         );
-        await expect(service.removeItem("home-1", "item-1", "user-1")).rejects.toBeInstanceOf(
-            ForbiddenException
-        );
-        expect(repository.deleteItem).not.toHaveBeenCalled();
+        await expect(service.removeItem("home-1", "item-1", "user-1")).resolves.toEqual({
+            id: "item-1",
+            deleted: true,
+        });
+        expect(repository.deleteItem).toHaveBeenCalledWith("item-1");
     });
 });

@@ -1,25 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { FormEvent } from "react";
 import Link from "next/link";
 import {
     Bell,
     CalendarDays,
     Check,
-    CheckSquare,
     ChevronLeft,
     ChevronRight,
     Clock3,
-    DollarSign,
     House,
-    PawPrint,
     Plus,
     Repeat2,
     Settings,
     Trash2,
-    UserRound,
-    Wallet,
     X,
 } from "lucide-react";
 import {
@@ -32,6 +27,7 @@ import {
     updateTask,
 } from "@/features/tasks/api/tasks.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 import type {
     Task,
     TaskAssignmentType,
@@ -40,6 +36,10 @@ import type {
     TaskPeriodicity,
     TaskResidence,
 } from "@/features/tasks/api/tasks.api";
+import {
+    canCreateOrEditResidenceContent,
+    isResidenceManager,
+} from "@/features/residences/permissions";
 
 type TaskFormState = {
     title: string;
@@ -235,8 +235,13 @@ export default function TasksPage() {
     const [notice, setNotice] = useState("");
 
     const residence = residences.find((item) => item.id === residenceId) ?? null;
-    const houseName = residence?.name ?? "Minha casa";
+    const houseName = residence?.name ?? "Nenhuma casa associada";
     const myMemberId = residence?.membership?.id ?? "";
+    const canEditHouseTasks = canCreateOrEditResidenceContent(
+        residence?.membership?.role,
+        residence?.creationEditPolicy
+    );
+    const canDeleteHouseTasks = isResidenceManager(residence?.membership?.role);
 
     const loadResidenceData = useCallback(
         async (id: string) => {
@@ -376,12 +381,14 @@ export default function TasksPage() {
         }
     }
     function openCreateForm() {
+        if (scope === "home" && !canEditHouseTasks) return;
         setEditingTask(null);
         setForm({ ...initialForm, dueAt: `${todayKey}T19:00` });
         setError("");
         setShowForm(true);
     }
     function openEditForm(task: Task) {
+        if (!isPersonalTask(task) && !canEditHouseTasks) return;
         setEditingTask(task);
         setForm(taskToForm(task));
         setError("");
@@ -393,12 +400,19 @@ export default function TasksPage() {
 
     async function submitTask(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        const isHomeTask = editingTask
+            ? !isPersonalTask(editingTask)
+            : Boolean(residenceId && scope === "home");
+        if (isHomeTask && !canEditHouseTasks) {
+            setError("A configuração desta residência não permite criar ou editar tarefas.");
+            return;
+        }
         setSaving(true);
         setError("");
         setNotice("");
         try {
             const data = toTaskInput(form);
-            if (!residenceId || (editingTask && isPersonalTask(editingTask))) {
+            if (!isHomeTask) {
                 const savedTask = toPersonalTask(data, editingTask ?? undefined);
                 const localTasks = readPersonalTasks(userId);
                 const nextLocalTasks = editingTask
@@ -466,6 +480,8 @@ export default function TasksPage() {
         }
     }
     async function removeTask(taskId: string) {
+        const taskToRemove = tasks.find((task) => task.id === taskId);
+        if (!taskToRemove || (!isPersonalTask(taskToRemove) && !canDeleteHouseTasks)) return;
         setError("");
         try {
             const task = tasks.find((item) => item.id === taskId);
@@ -491,45 +507,15 @@ export default function TasksPage() {
 
     return (
         <div className="min-h-screen bg-[#f8f4fa] text-[#29252d] md:flex">
-            <aside className="flex shrink-0 flex-col border-b border-[#d9d0dc] bg-[#f8f4fa] px-4 py-5 md:min-h-screen md:w-[220px] md:border-b-0 md:border-r">
-                <Link
-                    href="/"
-                    className="mb-7 flex items-center gap-3 rounded-lg px-1"
-                    aria-label="FullHouse início"
-                >
-                    <span className="grid size-10 place-items-center rounded-xl bg-[#234a1b] text-white">
-                        <House size={24} strokeWidth={2.4} />
-                    </span>
-                    <span>
-                        <span className="block font-bold leading-tight">FullHouse</span>
-                        <span className="block text-xs text-[#625c66]">Casa {houseName}</span>
-                    </span>
-                </Link>
-                <nav aria-label="Navegação principal" className="grid gap-1">
-                    <SidebarLink icon={<House size={17} />} label="Home" href="/" />
-                    <SidebarLink
-                        icon={<CheckSquare size={17} />}
-                        label="Tarefas"
-                        href="/tasks"
-                        active
-                    />
-                    <SidebarLink
-                        icon={<DollarSign size={17} />}
-                        label="Financeiro"
-                        href="/finance"
-                    />
-                    <SidebarLink icon={<Wallet size={17} />} label="Despensa" href="/pantry" />
-                    <SidebarLink icon={<UserRound size={17} />} label="Perfil" />
-                    <SidebarLink icon={<PawPrint size={18} />} label="Pets" href="/pets" />
-                </nav>
-            </aside>
+            <AppSidebar activeSection="tasks" residenceName={residence?.name} />
 
             <div className="min-w-0 flex-1">
                 <header className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] bg-[#fffaff] px-5 py-3 md:px-7">
                     <div>
                         <h1 className="text-xl font-bold">Bom dia</h1>
                         <p className="flex items-center gap-1 text-xs text-[#77717c]">
-                            <House size={12} /> {houseName}
+                            <House size={12} />{" "}
+                            {scope === "personal" ? "Tarefas pessoais" : houseName}
                         </p>
                     </div>
                     <div
@@ -574,20 +560,20 @@ export default function TasksPage() {
                                 onClick={() => setScope("home")}
                                 className={`max-w-[180px] truncate rounded-lg px-4 py-2 ${scope === "home" ? "bg-[#4e812f] font-medium text-white" : "text-[#a19ba5]"}`}
                             >
-                                {residenceId ? houseName : "Casa"}
+                                {residenceId ? houseName : "Residência"}
                             </button>
                         )}
                     </div>
                     <div className="flex items-center gap-3 text-[#514c56]">
-                        <button
-                            type="button"
+                        <Link
+                            href="/settings"
                             aria-label="Configurações"
                             className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
                         >
                             <Settings size={19} />
-                        </button>
+                        </Link>
                         <span className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white">
-                            {houseName.slice(0, 1).toUpperCase()}
+                            {user?.email.slice(0, 1).toUpperCase() ?? "?"}
                         </span>
                     </div>
                 </header>
@@ -623,13 +609,15 @@ export default function TasksPage() {
                                         · {members.length} moradores
                                     </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={openCreateForm}
-                                    className="inline-flex items-center gap-1.5 rounded-full bg-[#4e812f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#3e6b25]"
-                                >
-                                    <Plus size={15} /> Nova tarefa
-                                </button>
+                                {(scope === "personal" || canEditHouseTasks) && (
+                                    <button
+                                        type="button"
+                                        onClick={openCreateForm}
+                                        className="inline-flex items-center gap-1.5 rounded-full bg-[#4e812f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#3e6b25]"
+                                    >
+                                        <Plus size={15} /> Nova tarefa
+                                    </button>
+                                )}
                             </div>
                             <div className="mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                                 <SummaryCard
@@ -717,6 +705,8 @@ export default function TasksPage() {
                                 onSelectDate={setSelectedDate}
                                 onComplete={markComplete}
                                 onEdit={openEditForm}
+                                canEdit={scope === "personal" || canEditHouseTasks}
+                                canDelete={scope === "personal" || canDeleteHouseTasks}
                                 confirmDeleteId={confirmDeleteId}
                                 onConfirmDelete={removeTask}
                                 onAskDelete={setConfirmDeleteId}
@@ -749,38 +739,13 @@ export default function TasksPage() {
                     editing={Boolean(editingTask)}
                     saving={saving}
                     error={error}
-                    hasResidence={Boolean(residenceId)}
+                    hasResidence={Boolean(residenceId) && scope === "home"}
                     onChange={updateForm}
                     onClose={() => setShowForm(false)}
                     onSubmit={submitTask}
                 />
             )}
         </div>
-    );
-}
-
-function SidebarLink({
-    icon,
-    label,
-    href,
-    active = false,
-}: {
-    icon: ReactNode;
-    label: string;
-    href?: string;
-    active?: boolean;
-}) {
-    const className = `flex h-10 items-center gap-3 rounded-xl px-3 text-sm transition ${active ? "bg-white font-semibold text-[#4e812f]" : "text-[#514c56] hover:bg-white/70"}`;
-    return href ? (
-        <Link href={href} aria-current={active ? "page" : undefined} className={className}>
-            {icon}
-            <span>{label}</span>
-        </Link>
-    ) : (
-        <span aria-disabled="true" className={`${className} cursor-default opacity-60`}>
-            {icon}
-            <span>{label}</span>
-        </span>
     );
 }
 
@@ -848,6 +813,8 @@ function TaskList({
     onSelectDate,
     onComplete,
     onEdit,
+    canEdit,
+    canDelete,
     confirmDeleteId,
     onConfirmDelete,
     onAskDelete,
@@ -859,6 +826,8 @@ function TaskList({
     onSelectDate: (date: string) => void;
     onComplete: (task: Task) => void;
     onEdit: (task: Task) => void;
+    canEdit: boolean;
+    canDelete: boolean;
     confirmDeleteId: string;
     onConfirmDelete: (id: string) => void;
     onAskDelete: (id: string) => void;
@@ -927,6 +896,8 @@ function TaskList({
                                 task={task}
                                 onComplete={() => onComplete(task)}
                                 onEdit={() => onEdit(task)}
+                                canEdit={canEdit}
+                                canDelete={canDelete}
                                 confirming={confirmDeleteId === task.id}
                                 onConfirmDelete={() => onConfirmDelete(task.id)}
                                 onAskDelete={() => onAskDelete(task.id)}
@@ -962,6 +933,8 @@ function TaskRow({
     task,
     onComplete,
     onEdit,
+    canEdit,
+    canDelete,
     confirming,
     onConfirmDelete,
     onAskDelete,
@@ -970,6 +943,8 @@ function TaskRow({
     task: Task;
     onComplete: () => void;
     onEdit: () => void;
+    canEdit: boolean;
+    canDelete: boolean;
     confirming: boolean;
     onConfirmDelete: () => void;
     onAskDelete: () => void;
@@ -1037,7 +1012,7 @@ function TaskRow({
             >
                 {task.assignee?.name?.slice(0, 1).toUpperCase() ?? "–"}
             </span>
-            {confirming ? (
+            {confirming && canDelete ? (
                 <div className="flex items-center gap-1">
                     <button
                         type="button"
@@ -1056,22 +1031,26 @@ function TaskRow({
                 </div>
             ) : (
                 <div className="flex items-center gap-1">
-                    <button
-                        type="button"
-                        onClick={onEdit}
-                        disabled={completed || task.status === "CANCELADA"}
-                        className="rounded-md px-2 py-1 text-[10px] text-[#514c56] hover:bg-[#f3eff4] disabled:opacity-40"
-                    >
-                        Editar
-                    </button>
-                    <button
-                        type="button"
-                        aria-label={`Excluir ${task.title}`}
-                        onClick={onAskDelete}
-                        className="rounded-md p-1 text-[#77717c] hover:bg-[#f3eff4]"
-                    >
-                        <Trash2 size={14} />
-                    </button>
+                    {canEdit && (
+                        <button
+                            type="button"
+                            onClick={onEdit}
+                            disabled={completed || task.status === "CANCELADA"}
+                            className="rounded-md px-2 py-1 text-[10px] text-[#514c56] hover:bg-[#f3eff4] disabled:opacity-40"
+                        >
+                            Editar
+                        </button>
+                    )}
+                    {canDelete && (
+                        <button
+                            type="button"
+                            aria-label={`Excluir ${task.title}`}
+                            onClick={onAskDelete}
+                            className="rounded-md p-1 text-[#77717c] hover:bg-[#f3eff4]"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    )}
                 </div>
             )}
         </article>

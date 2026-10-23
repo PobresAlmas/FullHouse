@@ -11,51 +11,6 @@ function dateFromString(value: string) {
 export class PetsRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    findResidencesForUser(userId: string) {
-        return this.prisma.casa.findMany({
-            where: {
-                status: "ATIVA",
-                excluido_em: null,
-                participacao: { some: { usuario_id: userId, data_saida: null } },
-            },
-            select: {
-                id: true,
-                nome: true,
-                cidade: true,
-                bairro: true,
-                status: true,
-                participacao: {
-                    where: { usuario_id: userId, data_saida: null },
-                    select: { id: true, papel: true },
-                    take: 1,
-                },
-            },
-            orderBy: { nome: "asc" },
-        });
-    }
-
-    findResidenceMembership(residenceId: string, userId: string) {
-        return this.prisma.casa.findFirst({
-            where: {
-                id: residenceId,
-                status: "ATIVA",
-                excluido_em: null,
-                participacao: { some: { usuario_id: userId, data_saida: null } },
-            },
-            select: {
-                id: true,
-                nome: true,
-                cidade: true,
-                bairro: true,
-                participacao: {
-                    where: { usuario_id: userId, data_saida: null },
-                    select: { id: true, papel: true },
-                    take: 1,
-                },
-            },
-        });
-    }
-
     findResidenceMembers(residenceId: string) {
         return this.prisma.participacao.findMany({
             where: { casa_id: residenceId, data_saida: null },
@@ -110,30 +65,12 @@ export class PetsRepository {
         });
     }
 
-    findPetForUser(petId: string, userId: string) {
+    findPetForAccess(petId: string) {
         return this.prisma.pet.findFirst({
-            where: {
-                id: petId,
-                casa: {
-                    is: {
-                        status: "ATIVA",
-                        excluido_em: null,
-                        participacao: { some: { usuario_id: userId, data_saida: null } },
-                    },
-                },
-            },
+            where: { id: petId },
             include: {
                 participacao: { select: { usuario_id: true } },
-                casa: {
-                    select: {
-                        id: true,
-                        participacao: {
-                            where: { usuario_id: userId, data_saida: null },
-                            select: { id: true, papel: true },
-                            take: 1,
-                        },
-                    },
-                },
+                casa: { select: { id: true } },
             },
         });
     }
@@ -217,13 +154,6 @@ export class PetsRepository {
                 },
             },
             orderBy: [{ data_cuidado: "desc" }, { criado_em: "desc" }],
-        });
-    }
-
-    findActiveParticipation(residenceId: string, participationId: string) {
-        return this.prisma.participacao.findFirst({
-            where: { id: participationId, casa_id: residenceId, data_saida: null },
-            select: { id: true },
         });
     }
 

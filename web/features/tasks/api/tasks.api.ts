@@ -1,4 +1,5 @@
 import { api } from "@/services/api";
+import type { Residence } from "@/features/residences/api/residences.api";
 
 export type TaskPeriodicity = "DIARIA" | "SEMANAL" | "QUINZENAL" | "MENSAL" | "PERSONALIZADA";
 
@@ -11,11 +12,7 @@ export interface TaskMember {
     role: "LIDER" | "ADMINISTRADOR" | "MORADOR";
 }
 
-export interface TaskResidence {
-    id: string;
-    name: string;
-    membership: { id: string; role: "LIDER" | "ADMINISTRADOR" | "MORADOR" } | null;
-}
+export type TaskResidence = Residence;
 
 export interface Task {
     id: string;

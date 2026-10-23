@@ -27,14 +27,13 @@ describe("PetsRepository", () => {
         repository = new PetsRepository(prisma as never);
     });
 
-    it("limits residence discovery to active memberships in active homes", () => {
-        repository.findResidencesForUser("user-1");
-        expect(prisma.casa.findMany).toHaveBeenCalledWith(
+    it("loads a pet's residence scope for centralized membership authorization", () => {
+        repository.findPetForAccess("pet-1");
+        expect(prisma.pet.findFirst).toHaveBeenCalledWith(
             expect.objectContaining({
-                where: expect.objectContaining({
-                    status: "ATIVA",
-                    excluido_em: null,
-                    participacao: { some: { usuario_id: "user-1", data_saida: null } },
+                where: { id: "pet-1" },
+                include: expect.objectContaining({
+                    casa: { select: { id: true } },
                 }),
             })
         );

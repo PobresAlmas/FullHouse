@@ -41,6 +41,7 @@ const residence: PetResidence = {
     neighborhood: "Centro",
     status: "ATIVA",
     membership: { id: "participation-1", role: "ADMINISTRADOR" },
+    creationEditPolicy: "TODOS",
 };
 const pet: Pet = {
     id: "00000000-0000-4000-8000-000000000001",

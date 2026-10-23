@@ -7,7 +7,6 @@ import Image from "next/image";
 import {
     Bell,
     CalendarDays,
-    CheckSquare,
     ChevronRight,
     DollarSign,
     House,
@@ -16,8 +15,6 @@ import {
     Plus,
     Settings,
     Trash2,
-    UserRound,
-    Wallet,
 } from "lucide-react";
 import {
     createPet,
@@ -43,6 +40,11 @@ import type {
 import { getExpenses } from "@/features/expenses/api/expenses.api";
 import type { Expense } from "@/features/expenses/api/expenses.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import {
+    canCreateOrEditResidenceContent,
+    isResidenceManager,
+} from "@/features/residences/permissions";
 
 const emptyPet: PetInput = { name: "", species: "", breed: "", birthDate: "", photoUrl: "" };
 const emptyCare: PetCareLogInput = {
@@ -86,13 +88,6 @@ function roleLabel(role?: string) {
     return "Morador";
 }
 
-function canDeletePet(pet: Pet, residence: PetResidence) {
-    return (
-        pet.createdById === residence.membership?.id ||
-        residence.membership?.role === "ADMINISTRADOR"
-    );
-}
-
 export default function PetsPage() {
     const { user } = useAuth();
     const [residences, setResidences] = useState<PetResidence[]>([]);
@@ -118,6 +113,11 @@ export default function PetsPage() {
         [residences, residenceId]
     );
     const currentMember = residence?.membership ?? null;
+    const canEditResidenceContent = canCreateOrEditResidenceContent(
+        currentMember?.role,
+        residence?.creationEditPolicy
+    );
+    const canManageResidenceContent = isResidenceManager(currentMember?.role);
 
     const loadResidenceData = useCallback(
         async (id: string, active: () => boolean = () => true) => {
@@ -315,42 +315,14 @@ export default function PetsPage() {
         }
     }
 
-    const canDelete = selectedPet && residence ? canDeletePet(selectedPet, residence) : false;
+    const canDelete = Boolean(selectedPet && canManageResidenceContent);
     const homePlace = [residence?.city, residence?.neighborhood].filter(Boolean).join(" • ");
     const memberName =
         members.find((member) => member.id === currentMember?.id)?.name ?? user?.email ?? "Morador";
 
     return (
         <div className="min-h-screen bg-[#f8f4fa] text-[#29252d] md:flex">
-            <aside className="flex shrink-0 flex-col border-b border-[#d9d0dc] bg-[#f8f4fa] px-4 py-5 md:min-h-screen md:w-[220px] md:border-b-0 md:border-r">
-                <Link
-                    href="/"
-                    className="mb-7 flex items-center gap-3 rounded-lg px-1"
-                    aria-label="FullHouse início"
-                >
-                    <span className="grid size-10 place-items-center rounded-xl bg-[#234a1b] text-white">
-                        <House size={24} />
-                    </span>
-                    <span>
-                        <span className="block font-bold leading-tight">FullHouse</span>
-                        <span className="block text-xs text-[#625c66]">
-                            Casa {residence?.name ?? "FullHouse"}
-                        </span>
-                    </span>
-                </Link>
-                <nav aria-label="Navegação principal" className="grid gap-1">
-                    <SidebarLink icon={<House size={17} />} label="Home" />
-                    <SidebarLink icon={<CheckSquare size={17} />} label="Tarefas" />
-                    <SidebarLink
-                        icon={<DollarSign size={17} />}
-                        label="Financeiro"
-                        href="/finance"
-                    />
-                    <SidebarLink icon={<Wallet size={17} />} label="Despensa" href="/pantry" />
-                    <SidebarLink icon={<UserRound size={17} />} label="Perfil" />
-                    <SidebarLink icon={<PawPrint size={18} />} label="Pets" href="/pets" active />
-                </nav>
-            </aside>
+            <AppSidebar activeSection="pets" residenceName={residence?.name} />
 
             <div className="min-w-0 flex-1">
                 <header className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] bg-[#fffaff] px-5 py-3 md:px-7">
@@ -390,13 +362,13 @@ export default function PetsPage() {
                         >
                             <Bell size={19} />
                         </button>
-                        <button
-                            type="button"
+                        <Link
+                            href="/settings"
                             aria-label="Configurações"
                             className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
                         >
                             <Settings size={19} />
-                        </button>
+                        </Link>
                         <span
                             className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white"
                             aria-label="Perfil"
@@ -438,7 +410,7 @@ export default function PetsPage() {
                                     <h2 className="text-lg font-bold">
                                         {selectedPet ? "Dados do pet" : "Cadastrar pet"}
                                     </h2>
-                                    {selectedPet && (
+                                    {selectedPet && canEditResidenceContent && (
                                         <button
                                             type="button"
                                             onClick={startNewPet}
@@ -450,7 +422,7 @@ export default function PetsPage() {
                                 </div>
                                 {loading ? (
                                     <p className="text-sm text-[#77717c]">Carregando pets…</p>
-                                ) : (
+                                ) : canEditResidenceContent ? (
                                     <form onSubmit={handlePetSubmit} className="grid gap-5">
                                         <FormField label="Nome do pet" required>
                                             <input
@@ -563,6 +535,11 @@ export default function PetsPage() {
                                             </button>
                                         </div>
                                     </form>
+                                ) : (
+                                    <p role="status" className="text-sm text-[#77717c]">
+                                        A configuração desta residência permite apenas que líderes e
+                                        administradores editem pets.
+                                    </p>
                                 )}
                             </section>
 
@@ -712,15 +689,17 @@ export default function PetsPage() {
                                                 Visível para todos os moradores ativos da casa.
                                             </p>
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => startCareRecord()}
-                                            className="inline-flex items-center gap-2 rounded-lg bg-[#4f7f63] px-4 py-2.5 text-sm font-medium text-white"
-                                        >
-                                            <Plus size={16} /> Registrar cuidado
-                                        </button>
+                                        {canEditResidenceContent && (
+                                            <button
+                                                type="button"
+                                                onClick={() => startCareRecord()}
+                                                className="inline-flex items-center gap-2 rounded-lg bg-[#4f7f63] px-4 py-2.5 text-sm font-medium text-white"
+                                            >
+                                                <Plus size={16} /> Registrar cuidado
+                                            </button>
+                                        )}
                                     </div>
-                                    {showCareForm && (
+                                    {showCareForm && canEditResidenceContent && (
                                         <form
                                             onSubmit={handleCareSubmit}
                                             className="mb-5 grid gap-3 rounded-xl border border-[#d9d1dc] bg-[#faf7fb] p-4 md:grid-cols-2 xl:grid-cols-4"
@@ -875,6 +854,8 @@ export default function PetsPage() {
                                                     log={log}
                                                     onEdit={() => startCareRecord(log)}
                                                     onDelete={() => void handleCareDelete(log)}
+                                                    canEdit={canEditResidenceContent}
+                                                    canDelete={canManageResidenceContent}
                                                 />
                                             ))}
                                         </div>
@@ -955,37 +936,6 @@ function FormField({
     );
 }
 
-function SidebarLink({
-    icon,
-    label,
-    href,
-    active,
-}: {
-    icon: ReactNode;
-    label: string;
-    href?: string;
-    active?: boolean;
-}) {
-    const className =
-        "flex items-center gap-3 rounded-xl px-3 py-3 text-sm " +
-        (active
-            ? "bg-white font-semibold text-[#4f7f63]"
-            : href
-              ? "text-[#514c56] hover:bg-white/70"
-              : "text-[#98919c]");
-    return href ? (
-        <Link href={href} aria-current={active ? "page" : undefined} className={className}>
-            {icon}
-            {label}
-        </Link>
-    ) : (
-        <span className={className}>
-            {icon}
-            {label}
-        </span>
-    );
-}
-
 function PetAvatar({ pet, large = false }: { pet: Pet; large?: boolean }) {
     return pet.photoUrl ? (
         <Image
@@ -1015,10 +965,14 @@ function CareLogRow({
     log,
     onEdit,
     onDelete,
+    canEdit,
+    canDelete,
 }: {
     log: PetCareLog;
     onEdit: () => void;
     onDelete: () => void;
+    canEdit: boolean;
+    canDelete: boolean;
 }) {
     const label = careTypes.find((type) => type.value === log.type)?.label ?? "Outro cuidado";
     return (
@@ -1051,22 +1005,26 @@ function CareLogRow({
                     ""
                 )}
             </span>
-            <button
-                type="button"
-                onClick={onEdit}
-                className="rounded-md p-2 text-[#68616d] hover:bg-[#f0ebf2]"
-                aria-label={"Editar " + log.title}
-            >
-                <Settings size={15} />
-            </button>
-            <button
-                type="button"
-                onClick={onDelete}
-                className="rounded-md p-2 text-red-700 hover:bg-red-50"
-                aria-label={"Remover " + log.title}
-            >
-                <Trash2 size={15} />
-            </button>
+            {canEdit && (
+                <button
+                    type="button"
+                    onClick={onEdit}
+                    className="rounded-md p-2 text-[#68616d] hover:bg-[#f0ebf2]"
+                    aria-label={"Editar " + log.title}
+                >
+                    <Settings size={15} />
+                </button>
+            )}
+            {canDelete && (
+                <button
+                    type="button"
+                    onClick={onDelete}
+                    className="rounded-md p-2 text-red-700 hover:bg-red-50"
+                    aria-label={"Remover " + log.title}
+                >
+                    <Trash2 size={15} />
+                </button>
+            )}
         </article>
     );
 }

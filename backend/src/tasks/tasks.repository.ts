@@ -36,25 +36,6 @@ function recurrenceRule(repeats: boolean) {
 export class TasksRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    findResidenceMembership(residenceId: string, userId: string) {
-        return this.prisma.casa.findFirst({
-            where: {
-                id: residenceId,
-                status: "ATIVA",
-                excluido_em: null,
-                participacao: { some: { usuario_id: userId, data_saida: null } },
-            },
-            select: {
-                id: true,
-                participacao: {
-                    where: { usuario_id: userId, data_saida: null },
-                    select: { id: true, papel: true },
-                    take: 1,
-                },
-            },
-        });
-    }
-
     findMembers(residenceId: string) {
         return this.prisma.participacao.findMany({
             where: { casa_id: residenceId, data_saida: null },
@@ -64,17 +45,6 @@ export class TasksRepository {
                 usuario: { select: { nome: true, apelido: true } },
             },
             orderBy: [{ usuario: { nome: "asc" } }, { id: "asc" }],
-        });
-    }
-
-    findActiveMember(residenceId: string, memberId: string) {
-        return this.prisma.participacao.findFirst({
-            where: { id: memberId, casa_id: residenceId, data_saida: null },
-            select: {
-                id: true,
-                usuario_id: true,
-                usuario: { select: { nome: true, apelido: true } },
-            },
         });
     }
 

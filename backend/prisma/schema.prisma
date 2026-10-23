@@ -80,19 +80,25 @@ model comprovante_pagamento {
   rateio_despesa              rateio_despesa?               @relation(fields: [rateio_despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
+enum politica_criacao_edicao_enum {
+  TODOS
+  LIDERES
+}
+
 model configuracao_casa {
-  casa_id                     String                 @id @db.Uuid
-  penalidade_ativa            Boolean                @default(true)
-  tolerancia_padrao_horas     Int                    @default(24) @db.SmallInt
-  ocorrencias_para_penalidade Int                    @default(1) @db.SmallInt
-  penalidade_valor_padrao     Decimal                @default(0) @db.Decimal(10, 2)
-  limite_negociacoes          Int                    @default(3) @db.SmallInt
-  periodo_renovacao_limites   periodo_renovacao_enum @default(MENSAL)
-  votacao_regras_obrigatoria  Boolean                @default(true)
-  quorum_minimo_aprovacao     Int                    @default(1) @db.SmallInt
-  prazo_aprovacao_regra_dias  Int                    @default(7) @db.SmallInt
-  estrategia_rateio_padrao    estrategia_rateio_enum @default(IGUALITARIO)
-  casa                        casa                   @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  casa_id                     String                       @id @db.Uuid
+  penalidade_ativa            Boolean                      @default(true)
+  politica_criacao_edicao     politica_criacao_edicao_enum @default(TODOS)
+  tolerancia_padrao_horas     Int                          @default(24) @db.SmallInt
+  ocorrencias_para_penalidade Int                          @default(1) @db.SmallInt
+  penalidade_valor_padrao     Decimal                      @default(0) @db.Decimal(10, 2)
+  limite_negociacoes          Int                          @default(3) @db.SmallInt
+  periodo_renovacao_limites   periodo_renovacao_enum       @default(MENSAL)
+  votacao_regras_obrigatoria  Boolean                      @default(true)
+  quorum_minimo_aprovacao     Int                          @default(1) @db.SmallInt
+  prazo_aprovacao_regra_dias  Int                          @default(7) @db.SmallInt
+  estrategia_rateio_padrao    estrategia_rateio_enum       @default(IGUALITARIO)
+  casa                        casa                         @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model conversa {
@@ -124,22 +130,22 @@ model convite_casa {
 }
 
 model cuidado_pet {
-  id                                                                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pet_id                                                                String        @db.Uuid
+  id                                                                    String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pet_id                                                                String                @db.Uuid
   tipo                                                                  tipo_cuidado_pet_enum
-  titulo                                                                String        @default("Cuidado registrado") @db.VarChar(150)
-  descricao                                                              String?
-  data_cuidado                                                          DateTime      @db.Date
-  valor                                                                 Decimal?      @db.Decimal(10, 2)
-  criado_em                                                             DateTime      @default(now()) @db.Timestamptz(6)
-  pago_por_participacao_id                                              String?       @db.Uuid
-  despesa_id                                                            String?       @db.Uuid
-  proxima_ocorrencia                                                    DateTime?     @db.Date
-  registrado_por_participacao_id                                        String        @db.Uuid
-  despesa                                                               despesa?      @relation(fields: [despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  participacao_cuidado_pet_pago_por_participacao_idToparticipacao       participacao? @relation("cuidado_pet_pago_por_participacao_idToparticipacao", fields: [pago_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  pet                                                                   pet           @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  participacao_cuidado_pet_registrado_por_participacao_idToparticipacao participacao  @relation("cuidado_pet_registrado_por_participacao_idToparticipacao", fields: [registrado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  titulo                                                                String                @default("Cuidado registrado") @db.VarChar(150)
+  descricao                                                             String?
+  data_cuidado                                                          DateTime              @db.Date
+  valor                                                                 Decimal?              @db.Decimal(10, 2)
+  criado_em                                                             DateTime              @default(now()) @db.Timestamptz(6)
+  pago_por_participacao_id                                              String?               @db.Uuid
+  despesa_id                                                            String?               @db.Uuid
+  proxima_ocorrencia                                                    DateTime?             @db.Date
+  registrado_por_participacao_id                                        String                @db.Uuid
+  despesa                                                               despesa?              @relation(fields: [despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participacao_cuidado_pet_pago_por_participacao_idToparticipacao       participacao?         @relation("cuidado_pet_pago_por_participacao_idToparticipacao", fields: [pago_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pet                                                                   pet                   @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao_cuidado_pet_registrado_por_participacao_idToparticipacao participacao          @relation("cuidado_pet_registrado_por_participacao_idToparticipacao", fields: [registrado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([pet_id, data_cuidado], map: "idx_cuidado_pet_pet_data")
 }

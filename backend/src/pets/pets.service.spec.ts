@@ -23,25 +23,23 @@ describe("PetsService", () => {
         criado_em: new Date("2026-10-11T00:00:00.000Z"),
     };
     let repository: Record<string, ReturnType<typeof vi.fn>>;
+    let residenceAccess: Record<string, ReturnType<typeof vi.fn>>;
     let service: PetsService;
 
     beforeEach(() => {
         repository = {
-            findResidencesForUser: vi.fn().mockResolvedValue([]),
-            findResidenceMembership: vi.fn().mockResolvedValue(residence),
             findResidenceMembers: vi.fn().mockResolvedValue([]),
             findPets: vi.fn().mockResolvedValue([]),
             findPet: vi.fn().mockResolvedValue(pet),
-            findPetForUser: vi.fn().mockResolvedValue({
+            findPetForAccess: vi.fn().mockResolvedValue({
                 ...pet,
                 participacao: { usuario_id: "user-1" },
-                casa: { id: residence.id, participacao: [membership] },
+                casa: { id: residence.id },
             }),
             createPet: vi.fn().mockResolvedValue(pet),
             updatePet: vi.fn().mockResolvedValue(pet),
             deletePet: vi.fn().mockResolvedValue(pet),
             findPetCareLogs: vi.fn().mockResolvedValue([]),
-            findActiveParticipation: vi.fn().mockResolvedValue({ id: "participation-2" }),
             findResidenceExpense: vi.fn().mockResolvedValue({ id: "expense-1" }),
             findCareLog: vi.fn().mockResolvedValue({ id: "care-1" }),
             createCareLog: vi.fn().mockResolvedValue({
@@ -60,7 +58,28 @@ describe("PetsService", () => {
             updateCareLog: vi.fn(),
             deleteCareLog: vi.fn(),
         };
-        service = new PetsService(repository as never);
+        residenceAccess = {
+            requireMembership: vi.fn().mockResolvedValue({
+                residenceId: residence.id,
+                memberId: membership.id,
+                role: membership.papel,
+                creationEditPolicy: "TODOS",
+            }),
+            requireCreateEditPermission: vi.fn().mockResolvedValue({
+                residenceId: residence.id,
+                memberId: membership.id,
+                role: membership.papel,
+                creationEditPolicy: "TODOS",
+            }),
+            requireManager: vi.fn().mockResolvedValue({
+                residenceId: residence.id,
+                memberId: membership.id,
+                role: membership.papel,
+                creationEditPolicy: "TODOS",
+            }),
+            requireActiveMember: vi.fn().mockResolvedValue({ id: "participation-2" }),
+        };
+        service = new PetsService(repository as never, residenceAccess as never);
     });
 
     it("creates a pet under the authenticated member's active residence", async () => {
@@ -76,7 +95,9 @@ describe("PetsService", () => {
     });
 
     it("does not expose a residence outside the user's active memberships", async () => {
-        repository.findResidenceMembership.mockResolvedValue(null);
+        residenceAccess.requireMembership.mockRejectedValue(
+            new NotFoundException("A residência não está disponível.")
+        );
         await expect(service.findAll("other-residence", "user-1")).rejects.toBeInstanceOf(
             NotFoundException
         );
@@ -90,22 +111,15 @@ describe("PetsService", () => {
         expect(repository.updatePet).toHaveBeenCalledWith("pet-1", { name: "Luna" });
     });
 
-    it("allows pet deletion only to its creator or an administrator", async () => {
-        repository.findPetForUser.mockResolvedValue({
-            ...pet,
-            participacao: { usuario_id: "another-user" },
-            casa: { id: residence.id, participacao: [membership] },
-        });
+    it("allows pet deletion only to a leader or administrator", async () => {
+        residenceAccess.requireManager.mockRejectedValueOnce(
+            new ForbiddenException("Somente líderes e administradores podem fazer isso.")
+        );
         await expect(service.remove("residence-1", "pet-1", "user-1")).rejects.toBeInstanceOf(
             ForbiddenException
         );
         expect(repository.deletePet).not.toHaveBeenCalled();
 
-        repository.findPetForUser.mockResolvedValue({
-            ...pet,
-            participacao: { usuario_id: "another-user" },
-            casa: { id: residence.id, participacao: [{ id: "admin", papel: "ADMINISTRADOR" }] },
-        });
         await expect(service.remove("residence-1", "pet-1", "user-1")).resolves.toEqual({
             id: "pet-1",
             deleted: true,
@@ -114,7 +128,7 @@ describe("PetsService", () => {
     });
 
     it("rejects a care log with a payer from another residence", async () => {
-        repository.findActiveParticipation.mockResolvedValue(null);
+        residenceAccess.requireActiveMember.mockResolvedValue(null);
         await expect(
             service.createCareLog(
                 "pet-1",

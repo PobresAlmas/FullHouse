@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { TasksService } from "../../../src/tasks/tasks.service.js";
 import { TaskPeriodicity } from "../../../src/tasks/dto/create-task.dto.js";
 
@@ -39,9 +39,7 @@ function makeTask(overrides: Record<string, unknown> = {}) {
 
 describe("TasksService business rules", () => {
     let repository: {
-        findResidenceMembership: ReturnType<typeof vi.fn>;
         findMembers: ReturnType<typeof vi.fn>;
-        findActiveMember: ReturnType<typeof vi.fn>;
         findTasks: ReturnType<typeof vi.fn>;
         findTask: ReturnType<typeof vi.fn>;
         create: ReturnType<typeof vi.fn>;
@@ -49,19 +47,20 @@ describe("TasksService business rules", () => {
         complete: ReturnType<typeof vi.fn>;
         remove: ReturnType<typeof vi.fn>;
     };
+    let residenceAccess: {
+        requireMembership: ReturnType<typeof vi.fn>;
+        requireCreateEditPermission: ReturnType<typeof vi.fn>;
+        requireManager: ReturnType<typeof vi.fn>;
+        requireActiveMember: ReturnType<typeof vi.fn>;
+    };
     let service: TasksService;
 
     beforeEach(() => {
         repository = {
-            findResidenceMembership: vi.fn().mockResolvedValue({
-                id: residenceId,
-                participacao: [{ id: memberId, papel: "MORADOR" }],
-            }),
             findMembers: vi.fn().mockResolvedValue([
                 { id: memberId, papel: "MORADOR", usuario: { nome: "Ana Souza", apelido: "Ana" } },
                 { id: "member-2", papel: "LIDER", usuario: { nome: "Bruno Lima", apelido: null } },
             ]),
-            findActiveMember: vi.fn().mockResolvedValue({ id: memberId, usuario_id: userId }),
             findTasks: vi.fn().mockResolvedValue([makeTask()]),
             findTask: vi.fn().mockResolvedValue(makeTask()),
             create: vi.fn().mockResolvedValue(taskId),
@@ -69,7 +68,19 @@ describe("TasksService business rules", () => {
             complete: vi.fn().mockResolvedValue(undefined),
             remove: vi.fn().mockResolvedValue(undefined),
         };
-        service = new TasksService(repository as never);
+        const membership = {
+            residenceId,
+            memberId,
+            role: "MORADOR",
+            creationEditPolicy: "TODOS",
+        };
+        residenceAccess = {
+            requireMembership: vi.fn().mockResolvedValue(membership),
+            requireCreateEditPermission: vi.fn().mockResolvedValue(membership),
+            requireManager: vi.fn().mockResolvedValue(membership),
+            requireActiveMember: vi.fn().mockResolvedValue({ id: memberId, usuario_id: userId }),
+        };
+        service = new TasksService(repository as never, residenceAccess as never);
     });
 
     it("lists active residents with nickname fallback and maps task fields", async () => {
@@ -101,7 +112,7 @@ describe("TasksService business rules", () => {
     });
 
     it("does not expose tasks when the user has no active residence membership", async () => {
-        repository.findResidenceMembership.mockResolvedValue(null);
+        residenceAccess.requireMembership.mockRejectedValue(new NotFoundException());
 
         await expect(service.findAll(residenceId, userId, {})).rejects.toBeInstanceOf(
             NotFoundException
@@ -121,7 +132,7 @@ describe("TasksService business rules", () => {
 
         await service.create(residenceId, input, userId);
 
-        expect(repository.findActiveMember).toHaveBeenCalledWith(residenceId, memberId);
+        expect(residenceAccess.requireActiveMember).toHaveBeenCalledWith(residenceId, memberId);
         expect(repository.create).toHaveBeenCalledWith(
             residenceId,
             userId,
@@ -150,7 +161,7 @@ describe("TasksService business rules", () => {
     });
 
     it("rejects an assignee who is not an active member of the residence", async () => {
-        repository.findActiveMember.mockResolvedValue(null);
+        residenceAccess.requireActiveMember.mockResolvedValue(null);
 
         await expect(
             service.create(
@@ -236,5 +247,27 @@ describe("TasksService business rules", () => {
         });
 
         expect(repository.remove).toHaveBeenCalledWith("definition-id");
+    });
+
+    it("allows only household leaders to delete tasks", async () => {
+        residenceAccess.requireManager.mockRejectedValueOnce(new ForbiddenException());
+
+        await expect(service.remove(residenceId, taskId, userId)).rejects.toBeInstanceOf(
+            ForbiddenException
+        );
+        expect(repository.remove).not.toHaveBeenCalled();
+    });
+
+    it("rejects creating a task when the residence policy restricts editing", async () => {
+        residenceAccess.requireCreateEditPermission.mockRejectedValueOnce(new ForbiddenException());
+
+        await expect(
+            service.create(
+                residenceId,
+                { title: "Limpar cozinha", dueAt: dueAt.toISOString() },
+                userId
+            )
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.create).not.toHaveBeenCalled();
     });
 });

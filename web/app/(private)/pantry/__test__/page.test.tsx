@@ -29,6 +29,7 @@ const residence: PetResidence = {
     neighborhood: "Centro",
     status: "ATIVA",
     membership: { id: "member-1", role: "ADMINISTRADOR" },
+    creationEditPolicy: "TODOS",
 };
 
 const member: PantryMember = { id: "member-1", name: "Emilson" };

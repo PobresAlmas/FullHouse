@@ -1,9 +1,4 @@
-import {
-    BadRequestException,
-    ForbiddenException,
-    Injectable,
-    NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { tipo_cuidado_pet_enum as PrismaPetCareType } from "../generated/prisma/enums.js";
 import { CreatePetCareLogDto } from "./dto/create-pet-care-log.dto.js";
 import { CreatePetDto } from "./dto/create-pet.dto.js";
@@ -11,6 +6,7 @@ import { PetCareLogResponseDto, PetResponseDto } from "./dto/pet-response.dto.js
 import { UpdatePetCareLogDto } from "./dto/update-pet-care-log.dto.js";
 import { UpdatePetDto } from "./dto/update-pet.dto.js";
 import { PetsRepository } from "./pets.repository.js";
+import { ResidenceAccessService } from "../residences/residence-access.service.js";
 
 function dateToString(date: Date | null) {
     return date?.toISOString().slice(0, 10) ?? null;
@@ -32,24 +28,13 @@ type CareLogRecord = {
 
 @Injectable()
 export class PetsService {
-    constructor(private readonly repository: PetsRepository) {}
-
-    async findResidences(userId: string) {
-        const residences = await this.repository.findResidencesForUser(userId);
-        return residences.map((residence) => ({
-            id: residence.id,
-            name: residence.nome,
-            city: residence.cidade,
-            neighborhood: residence.bairro,
-            status: residence.status,
-            membership: residence.participacao[0]
-                ? { id: residence.participacao[0].id, role: residence.participacao[0].papel }
-                : null,
-        }));
-    }
+    constructor(
+        private readonly repository: PetsRepository,
+        private readonly residenceAccess: ResidenceAccessService
+    ) {}
 
     async findResidenceMembers(residenceId: string, userId: string) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireMembership(residenceId, userId);
         const members = await this.repository.findResidenceMembers(residenceId);
         return members.map((member) => ({
             id: member.id,
@@ -59,30 +44,33 @@ export class PetsService {
     }
 
     async findAll(residenceId: string, userId: string, search?: string) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireMembership(residenceId, userId);
         const pets = await this.repository.findPets(residenceId, search?.trim() || undefined);
         return pets.map((pet) => this.mapPet(pet));
     }
 
     async findOne(residenceId: string, petId: string, userId: string) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireMembership(residenceId, userId);
         const pet = await this.repository.findPet(residenceId, petId);
         if (!pet) throw new NotFoundException("O pet não está disponível.");
         return this.mapPet(pet, true);
     }
 
     async create(residenceId: string, data: CreatePetDto, userId: string) {
-        const residence = await this.requireResidence(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const pet = await this.repository.createPet({
             residenceId,
-            createdById: residence.participacao[0].id,
+            createdById: membership.memberId,
             ...data,
         });
         return this.mapPet(pet);
     }
 
     async update(residenceId: string, petId: string, data: UpdatePetDto, userId: string) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireCreateEditPermission(residenceId, userId);
         const pet = await this.repository.findPet(residenceId, petId);
         if (!pet) throw new NotFoundException("O pet não está disponível.");
         const updated = await this.repository.updatePet(petId, data);
@@ -90,20 +78,10 @@ export class PetsService {
     }
 
     async remove(residenceId: string, petId: string, userId: string) {
-        await this.requireResidence(residenceId, userId);
-        const pet = await this.repository.findPetForUser(petId, userId);
-        if (!pet || pet.casa.id !== residenceId) {
+        await this.residenceAccess.requireManager(residenceId, userId);
+        const pet = await this.repository.findPet(residenceId, petId);
+        if (!pet) {
             throw new NotFoundException("O pet não está disponível.");
-        }
-
-        const currentMembership = pet.casa.participacao[0];
-        if (
-            pet.participacao.usuario_id !== userId &&
-            currentMembership?.papel !== "ADMINISTRADOR"
-        ) {
-            throw new ForbiddenException(
-                "Somente quem cadastrou o pet ou um administrador pode removê-lo."
-            );
         }
 
         await this.repository.deletePet(petId);
@@ -115,7 +93,7 @@ export class PetsService {
         userId: string,
         filters: { type?: string; from?: string; to?: string }
     ) {
-        const pet = await this.requirePetForUser(petId, userId);
+        const { pet } = await this.requirePetForUser(petId, userId);
         const logs = await this.repository.findPetCareLogs(pet.id, {
             type: filters.type as PrismaPetCareType | undefined,
             from: filters.from,
@@ -125,12 +103,11 @@ export class PetsService {
     }
 
     async createCareLog(petId: string, data: CreatePetCareLogDto, userId: string) {
-        const pet = await this.requirePetForUser(petId, userId);
-        const membership = pet.casa.participacao[0];
+        const { pet, membership } = await this.requirePetForUser(petId, userId, true);
         await this.validateCareReferences(pet.casa.id, data.paidById, data.expenseId);
         const log = await this.repository.createCareLog({
             petId,
-            createdById: membership.id,
+            createdById: membership.memberId,
             ...data,
             type: data.type as PrismaPetCareType,
         });
@@ -143,7 +120,7 @@ export class PetsService {
         data: UpdatePetCareLogDto,
         userId: string
     ) {
-        const pet = await this.requirePetForUser(petId, userId);
+        const { pet } = await this.requirePetForUser(petId, userId, true);
         const existing = await this.repository.findCareLog(petId, careLogId);
         if (!existing) throw new NotFoundException("O registro de cuidado não está disponível.");
         await this.validateCareReferences(pet.casa.id, data.paidById, data.expenseId);
@@ -155,27 +132,23 @@ export class PetsService {
     }
 
     async removeCareLog(petId: string, careLogId: string, userId: string) {
-        await this.requirePetForUser(petId, userId);
+        const { pet } = await this.requirePetForUser(petId, userId);
+        await this.residenceAccess.requireManager(pet.casa.id, userId);
         const existing = await this.repository.findCareLog(petId, careLogId);
         if (!existing) throw new NotFoundException("O registro de cuidado não está disponível.");
         await this.repository.deleteCareLog(careLogId);
         return { id: careLogId, deleted: true };
     }
 
-    private async requireResidence(residenceId: string, userId: string) {
-        const residence = await this.repository.findResidenceMembership(residenceId, userId);
-        if (!residence || residence.participacao.length === 0) {
-            throw new NotFoundException("A residência não está disponível.");
-        }
-        return residence;
-    }
-
-    private async requirePetForUser(petId: string, userId: string) {
-        const pet = await this.repository.findPetForUser(petId, userId);
-        if (!pet || pet.casa.participacao.length === 0) {
+    private async requirePetForUser(petId: string, userId: string, canWrite = false) {
+        const pet = await this.repository.findPetForAccess(petId);
+        if (!pet) {
             throw new NotFoundException("O pet não está disponível.");
         }
-        return pet;
+        const membership = canWrite
+            ? await this.residenceAccess.requireCreateEditPermission(pet.casa.id, userId)
+            : await this.residenceAccess.requireMembership(pet.casa.id, userId);
+        return { pet, membership };
     }
 
     private async validateCareReferences(
@@ -184,7 +157,7 @@ export class PetsService {
         expenseId?: string | null
     ) {
         if (paidById) {
-            const participation = await this.repository.findActiveParticipation(
+            const participation = await this.residenceAccess.requireActiveMember(
                 residenceId,
                 paidById
             );

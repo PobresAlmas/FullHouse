@@ -95,6 +95,22 @@ describe("FinancePage expense CRUD", () => {
         );
     }, 15000);
 
+    it("does not present a fake home or offer expense creation without a residence", async () => {
+        vi.mocked(getExpenseHomes).mockResolvedValue([]);
+        vi.mocked(getExpenseSubgroups).mockResolvedValue([]);
+        render(<FinancePage />);
+
+        expect(
+            await screen.findByRole("heading", { name: "Nenhuma residência associada" })
+        ).toBeInTheDocument();
+        expect(screen.queryByText("Minha casa")).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Dashboard Casa" })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: /adicionar despesa/i })
+        ).not.toBeInTheDocument();
+        expect(createExpense).not.toHaveBeenCalled();
+    }, 15000);
+
     it("edits an expense and shows the updated values", async () => {
         const user = userEvent.setup();
         vi.mocked(getExpenses).mockResolvedValue([expense]);

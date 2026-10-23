@@ -19,26 +19,6 @@ const itemInclude = {
 export class PantryRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    findMembership(residenceId: string, userId: string) {
-        return this.prisma.casa.findFirst({
-            where: {
-                id: residenceId,
-                status: "ATIVA",
-                excluido_em: null,
-                participacao: { some: { usuario_id: userId, data_saida: null } },
-            },
-            select: {
-                id: true,
-                nome: true,
-                participacao: {
-                    where: { usuario_id: userId, data_saida: null },
-                    select: { id: true, papel: true },
-                    take: 1,
-                },
-            },
-        });
-    }
-
     findMembers(residenceId: string) {
         return this.prisma.participacao.findMany({
             where: { casa_id: residenceId, data_saida: null },
@@ -133,13 +113,6 @@ export class PantryRepository {
 
     countMovements(itemId: string) {
         return this.prisma.movimentacao_despensa.count({ where: { item_despensa_id: itemId } });
-    }
-
-    findActiveMember(residenceId: string, memberId: string) {
-        return this.prisma.participacao.findFirst({
-            where: { id: memberId, casa_id: residenceId, data_saida: null },
-            select: { id: true },
-        });
     }
 
     createItem(data: {

@@ -9,17 +9,13 @@ import {
     Bell,
     CalendarDays,
     Check,
-    CheckSquare,
     ChevronRight,
-    DollarSign,
     House,
     Paperclip,
-    PawPrint,
     Pencil,
     Plus,
     Settings,
     Trash2,
-    UserRound,
     Wallet,
     X,
 } from "lucide-react";
@@ -31,6 +27,7 @@ import {
     getExpenses,
     updateExpense,
 } from "@/features/expenses/api/expenses.api";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 import type {
     CreateExpenseInput,
     Expense,
@@ -173,9 +170,10 @@ export default function FinancePage() {
         return { outstanding, paidThisMonth, monthlyAverage: Math.round(total / 3) };
     }, [expenses]);
 
-    const houseName = homes[0]?.name ?? "Minha casa";
+    const houseName = homes[0]?.name ?? null;
 
     function openCreateModal() {
+        if (homes.length === 0) return;
         setForm(initialForm);
         setFormError("");
         setNotice("");
@@ -199,6 +197,10 @@ export default function FinancePage() {
         event.preventDefault();
         setFormError("");
 
+        if (homes.length === 0) {
+            setFormError("Associe-se a uma residência antes de cadastrar uma despesa.");
+            return;
+        }
         if (!form.description.trim() || !form.amount || !form.date) {
             setFormError("Preencha todos os campos obrigatórios.");
             return;
@@ -258,55 +260,15 @@ export default function FinancePage() {
 
     return (
         <div className="min-h-screen bg-[#f8f4fa] text-[#29252d] md:flex">
-            <aside className="flex shrink-0 flex-col border-b border-[#d9d0dc] bg-[#f8f4fa] px-4 py-5 md:min-h-screen md:w-[220px] md:border-b-0 md:border-r">
-                <Link
-                    href="/"
-                    className="mb-7 flex items-center gap-3 rounded-lg px-1"
-                    aria-label="FullHouse início"
-                >
-                    <span className="grid size-10 place-items-center rounded-xl bg-[#234a1b] text-white">
-                        <House size={24} strokeWidth={2.4} />
-                    </span>
-                    <span>
-                        <span className="block font-bold leading-tight">FullHouse</span>
-                        <span className="block text-xs text-[#625c66]">Casa {houseName}</span>
-                    </span>
-                </Link>
-
-                <nav aria-label="Navegação principal" className="grid gap-1">
-                    <SidebarLink icon={<House size={17} />} label="Home" />
-                    <SidebarLink icon={<CheckSquare size={17} />} label="Tarefas" />
-                    <SidebarLink
-                        icon={<DollarSign size={17} />}
-                        label="Financeiro"
-                        href="/finance"
-                        active
-                    />
-                    <SidebarLink icon={<Wallet size={17} />} label="Despensa" href="/pantry" />
-                    <SidebarLink icon={<UserRound size={17} />} label="Perfil" />
-                    <SidebarLink icon={<PawPrint size={18} />} label="Pets" href="/pets" />
-                </nav>
-            </aside>
+            <AppSidebar activeSection="finance" residenceName={houseName} />
 
             <div className="min-w-0 flex-1">
                 <header className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] bg-[#fffaff] px-5 py-3 md:px-7">
                     <div>
                         <h1 className="text-xl font-bold">Bom dia</h1>
                         <p className="flex items-center gap-1 text-xs text-[#77717c]">
-                            <House size={12} /> {houseName}
+                            <House size={12} /> {houseName ?? "Nenhuma residência associada"}
                         </p>
-                    </div>
-                    <div
-                        className="flex items-center gap-2 rounded-xl bg-[#e8e5e9] p-0.5 text-xs"
-                        aria-label="Escopo da casa"
-                    >
-                        <span className="rounded-lg px-6 py-2 text-[#55505a]">Pessoal</span>
-                        <span
-                            aria-current="true"
-                            className="rounded-lg bg-[#4e812f] px-6 py-2 font-medium text-white"
-                        >
-                            {houseName}
-                        </span>
                     </div>
                     <div className="flex items-center gap-3 text-[#514c56]">
                         <button
@@ -319,19 +281,13 @@ export default function FinancePage() {
                                 1
                             </span>
                         </button>
-                        <button
-                            type="button"
+                        <Link
+                            href="/settings"
                             aria-label="Configurações"
                             className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
                         >
                             <Settings size={19} />
-                        </button>
-                        <span
-                            className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white"
-                            aria-label="Perfil"
-                        >
-                            {houseName.slice(0, 1).toUpperCase()}
-                        </span>
+                        </Link>
                     </div>
                 </header>
 
@@ -353,7 +309,24 @@ export default function FinancePage() {
                         </div>
                     )}
 
-                    <div className="mb-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(250px,286px)]">
+                    {loading && (
+                        <p className="mb-4 text-sm text-[#77717c]">
+                            Carregando residências e despesas…
+                        </p>
+                    )}
+                    {!loading && homes.length === 0 && (
+                        <section className="rounded-xl border border-[#d6cdd9] bg-[#fffaff] p-10 text-center">
+                            <House className="mx-auto mb-3 text-[#4f7f63]" size={30} />
+                            <h2 className="font-semibold">Nenhuma residência associada</h2>
+                            <p className="mt-1 text-sm text-[#77717c]">
+                                Associe-se a uma residência para consultar e cadastrar despesas.
+                            </p>
+                        </section>
+                    )}
+                    <div
+                        style={{ display: loading || homes.length === 0 ? "none" : undefined }}
+                        className="mb-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(250px,286px)]"
+                    >
                         <section className="rounded-xl border border-[#d6cdd9] bg-[#fffaff] px-5 pb-5 pt-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
                             <h2 className="mb-3 border-b border-[#817b84] pb-1 text-[22px] font-bold">
                                 Dashboard Casa
@@ -394,7 +367,10 @@ export default function FinancePage() {
                         <CalendarWidget expenses={expenses} />
                     </div>
 
-                    <section className="overflow-hidden rounded-lg border border-[#e9e2eb] bg-[#fffaff]">
+                    <section
+                        style={{ display: loading || homes.length === 0 ? "none" : undefined }}
+                        className="overflow-hidden rounded-lg border border-[#e9e2eb] bg-[#fffaff]"
+                    >
                         {loading ? (
                             <p className="p-8 text-sm text-[#77717c]">Carregando despesas…</p>
                         ) : expenses.length === 0 ? (
@@ -406,6 +382,7 @@ export default function FinancePage() {
                                 </p>
                                 <button
                                     onClick={openCreateModal}
+                                    disabled={loading}
                                     className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#4e812f] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#3e6b25]"
                                 >
                                     <Plus size={17} /> Adicionar despesa
@@ -494,7 +471,7 @@ export default function FinancePage() {
                                 <button
                                     type="button"
                                     onClick={openCreateModal}
-                                    disabled={loading}
+                                    disabled={loading || homes.length === 0}
                                     className="inline-flex items-center gap-1.5 rounded-lg bg-[#4e812f] px-3 py-2 text-[11px] font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <Plus size={14} /> Adicionar Despesa
@@ -531,35 +508,6 @@ export default function FinancePage() {
                 />
             )}
         </div>
-    );
-}
-
-function SidebarLink({
-    icon,
-    label,
-    href,
-    active = false,
-}: {
-    icon: ReactNode;
-    label: string;
-    href?: string;
-    active?: boolean;
-}) {
-    const className = `flex h-12 items-center gap-3 rounded-xl px-3 text-sm transition ${active ? "bg-white font-semibold text-[#4e812f]" : "text-[#514c56]"}`;
-    const content = (
-        <>
-            {icon}
-            <span>{label}</span>
-        </>
-    );
-    return href ? (
-        <Link href={href} aria-current={active ? "page" : undefined} className={className}>
-            {content}
-        </Link>
-    ) : (
-        <span aria-disabled="true" className={`${className} cursor-default`}>
-            {content}
-        </span>
     );
 }
 

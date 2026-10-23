@@ -15,6 +15,7 @@ import { ExpensesModule } from "./expenses/expenses.module.js";
 import { PetsModule } from "./pets/pets.module.js";
 import { PantryModule } from "./pantry/pantry.module.js";
 import { TasksModule } from "./tasks/tasks.module.js";
+import { ResidencesModule } from "./residences/residences.module.js";
 
 @Module({
     imports: [
@@ -42,6 +43,7 @@ import { TasksModule } from "./tasks/tasks.module.js";
         PetsModule,
         PantryModule,
         TasksModule,
+        ResidencesModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService],

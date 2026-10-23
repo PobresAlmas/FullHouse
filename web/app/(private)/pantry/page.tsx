@@ -5,19 +5,15 @@ import type { FormEvent, ReactNode } from "react";
 import Link from "next/link";
 import {
     Bell,
-    CheckSquare,
     ChevronDown,
-    DollarSign,
     House,
     Minus,
     Package,
-    PawPrint,
     Pencil,
     Plus,
     Search,
     Settings,
     Trash2,
-    UserRound,
     UsersRound,
     X,
 } from "lucide-react";
@@ -40,6 +36,7 @@ import type {
     PantryProperty,
     PantryUnit,
 } from "@/features/pantry/api/pantry.api";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 
 type TabKey = "all" | "communal" | "private" | "mine";
 type ItemFormState = {
@@ -448,40 +445,7 @@ export default function PantryPage() {
 
     return (
         <div className="min-h-screen bg-[#f8f4fa] text-[#29252d] md:flex">
-            <aside className="flex shrink-0 flex-col border-b border-[#d9d0dc] bg-[#f8f4fa] px-4 py-5 md:min-h-screen md:w-[220px] md:border-b-0 md:border-r">
-                <Link
-                    href="/"
-                    className="mb-7 flex items-center gap-3 rounded-lg px-1"
-                    aria-label="FullHouse início"
-                >
-                    <span className="grid size-10 place-items-center rounded-xl bg-[#234a1b] text-white">
-                        <House size={24} strokeWidth={2.4} />
-                    </span>
-                    <span>
-                        <span className="block font-bold leading-tight">FullHouse</span>
-                        <span className="block text-xs text-[#625c66]">
-                            Casa {residence?.name ?? "FullHouse"}
-                        </span>
-                    </span>
-                </Link>
-                <nav aria-label="Navegação principal" className="grid gap-1">
-                    <SidebarLink icon={<House size={17} />} label="Home" />
-                    <SidebarLink icon={<CheckSquare size={17} />} label="Tarefas" />
-                    <SidebarLink
-                        icon={<DollarSign size={17} />}
-                        label="Financeiro"
-                        href="/finance"
-                    />
-                    <SidebarLink
-                        icon={<Package size={17} />}
-                        label="Despensa"
-                        href="/pantry"
-                        active
-                    />
-                    <SidebarLink icon={<UserRound size={17} />} label="Perfil" />
-                    <SidebarLink icon={<PawPrint size={18} />} label="Pets" href="/pets" />
-                </nav>
-            </aside>
+            <AppSidebar activeSection="pantry" residenceName={residence?.name} />
 
             <div className="min-w-0 flex-1">
                 <header className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] bg-[#fffaff] px-5 py-3 md:px-7">
@@ -521,13 +485,13 @@ export default function PantryPage() {
                         >
                             <Bell size={19} />
                         </button>
-                        <button
-                            type="button"
+                        <Link
+                            href="/settings"
                             aria-label="Configurações"
                             className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
                         >
                             <Settings size={19} />
-                        </button>
+                        </Link>
                         <span
                             className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white"
                             aria-label="Perfil"
@@ -1230,35 +1194,6 @@ export default function PantryPage() {
                 </div>
             )}
         </div>
-    );
-}
-
-function SidebarLink({
-    icon,
-    label,
-    href,
-    active = false,
-}: {
-    icon: ReactNode;
-    label: string;
-    href?: string;
-    active?: boolean;
-}) {
-    const className = `flex h-12 items-center gap-3 rounded-xl px-3 text-sm transition ${active ? "bg-white font-semibold text-[#4e812f]" : href ? "text-[#514c56] hover:bg-white/70" : "text-[#98919c]"}`;
-    const content = (
-        <>
-            {icon}
-            <span>{label}</span>
-        </>
-    );
-    return href ? (
-        <Link href={href} aria-current={active ? "page" : undefined} className={className}>
-            {content}
-        </Link>
-    ) : (
-        <span aria-disabled="true" className={`${className} cursor-default`}>
-            {content}
-        </span>
     );
 }
 

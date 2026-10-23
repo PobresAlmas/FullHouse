@@ -35,20 +35,6 @@ describe("PantryRepository", () => {
         repository = new PantryRepository(prisma as never);
     });
 
-    it("scopes membership lookup to an active, non-deleted home and current user", () => {
-        repository.findMembership("home-1", "user-1");
-        expect(prisma.casa.findFirst).toHaveBeenCalledWith(
-            expect.objectContaining({
-                where: {
-                    id: "home-1",
-                    status: "ATIVA",
-                    excluido_em: null,
-                    participacao: { some: { usuario_id: "user-1", data_saida: null } },
-                },
-            })
-        );
-    });
-
     it("lists only active household members in stable name order", () => {
         repository.findMembers("home-1");
         expect(prisma.participacao.findMany).toHaveBeenCalledWith({
@@ -134,13 +120,8 @@ describe("PantryRepository", () => {
         });
     });
 
-    it("checks active household membership and counts item movements", () => {
-        repository.findActiveMember("home-1", "member-1");
+    it("counts item movements", () => {
         repository.countMovements("item-1");
-        expect(prisma.participacao.findFirst).toHaveBeenCalledWith({
-            where: { id: "member-1", casa_id: "home-1", data_saida: null },
-            select: { id: true },
-        });
         expect(prisma.movimentacao_despensa.count).toHaveBeenCalledWith({
             where: { item_despensa_id: "item-1" },
         });

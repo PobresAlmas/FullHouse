@@ -26,11 +26,6 @@ import { PetsService } from "./pets.service.js";
 export class PetsController {
     constructor(private readonly petsService: PetsService) {}
 
-    @Get("residences")
-    findResidences(@CurrentUser() user: { id: string }) {
-        return this.petsService.findResidences(user.id);
-    }
-
     @Get("residences/:residenceId/members")
     findResidenceMembers(
         @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,

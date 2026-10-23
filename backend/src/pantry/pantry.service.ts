@@ -13,6 +13,7 @@ import { CreatePantryItemDto } from "./dto/create-pantry-item.dto.js";
 import { CreatePantryMovementDto } from "./dto/create-pantry-movement.dto.js";
 import { UpdatePantryItemDto } from "./dto/update-pantry-item.dto.js";
 import { PantryItemListRecord, PantryItemRecord, PantryRepository } from "./pantry.repository.js";
+import { ResidenceAccessService } from "../residences/residence-access.service.js";
 
 function dateFromString(value: string) {
     return new Date(value + "T00:00:00.000Z");
@@ -24,10 +25,13 @@ function dateToString(value: Date | null) {
 
 @Injectable()
 export class PantryService {
-    constructor(private readonly repository: PantryRepository) {}
+    constructor(
+        private readonly repository: PantryRepository,
+        private readonly residenceAccess: ResidenceAccessService
+    ) {}
 
     async findMembers(residenceId: string, userId: string) {
-        await this.requireResidence(residenceId, userId);
+        await this.residenceAccess.requireMembership(residenceId, userId);
         return (await this.repository.findMembers(residenceId)).map((member) => ({
             id: member.id,
             name: member.usuario.apelido || member.usuario.nome,
@@ -35,8 +39,8 @@ export class PantryService {
     }
 
     async findItems(residenceId: string, userId: string, search?: string) {
-        const membership = await this.requireResidence(residenceId, userId);
-        const memberId = membership.participacao[0].id;
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const memberId = membership.memberId;
         const items = await this.repository.findItems(
             residenceId,
             memberId,
@@ -46,8 +50,8 @@ export class PantryService {
     }
 
     async createItem(residenceId: string, data: CreatePantryItemDto, userId: string) {
-        const membership = await this.requireResidence(residenceId, userId);
-        const memberId = membership.participacao[0].id;
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const memberId = membership.memberId;
         const ownerMemberId =
             data.property === "COMUNITARIO"
                 ? null
@@ -58,7 +62,7 @@ export class PantryService {
 
         const itemId = await this.repository.createItem({
             residenceId,
-            creatorMemberId: membership.participacao[0].id,
+            creatorMemberId: memberId,
             name: data.name,
             category: data.category,
             property: data.property as propriedade_item_enum,
@@ -68,7 +72,7 @@ export class PantryService {
             expirationDate: data.expirationDate ? dateFromString(data.expirationDate) : null,
             initialQuantity: data.initialQuantity,
         });
-        return this.findItemResponse(residenceId, itemId, membership.participacao[0].id);
+        return this.findItemResponse(residenceId, itemId, memberId);
     }
 
     async updateItem(
@@ -77,14 +81,11 @@ export class PantryService {
         data: UpdatePantryItemDto,
         userId: string
     ) {
-        const membership = await this.requireResidence(residenceId, userId);
-        const existing = await this.repository.findItem(
-            residenceId,
-            itemId,
-            membership.participacao[0].id
-        );
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const member = { id: membership.memberId, papel: membership.role };
+        const existing = await this.repository.findItem(residenceId, itemId, membership.memberId);
         if (!existing) throw new NotFoundException("O item não está disponível nesta residência.");
-        this.assertCanManageOwnedItem(existing, membership.participacao[0]);
+        this.assertCanManageOwnedItem(existing, member);
         if (
             data.unit &&
             data.unit !== existing.unidade &&
@@ -98,9 +99,9 @@ export class PantryService {
         const property = (data.property ?? existing.propriedade) as propriedade_item_enum;
         let ownerMemberId: string | null | undefined = data.ownerMemberId;
         if (property === "COMUNITARIO") ownerMemberId = null;
-        else if (property === "PRIVADO") ownerMemberId = membership.participacao[0].id;
+        else if (property === "PRIVADO") ownerMemberId = membership.memberId;
         else if (ownerMemberId === undefined) {
-            ownerMemberId = existing.dono_participacao_id ?? membership.participacao[0].id;
+            ownerMemberId = existing.dono_participacao_id ?? membership.memberId;
         }
 
         if (property !== "COMUNITARIO") {
@@ -122,7 +123,7 @@ export class PantryService {
                       ? dateFromString(data.expirationDate)
                       : null,
         });
-        return this.findItemResponse(residenceId, itemId, membership.participacao[0].id);
+        return this.findItemResponse(residenceId, itemId, membership.memberId);
     }
 
     async createMovement(
@@ -131,44 +132,27 @@ export class PantryService {
         data: CreatePantryMovementDto,
         userId: string
     ) {
-        const membership = await this.requireResidence(residenceId, userId);
-        const item = await this.repository.findItem(
-            residenceId,
-            itemId,
-            membership.participacao[0].id
-        );
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const member = { id: membership.memberId, papel: membership.role };
+        const item = await this.repository.findItem(residenceId, itemId, membership.memberId);
         if (!item) throw new NotFoundException("O item não está disponível nesta residência.");
-        this.assertCanUseOwnedItem(item, membership.participacao[0]);
+        this.assertCanUseOwnedItem(item, member);
 
         await this.repository.createMovement({
             itemId,
-            memberId: membership.participacao[0].id,
+            memberId: membership.memberId,
             type: data.type as tipo_movimentacao_despensa_enum,
             quantity: data.quantity,
         });
-        return this.findItemResponse(residenceId, itemId, membership.participacao[0].id);
+        return this.findItemResponse(residenceId, itemId, membership.memberId);
     }
 
     async removeItem(residenceId: string, itemId: string, userId: string) {
-        const membership = await this.requireResidence(residenceId, userId);
-        const item = await this.repository.findItem(
-            residenceId,
-            itemId,
-            membership.participacao[0].id
-        );
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const member = { id: membership.memberId, papel: membership.role };
+        const item = await this.repository.findItem(residenceId, itemId, membership.memberId);
         if (!item) throw new NotFoundException("O item não está disponível nesta residência.");
-        this.assertCanManageOwnedItem(item, membership.participacao[0]);
-        if (
-            item.participacao_item_despensa_criado_por_participacao_idToparticipacao.id !==
-                membership.participacao[0].id &&
-            item.dono_participacao_id !== membership.participacao[0].id &&
-            membership.participacao[0].papel !== "ADMINISTRADOR" &&
-            membership.participacao[0].papel !== "LIDER"
-        ) {
-            throw new ForbiddenException(
-                "Somente quem cadastrou o item ou um administrador pode removê-lo."
-            );
-        }
+        this.assertCanManageOwnedItem(item, member);
         await this.repository.deleteItem(itemId);
         return { id: itemId, deleted: true };
     }
@@ -179,16 +163,8 @@ export class PantryService {
         return this.mapItem(item, currentMemberId);
     }
 
-    private async requireResidence(residenceId: string, userId: string) {
-        const residence = await this.repository.findMembership(residenceId, userId);
-        if (!residence || residence.participacao.length === 0) {
-            throw new NotFoundException("A residência não está disponível.");
-        }
-        return residence;
-    }
-
     private async requireActiveMember(residenceId: string, memberId: string) {
-        const member = await this.repository.findActiveMember(residenceId, memberId);
+        const member = await this.residenceAccess.requireActiveMember(residenceId, memberId);
         if (!member)
             throw new BadRequestException("O responsável não pertence a esta residência ativa.");
     }
