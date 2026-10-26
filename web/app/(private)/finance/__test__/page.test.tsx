@@ -1,11 +1,13 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+    createExpenseSubgroup,
     createExpense,
     deleteExpense,
     getExpenseSubgroups,
     getExpenseHomes,
+    getExpenseHomeMembers,
     getExpenses,
     updateExpense,
 } from "@/features/expenses/api/expenses.api";
@@ -13,10 +15,12 @@ import type { Expense } from "@/features/expenses/api/expenses.api";
 import FinancePage from "../page";
 
 vi.mock("@/features/expenses/api/expenses.api", () => ({
+    createExpenseSubgroup: vi.fn(),
     createExpense: vi.fn(),
     deleteExpense: vi.fn(),
     getExpenseSubgroups: vi.fn(),
     getExpenseHomes: vi.fn(),
+    getExpenseHomeMembers: vi.fn(),
     getExpenses: vi.fn(),
     updateExpense: vi.fn(),
 }));
@@ -45,9 +49,63 @@ describe("FinancePage expense CRUD", () => {
         vi.clearAllMocks();
         vi.mocked(getExpenseSubgroups).mockResolvedValue([subgroup]);
         vi.mocked(getExpenseHomes).mockResolvedValue([{ id: "home-id", name: "Grifinória" }]);
+        vi.mocked(getExpenseHomeMembers).mockResolvedValue([
+            { id: "member-1", name: "Ana" },
+            { id: "member-2", name: "Bia" },
+        ]);
         vi.mocked(getExpenses).mockResolvedValue([]);
         vi.mocked(deleteExpense).mockResolvedValue(undefined);
     });
+
+    it("creates a subgroup from active residents and updates the expense options immediately", async () => {
+        const user = userEvent.setup();
+        vi.mocked(createExpenseSubgroup).mockResolvedValue({
+            id: "coffee-group",
+            name: "Café",
+            homeId: "home-id",
+            homeName: "Grifinória",
+            members: ["Ana"],
+        });
+        render(<FinancePage />);
+
+        await screen.findByText("Nenhuma despesa cadastrada");
+        await user.click(screen.getByRole("button", { name: /criar subgrupo/i }));
+        const dialog = screen.getByRole("dialog", { name: "Criar subgrupo" });
+        expect(await screen.findByRole("group", { name: "Participantes" })).toBeInTheDocument();
+        await user.type(screen.getByLabelText("Nome do subgrupo"), " Café ");
+        await user.click(screen.getByRole("checkbox", { name: "Ana" }));
+        await user.click(within(dialog).getByRole("button", { name: "Criar subgrupo" }));
+
+        await waitFor(() =>
+            expect(createExpenseSubgroup).toHaveBeenCalledWith({
+                homeId: "home-id",
+                name: "Café",
+                memberIds: ["member-1"],
+            })
+        );
+        expect(await screen.findByText("Subgrupo “Café” criado com sucesso.")).toBeInTheDocument();
+        await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
+        expect(screen.getByRole("option", { name: "Café · Grifinória" })).toBeInTheDocument();
+    }, 15000);
+
+    it("shows subgroup validation errors and preserves the entered name after an API failure", async () => {
+        const user = userEvent.setup();
+        vi.mocked(createExpenseSubgroup).mockRejectedValueOnce({ message: "Falha ao salvar." });
+        render(<FinancePage />);
+        await screen.findByText("Nenhuma despesa cadastrada");
+        await user.click(screen.getByRole("button", { name: /criar subgrupo/i }));
+        await screen.findByRole("checkbox", { name: "Ana" });
+        const dialog = screen.getByRole("dialog", { name: "Criar subgrupo" });
+        await user.type(screen.getByLabelText("Nome do subgrupo"), "Café");
+        await user.click(within(dialog).getByRole("button", { name: "Criar subgrupo" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            "Selecione pelo menos um morador."
+        );
+        await user.click(screen.getByRole("checkbox", { name: "Ana" }));
+        await user.click(within(dialog).getByRole("button", { name: "Criar subgrupo" }));
+        expect(await screen.findByRole("alert")).toHaveTextContent("Falha ao salvar.");
+        expect(screen.getByLabelText("Nome do subgrupo")).toHaveValue("Café");
+    }, 15000);
 
     it("creates an expense from the add modal and updates the list", async () => {
         const user = userEvent.setup();

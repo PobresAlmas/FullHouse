@@ -13,6 +13,17 @@ export interface ExpenseHome {
     name: string;
 }
 
+export interface ExpenseHomeMember {
+    id: string;
+    name: string;
+}
+
+export interface CreateExpenseSubgroupInput {
+    homeId: string;
+    name: string;
+    memberIds: string[];
+}
+
 export interface Expense {
     id: string;
     description: string;
@@ -42,6 +53,18 @@ export async function getExpenseSubgroups(): Promise<ExpenseSubgroup[]> {
 
 export async function getExpenseHomes(): Promise<ExpenseHome[]> {
     const response = await api.get<ExpenseHome[]>("/expenses/homes");
+    return response.data;
+}
+
+export async function getExpenseHomeMembers(homeId: string): Promise<ExpenseHomeMember[]> {
+    const response = await api.get<ExpenseHomeMember[]>(`/expenses/homes/${homeId}/members`);
+    return response.data;
+}
+
+export async function createExpenseSubgroup(
+    data: CreateExpenseSubgroupInput
+): Promise<ExpenseSubgroup> {
+    const response = await api.post<ExpenseSubgroup>("/expenses/subgroups", data);
     return response.data;
 }
 

@@ -2,10 +2,35 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { ExpensesRepository } from "./expenses.repository.js";
 import { CreateExpenseDto, ExpensePaymentStatus } from "./dto/create-expense.dto.js";
 import { UpdateExpenseDto } from "./dto/update-expense.dto.js";
+import { ResidenceAccessService } from "../residences/residence-access.service.js";
+import { CreateExpenseSubgroupDto } from "./dto/create-expense-subgroup.dto.js";
 
 @Injectable()
 export class ExpensesService {
-    constructor(private readonly repository: ExpensesRepository) {}
+    constructor(
+        private readonly repository: ExpensesRepository,
+        private readonly residenceAccess: ResidenceAccessService
+    ) {}
+
+    async findHomeMembers(homeId: string, userId: string) {
+        await this.residenceAccess.requireMembership(homeId, userId);
+        return (await this.repository.findActiveHomeMembers(homeId)).map((member) => ({
+            id: member.id,
+            name: member.usuario.apelido || member.usuario.nome,
+        }));
+    }
+
+    async createSubgroup(data: CreateExpenseSubgroupDto, userId: string) {
+        if (data.memberIds.length === 0) {
+            throw new BadRequestException("Selecione pelo menos um participante.");
+        }
+        if (new Set(data.memberIds).size !== data.memberIds.length) {
+            throw new BadRequestException("Não repita participantes no subgrupo.");
+        }
+
+        const membership = await this.residenceAccess.requireMembership(data.homeId, userId);
+        return this.repository.createSubgroup(data, membership.memberId);
+    }
 
     async findAvailableHomes(userId: string) {
         return (await this.repository.findAvailableHomes(userId)).map((home) => ({

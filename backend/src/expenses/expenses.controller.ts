@@ -9,12 +9,15 @@ import {
     Param,
     ParseUUIDPipe,
     UseGuards,
+    UsePipes,
+    ValidationPipe,
     Query,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth-guard.js";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { CreateExpenseDto } from "./dto/create-expense.dto.js";
 import { UpdateExpenseDto } from "./dto/update-expense.dto.js";
+import { CreateExpenseSubgroupDto } from "./dto/create-expense-subgroup.dto.js";
 import { ExpensesService } from "./expenses.service.js";
 
 @Controller("expenses")
@@ -30,6 +33,20 @@ export class ExpensesController {
     @Get("homes")
     findAvailableHomes(@CurrentUser() user: { id: string }) {
         return this.expensesService.findAvailableHomes(user.id);
+    }
+
+    @Get("homes/:homeId/members")
+    findHomeMembers(
+        @Param("homeId", new ParseUUIDPipe({ version: "4" })) homeId: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.expensesService.findHomeMembers(homeId, user.id);
+    }
+
+    @Post("subgroups")
+    @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+    createSubgroup(@Body() data: CreateExpenseSubgroupDto, @CurrentUser() user: { id: string }) {
+        return this.expensesService.createSubgroup(data, user.id);
     }
 
     @Get()

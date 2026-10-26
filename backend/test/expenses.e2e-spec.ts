@@ -9,6 +9,7 @@ import { createAuthenticatedTestApp } from "./utils/authenticated-test-app.js";
 const USER_ID = "821f394d-6215-48b4-89a9-0af953ba8a76";
 const HOME_ID = "4ca328bc-3d0c-4ce7-a26a-e827684cc634";
 const EXPENSE_ID = "bc3c5c4b-3f52-4faf-9341-2370fcde6cee";
+const MEMBER_ID = "821f394d-6215-48b4-89a9-0af953ba8a77";
 const payload = {
     description: "Conta de energia",
     amount: "119.87",
@@ -34,6 +35,8 @@ describe("Expenses HTTP API (e2e)", () => {
     const expensesService = {
         findAvailableHomes: vi.fn(),
         findAvailableSubgroups: vi.fn(),
+        findHomeMembers: vi.fn(),
+        createSubgroup: vi.fn(),
         findAll: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
@@ -44,6 +47,14 @@ describe("Expenses HTTP API (e2e)", () => {
         vi.resetAllMocks();
         expensesService.findAvailableHomes.mockResolvedValue([{ id: HOME_ID, name: "Grifinória" }]);
         expensesService.findAvailableSubgroups.mockResolvedValue([]);
+        expensesService.findHomeMembers.mockResolvedValue([{ id: MEMBER_ID, name: "Ana" }]);
+        expensesService.createSubgroup.mockResolvedValue({
+            id: "subgroup-id",
+            name: "Café",
+            homeId: HOME_ID,
+            homeName: "Grifinória",
+            members: ["Ana"],
+        });
         expensesService.findAll.mockResolvedValue([expense]);
         expensesService.create.mockResolvedValue(expense);
         expensesService.update.mockResolvedValue({ ...expense, paymentStatus: "PAID" });
@@ -60,9 +71,99 @@ describe("Expenses HTTP API (e2e)", () => {
 
     it("requires authentication", async () => {
         await request(app.getHttpServer()).get("/expenses").expect(401);
+        await request(app.getHttpServer()).get(`/expenses/homes/${HOME_ID}/members`).expect(401);
+        await request(app.getHttpServer()).post("/expenses/subgroups").send({}).expect(401);
         await request(app.getHttpServer()).post("/expenses").send(payload).expect(401);
         await request(app.getHttpServer()).put(`/expenses/${EXPENSE_ID}`).send(payload).expect(401);
         await request(app.getHttpServer()).delete(`/expenses/${EXPENSE_ID}`).expect(401);
+    });
+
+    it("lists active home residents and creates a subgroup", async () => {
+        const cookie = await authenticatedCookie();
+        await request(app.getHttpServer())
+            .get(`/expenses/homes/${HOME_ID}/members`)
+            .set("Cookie", cookie)
+            .expect(200)
+            .expect([{ id: MEMBER_ID, name: "Ana" }]);
+        expect(expensesService.findHomeMembers).toHaveBeenCalledWith(HOME_ID, USER_ID);
+
+        const subgroupPayload = { homeId: HOME_ID, name: " Café ", memberIds: [MEMBER_ID] };
+        await request(app.getHttpServer())
+            .post("/expenses/subgroups")
+            .set("Cookie", cookie)
+            .send(subgroupPayload)
+            .expect(201)
+            .expect({
+                id: "subgroup-id",
+                name: "Café",
+                homeId: HOME_ID,
+                homeName: "Grifinória",
+                members: ["Ana"],
+            });
+        expect(expensesService.createSubgroup).toHaveBeenCalledWith(
+            { ...subgroupPayload, name: "Café" },
+            USER_ID
+        );
+    });
+
+    it("validates subgroup input with HTTP 400 and preserves access errors", async () => {
+        const cookie = await authenticatedCookie();
+        for (const invalidPayload of [
+            { homeId: HOME_ID, name: " ", memberIds: ["821f394d-6215-48b4-89a9-0af953ba8a76"] },
+            {
+                homeId: HOME_ID,
+                name: "A".repeat(151),
+                memberIds: ["821f394d-6215-48b4-89a9-0af953ba8a76"],
+            },
+            { homeId: HOME_ID, name: "Café", memberIds: [] },
+            {
+                homeId: HOME_ID,
+                name: "Café",
+                memberIds: [
+                    "821f394d-6215-48b4-89a9-0af953ba8a76",
+                    "821f394d-6215-48b4-89a9-0af953ba8a76",
+                ],
+            },
+        ]) {
+            await request(app.getHttpServer())
+                .post("/expenses/subgroups")
+                .set("Cookie", cookie)
+                .send(invalidPayload)
+                .expect(400);
+        }
+        expect(expensesService.createSubgroup).not.toHaveBeenCalled();
+
+        expensesService.findHomeMembers.mockRejectedValueOnce(new ForbiddenException());
+        await request(app.getHttpServer())
+            .get(`/expenses/homes/${HOME_ID}/members`)
+            .set("Cookie", cookie)
+            .expect(403);
+        expensesService.createSubgroup.mockRejectedValueOnce(new NotFoundException());
+        await request(app.getHttpServer())
+            .post("/expenses/subgroups")
+            .set("Cookie", cookie)
+            .send({
+                homeId: HOME_ID,
+                name: "Café",
+                memberIds: ["821f394d-6215-48b4-89a9-0af953ba8a76"],
+            })
+            .expect(404);
+    });
+
+    it("returns HTTP 404 when an expense cannot be linked to a subgroup in another residence", async () => {
+        const cookie = await authenticatedCookie();
+        expensesService.create.mockRejectedValueOnce(new NotFoundException());
+        const foreignResidenceExpense = {
+            ...payload,
+            homeId: "3f053835-562f-4f05-9ca6-78d962da81e1",
+            subgroupId: "3f053835-562f-4f05-9ca6-78d962da81e2",
+        };
+
+        await request(app.getHttpServer())
+            .post("/expenses")
+            .set("Cookie", cookie)
+            .send(foreignResidenceExpense)
+            .expect(404);
     });
 
     it("lists expenses and applies the paid or pending filter", async () => {

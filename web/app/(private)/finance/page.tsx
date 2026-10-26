@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -20,10 +20,12 @@ import {
     X,
 } from "lucide-react";
 import {
+    createExpenseSubgroup,
     createExpense,
     deleteExpense,
     getExpenseSubgroups,
     getExpenseHomes,
+    getExpenseHomeMembers,
     getExpenses,
     updateExpense,
 } from "@/features/expenses/api/expenses.api";
@@ -33,6 +35,7 @@ import type {
     Expense,
     ExpenseSubgroup,
     ExpenseHome,
+    ExpenseHomeMember,
 } from "@/features/expenses/api/expenses.api";
 
 type FormState = CreateExpenseInput;
@@ -112,6 +115,15 @@ export default function FinancePage() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState<ModalState>(null);
+    const [subgroupModalOpen, setSubgroupModalOpen] = useState(false);
+    const [subgroupName, setSubgroupName] = useState("");
+    const [subgroupHomeId, setSubgroupHomeId] = useState("");
+    const [homeMembers, setHomeMembers] = useState<ExpenseHomeMember[]>([]);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+    const [membersLoading, setMembersLoading] = useState(false);
+    const [subgroupSaving, setSubgroupSaving] = useState(false);
+    const [subgroupError, setSubgroupError] = useState("");
+    const memberRequest = useRef(0);
     const [expenseToDelete, setExpenseToDelete] = useState<Expense | null>(null);
     const [form, setForm] = useState<FormState>(initialForm);
     const [saving, setSaving] = useState(false);
@@ -141,17 +153,33 @@ export default function FinancePage() {
         };
     }, []);
 
+    async function loadHomeMembers(homeId: string) {
+        const requestId = ++memberRequest.current;
+        setMembersLoading(true);
+        setHomeMembers([]);
+        setSelectedMemberIds([]);
+        try {
+            const members = await getExpenseHomeMembers(homeId);
+            if (memberRequest.current === requestId) setHomeMembers(members);
+        } catch (loadError: unknown) {
+            if (memberRequest.current === requestId) setSubgroupError(getErrorMessage(loadError));
+        } finally {
+            if (memberRequest.current === requestId) setMembersLoading(false);
+        }
+    }
+
     useEffect(() => {
-        if (!modal && !expenseToDelete) return;
+        if (!modal && !expenseToDelete && !subgroupModalOpen) return;
         function closeOnEscape(event: KeyboardEvent) {
             if (event.key === "Escape") {
                 setModal(null);
                 setExpenseToDelete(null);
+                setSubgroupModalOpen(false);
             }
         }
         window.addEventListener("keydown", closeOnEscape);
         return () => window.removeEventListener("keydown", closeOnEscape);
-    }, [modal, expenseToDelete]);
+    }, [modal, expenseToDelete, subgroupModalOpen]);
 
     const totals = useMemo(() => {
         const now = new Date();
@@ -178,6 +206,47 @@ export default function FinancePage() {
         setFormError("");
         setNotice("");
         setModal({ mode: "create" });
+    }
+
+    function openSubgroupModal() {
+        if (homes.length === 0) return;
+        setSubgroupName("");
+        setSubgroupHomeId(homes[0].id);
+        setHomeMembers([]);
+        setSelectedMemberIds([]);
+        setSubgroupError("");
+        setSubgroupModalOpen(true);
+        void loadHomeMembers(homes[0].id);
+    }
+
+    async function handleCreateSubgroup(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setSubgroupError("");
+        if (!subgroupName.trim()) {
+            setSubgroupError("Informe o nome do subgrupo.");
+            return;
+        }
+        if (selectedMemberIds.length === 0) {
+            setSubgroupError("Selecione pelo menos um morador.");
+            return;
+        }
+        setSubgroupSaving(true);
+        try {
+            const created = await createExpenseSubgroup({
+                homeId: subgroupHomeId,
+                name: subgroupName.trim(),
+                memberIds: selectedMemberIds,
+            });
+            setSubgroups((items) =>
+                [...items, created].sort((a, b) => a.name.localeCompare(b.name))
+            );
+            setSubgroupModalOpen(false);
+            setNotice(`Subgrupo “${created.name}” criado com sucesso.`);
+        } catch (createError: unknown) {
+            setSubgroupError(getErrorMessage(createError));
+        } finally {
+            setSubgroupSaving(false);
+        }
     }
 
     function openEditModal(expense: Expense) {
@@ -466,8 +535,9 @@ export default function FinancePage() {
                                 </button>
                                 <button
                                     type="button"
-                                    disabled
-                                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#4e812f] px-3 py-2 text-[11px] font-medium text-white opacity-90"
+                                    onClick={openSubgroupModal}
+                                    disabled={loading || homes.length === 0}
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#4e812f] px-3 py-2 text-[11px] font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <Plus size={14} /> Criar subgrupo
                                 </button>
@@ -503,6 +573,34 @@ export default function FinancePage() {
                 />
             )}
 
+            {subgroupModalOpen && (
+                <SubgroupModal
+                    homes={homes}
+                    homeId={subgroupHomeId}
+                    name={subgroupName}
+                    members={homeMembers}
+                    selectedMemberIds={selectedMemberIds}
+                    loadingMembers={membersLoading}
+                    saving={subgroupSaving}
+                    error={subgroupError}
+                    onHomeChange={(homeId) => {
+                        setSubgroupHomeId(homeId);
+                        setSubgroupError("");
+                        void loadHomeMembers(homeId);
+                    }}
+                    onNameChange={setSubgroupName}
+                    onToggleMember={(memberId) =>
+                        setSelectedMemberIds((ids) =>
+                            ids.includes(memberId)
+                                ? ids.filter((id) => id !== memberId)
+                                : [...ids, memberId]
+                        )
+                    }
+                    onClose={() => setSubgroupModalOpen(false)}
+                    onSubmit={handleCreateSubgroup}
+                />
+            )}
+
             {expenseToDelete && (
                 <DeleteExpenseDialog
                     expense={expenseToDelete}
@@ -511,6 +609,151 @@ export default function FinancePage() {
                     onConfirm={confirmDelete}
                 />
             )}
+        </div>
+    );
+}
+
+function SubgroupModal({
+    homes,
+    homeId,
+    name,
+    members,
+    selectedMemberIds,
+    loadingMembers,
+    saving,
+    error,
+    onHomeChange,
+    onNameChange,
+    onToggleMember,
+    onClose,
+    onSubmit,
+}: {
+    homes: ExpenseHome[];
+    homeId: string;
+    name: string;
+    members: ExpenseHomeMember[];
+    selectedMemberIds: string[];
+    loadingMembers: boolean;
+    saving: boolean;
+    error: string;
+    onHomeChange: (homeId: string) => void;
+    onNameChange: (name: string) => void;
+    onToggleMember: (memberId: string) => void;
+    onClose: () => void;
+    onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+    return (
+        <div
+            className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[#17131a]/55 p-4"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onClose();
+            }}
+        >
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="subgroup-modal-title"
+                className="my-auto w-full max-w-[520px] rounded-2xl bg-[#fffaff] px-6 py-5 shadow-2xl sm:px-8"
+            >
+                <header className="mb-5 flex items-center justify-between border-b border-[#958e98] pb-2">
+                    <h2 id="subgroup-modal-title" className="text-xl font-semibold">
+                        Criar subgrupo
+                    </h2>
+                    <button
+                        type="button"
+                        aria-label="Fechar"
+                        onClick={onClose}
+                        className="grid size-8 place-items-center rounded text-[#514c56] hover:bg-[#f1edf3]"
+                    >
+                        <X size={20} />
+                    </button>
+                </header>
+                <form onSubmit={onSubmit} noValidate className="grid gap-4">
+                    {error && (
+                        <div
+                            role="alert"
+                            className="rounded-lg border border-red-200 bg-red-50 p-2.5 text-sm text-red-800"
+                        >
+                            {error}
+                        </div>
+                    )}
+                    {homes.length > 1 ? (
+                        <label className="grid gap-1.5 text-xs font-medium">
+                            Residência
+                            <select
+                                aria-label="Residência"
+                                value={homeId}
+                                onChange={(event) => onHomeChange(event.target.value)}
+                                className="h-10 rounded-md border border-[#cfc6d1] bg-white px-3 text-sm font-normal"
+                            >
+                                {homes.map((home) => (
+                                    <option key={home.id} value={home.id}>
+                                        {home.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    ) : (
+                        <p className="text-sm text-[#625c66]">Residência: {homes[0]?.name}</p>
+                    )}
+                    <label className="grid gap-1.5 text-xs font-medium">
+                        Nome do subgrupo
+                        <input
+                            autoFocus
+                            required
+                            maxLength={150}
+                            value={name}
+                            onChange={(event) => onNameChange(event.target.value)}
+                            placeholder="Ex.: Grupo do café"
+                            className="h-10 rounded-md border border-[#cfc6d1] bg-white px-3 text-sm font-normal"
+                        />
+                    </label>
+                    <fieldset className="grid gap-2">
+                        <legend className="text-xs font-medium">Participantes</legend>
+                        {loadingMembers ? (
+                            <p role="status" className="text-sm text-[#716b74]">
+                                Carregando moradores…
+                            </p>
+                        ) : members.length === 0 ? (
+                            <p className="text-sm text-[#716b74]">
+                                Nenhum morador ativo disponível.
+                            </p>
+                        ) : (
+                            <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[#ddd6df] p-2">
+                                {members.map((member) => (
+                                    <label
+                                        key={member.id}
+                                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm hover:bg-[#f5f2f6]"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedMemberIds.includes(member.id)}
+                                            onChange={() => onToggleMember(member.id)}
+                                        />
+                                        {member.name}
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </fieldset>
+                    <footer className="mt-2 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="rounded-lg border border-[#cfc6d1] px-4 py-2 text-sm"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={saving || loadingMembers || members.length === 0}
+                            className="rounded-lg bg-[#4e812f] px-4 py-2 text-sm font-medium text-white hover:bg-[#3e6b25] disabled:opacity-50"
+                        >
+                            {saving ? "Salvando…" : "Criar subgrupo"}
+                        </button>
+                    </footer>
+                </form>
+            </section>
         </div>
     );
 }

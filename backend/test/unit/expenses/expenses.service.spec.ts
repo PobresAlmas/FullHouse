@@ -37,6 +37,8 @@ describe("ExpensesService CRUD", () => {
     let repository: {
         findEditableExpense: ReturnType<typeof vi.fn>;
         findAvailableHomes: ReturnType<typeof vi.fn>;
+        findActiveHomeMembers: ReturnType<typeof vi.fn>;
+        createSubgroup: ReturnType<typeof vi.fn>;
         findHomeForUser: ReturnType<typeof vi.fn>;
         findSubgroupForUser: ReturnType<typeof vi.fn>;
         findForUser: ReturnType<typeof vi.fn>;
@@ -44,12 +46,15 @@ describe("ExpensesService CRUD", () => {
         update: ReturnType<typeof vi.fn>;
         softDelete: ReturnType<typeof vi.fn>;
     };
+    let residenceAccess: { requireMembership: ReturnType<typeof vi.fn> };
     let service: ExpensesService;
 
     beforeEach(() => {
         repository = {
             findEditableExpense: vi.fn().mockResolvedValue(accessibleExpense),
             findAvailableHomes: vi.fn().mockResolvedValue([{ id: "home-id", nome: "Grifinória" }]),
+            findActiveHomeMembers: vi.fn(),
+            createSubgroup: vi.fn().mockResolvedValue({ id: "subgroup-id", name: "Café" }),
             findHomeForUser: vi.fn().mockResolvedValue(home),
             findSubgroupForUser: vi.fn().mockResolvedValue(subgroup),
             findForUser: vi.fn().mockResolvedValue([mappedExpense]),
@@ -57,7 +62,60 @@ describe("ExpensesService CRUD", () => {
             update: vi.fn().mockResolvedValue(mappedExpense),
             softDelete: vi.fn().mockResolvedValue(undefined),
         };
-        service = new ExpensesService(repository as never);
+        residenceAccess = {
+            requireMembership: vi.fn().mockResolvedValue({ memberId: memberParticipationId }),
+        };
+        service = new ExpensesService(repository as never, residenceAccess as never);
+    });
+
+    it("returns active residence members after confirming the requesting user's membership", async () => {
+        repository.findActiveHomeMembers.mockResolvedValue([
+            { id: "member-id", usuario: { nome: "Ana", apelido: "Aninha" } },
+            { id: "member-2", usuario: { nome: "Bruno", apelido: null } },
+        ]);
+
+        await expect(service.findHomeMembers("home-id", "user-id")).resolves.toEqual([
+            { id: "member-id", name: "Aninha" },
+            { id: "member-2", name: "Bruno" },
+        ]);
+        expect(residenceAccess.requireMembership).toHaveBeenCalledWith("home-id", "user-id");
+        expect(repository.findActiveHomeMembers).toHaveBeenCalledWith("home-id");
+    });
+
+    it("does not query members when the user cannot access the residence", async () => {
+        residenceAccess.requireMembership.mockRejectedValue(new NotFoundException());
+        await expect(service.findHomeMembers("home-id", "user-id")).rejects.toBeInstanceOf(
+            NotFoundException
+        );
+        expect(repository.findActiveHomeMembers).not.toHaveBeenCalled();
+    });
+
+    it("creates a subgroup for the active residence using the creator's participation", async () => {
+        const subgroupData = {
+            homeId: "home-id",
+            name: "Café",
+            memberIds: ["resident-1", "resident-2"],
+        };
+
+        await expect(service.createSubgroup(subgroupData, "user-id")).resolves.toEqual({
+            id: "subgroup-id",
+            name: "Café",
+        });
+        expect(residenceAccess.requireMembership).toHaveBeenCalledWith("home-id", "user-id");
+        expect(repository.createSubgroup).toHaveBeenCalledWith(subgroupData, memberParticipationId);
+    });
+
+    it("rejects subgroup creation without members or with duplicate member IDs", async () => {
+        await expect(
+            service.createSubgroup({ homeId: "home-id", name: "Café", memberIds: [] }, "user-id")
+        ).rejects.toBeInstanceOf(BadRequestException);
+        await expect(
+            service.createSubgroup(
+                { homeId: "home-id", name: "Café", memberIds: ["resident-1", "resident-1"] },
+                "user-id"
+            )
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(repository.createSubgroup).not.toHaveBeenCalled();
     });
 
     it("updates an accessible expense and preserves the paid status", async () => {

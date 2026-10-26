@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "@/services/api";
-import { createExpense, deleteExpense, getExpenses, updateExpense } from "../expenses.api";
+import {
+    createExpense,
+    createExpenseSubgroup,
+    deleteExpense,
+    getExpenseHomeMembers,
+    getExpenses,
+    updateExpense,
+} from "../expenses.api";
 
 vi.mock("@/services/api", () => ({
     api: {
@@ -35,6 +42,30 @@ describe("expenses API client", () => {
 
         await expect(createExpense(body)).resolves.toEqual(expense);
         expect(api.post).toHaveBeenCalledWith("/expenses", body);
+    });
+
+    it("loads residents for a residence and creates a subgroup", async () => {
+        const members = [{ id: "member-id", name: "Ana" }];
+        const subgroup = {
+            id: "group-id",
+            name: "Café",
+            homeId: "home-id",
+            homeName: "Grifinória",
+            members: ["Ana"],
+        };
+        vi.mocked(api.get).mockResolvedValue({ data: members });
+        vi.mocked(api.post).mockResolvedValue({ data: subgroup });
+
+        await expect(getExpenseHomeMembers("home-id")).resolves.toEqual(members);
+        expect(api.get).toHaveBeenCalledWith("/expenses/homes/home-id/members");
+        await expect(
+            createExpenseSubgroup({ homeId: "home-id", name: "Café", memberIds: ["member-id"] })
+        ).resolves.toEqual(subgroup);
+        expect(api.post).toHaveBeenCalledWith("/expenses/subgroups", {
+            homeId: "home-id",
+            name: "Café",
+            memberIds: ["member-id"],
+        });
     });
 
     it("updates an expense and its payment status", async () => {
