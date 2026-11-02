@@ -55,6 +55,8 @@ model casa {
   despesa                 despesa[]
   fundo_reserva           fundo_reserva?
   item_despensa           item_despensa[]
+  categoria_despensa      categoria_despensa[]
+  item_lista_compras      item_lista_compras[]
   lancamento_financeiro   lancamento_financeiro[]
   notificacao             notificacao[]
   pagamento               pagamento[]
@@ -269,6 +271,7 @@ model item_despensa {
   casa_id                                                             String                  @db.Uuid
   nome                                                                String                  @db.VarChar(150)
   categoria                                                           String                  @default("Outros") @db.VarChar(80)
+  categoria_id                                                        String                  @db.Uuid
   propriedade                                                         propriedade_item_enum
   dono_participacao_id                                                String?                 @db.Uuid
   unidade                                                             unidade_item_enum
@@ -276,12 +279,51 @@ model item_despensa {
   data_validade                                                       DateTime?               @db.Date
   criado_por_participacao_id                                          String                  @db.Uuid
   casa                                                                casa                    @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categoria_despensa                                                  categoria_despensa      @relation(fields: [casa_id, categoria_id], references: [casa_id, id], onDelete: NoAction, onUpdate: NoAction, map: "fk_item_despensa_categoria")
   participacao_item_despensa_criado_por_participacao_idToparticipacao participacao            @relation("item_despensa_criado_por_participacao_idToparticipacao", fields: [criado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   participacao_item_despensa_dono_participacao_idToparticipacao       participacao?           @relation("item_despensa_dono_participacao_idToparticipacao", fields: [dono_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   lembrete                                                            lembrete[]
   movimentacao_despensa                                               movimentacao_despensa[]
 
   @@index([casa_id], map: "idx_item_despensa_casa")
+  @@index([categoria_id], map: "idx_item_despensa_categoria")
+}
+
+model categoria_despensa {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id          String          @db.Uuid
+  nome             String          @db.VarChar(80)
+  nome_normalizado String          @db.VarChar(240)
+  criado_em        DateTime        @default(now()) @db.Timestamptz(6)
+  atualizado_em    DateTime        @updatedAt @db.Timestamptz(6)
+  casa             casa            @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_categoria_despensa_casa")
+  item_despensa    item_despensa[]
+
+  @@unique([casa_id, nome_normalizado], map: "uq_categoria_despensa_casa_nome_normalizado")
+  @@unique([casa_id, id], map: "uq_categoria_despensa_casa_id")
+  @@index([casa_id], map: "idx_categoria_despensa_casa")
+}
+
+model item_lista_compras {
+  id                                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id                                      String                         @db.Uuid
+  nome                                         String                         @db.VarChar(100)
+  quantidade                                   Decimal?                       @db.Decimal(12, 3)
+  unidade                                      unidade_item_enum?
+  observacao                                   String?                        @db.VarChar(500)
+  status                                       status_item_lista_compras_enum @default(PENDENTE)
+  criado_por_participacao_id                   String?                        @db.Uuid
+  criado_em                                    DateTime                       @default(now()) @db.Timestamptz(6)
+  atualizado_em                                DateTime                       @updatedAt @db.Timestamptz(6)
+  comprado_por_participacao_id                 String?                        @db.Uuid
+  comprado_em                                  DateTime?                      @db.Timestamptz(6)
+  versao                                       Int                            @default(1)
+  casa                                         casa                           @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_item_lista_compras_casa")
+  participacao_item_lista_compras_criado_por   participacao?                  @relation("item_lista_compras_criado_por", fields: [criado_por_participacao_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_item_lista_compras_criado_por")
+  participacao_item_lista_compras_comprado_por participacao?                  @relation("item_lista_compras_comprado_por", fields: [comprado_por_participacao_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_item_lista_compras_comprado_por")
+
+  @@index([casa_id, status, criado_em(sort: Desc), id], map: "idx_item_lista_compras_casa_status_criado")
+  @@index([casa_id, status, comprado_em(sort: Desc), id], map: "idx_item_lista_compras_casa_status_comprado")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -449,6 +491,8 @@ model participacao {
   instancia_tarefa_instancia_tarefa_responsavel_participacao_idToparticipacao                  instancia_tarefa[]         @relation("instancia_tarefa_responsavel_participacao_idToparticipacao")
   item_despensa_item_despensa_criado_por_participacao_idToparticipacao                         item_despensa[]            @relation("item_despensa_criado_por_participacao_idToparticipacao")
   item_despensa_item_despensa_dono_participacao_idToparticipacao                               item_despensa[]            @relation("item_despensa_dono_participacao_idToparticipacao")
+  item_lista_compras_criado_por                                                                item_lista_compras[]       @relation("item_lista_compras_criado_por")
+  item_lista_compras_comprado_por                                                              item_lista_compras[]       @relation("item_lista_compras_comprado_por")
   lancamento_financeiro                                                                        lancamento_financeiro[]
   leitura_conversa                                                                             leitura_conversa[]
   membro_subgrupo                                                                              membro_subgrupo[]
@@ -834,6 +878,11 @@ enum status_instancia_tarefa_enum {
   CONCLUIDA
   ATRASADA
   CANCELADA
+}
+
+enum status_item_lista_compras_enum {
+  PENDENTE
+  COMPRADO
 }
 
 enum status_interesse_anuncio_enum {

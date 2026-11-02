@@ -10,7 +10,7 @@ describe("Pantry DTO validation", () => {
     it("trims item text and converts valid quantity fields to numbers", async () => {
         const dto = plainToInstance(CreatePantryItemDto, {
             name: "  Arroz  ",
-            category: " Grãos ",
+            categoryId: "00000000-0000-4000-8000-000000000001",
             property: "COMUNITARIO",
             unit: "KG",
             initialQuantity: "2.5",
@@ -20,7 +20,7 @@ describe("Pantry DTO validation", () => {
         await expect(validate(dto)).resolves.toHaveLength(0);
         expect(dto).toMatchObject({
             name: "Arroz",
-            category: "Grãos",
+            categoryId: "00000000-0000-4000-8000-000000000001",
             initialQuantity: 2.5,
             minimumQuantity: 1,
         });
@@ -29,7 +29,7 @@ describe("Pantry DTO validation", () => {
     it("rejects invalid item enums, malformed owners, and non-strict dates", async () => {
         const dto = plainToInstance(CreatePantryItemDto, {
             name: "Arroz",
-            category: "Grãos",
+            categoryId: "00000000-0000-4000-8000-000000000001",
             property: "PUBLICO",
             unit: "CAIXA",
             initialQuantity: 1,
@@ -60,14 +60,14 @@ describe("Pantry DTO validation", () => {
     it("allows only supported optional update fields and validates explicit values", async () => {
         const dto = plainToInstance(UpdatePantryItemDto, {
             name: "  ",
-            category: 123,
+            categoryId: "not-a-uuid",
             minimumQuantity: "1.234",
             property: "CASA",
             unexpected: "ignored by whitelist",
         });
         const errors = await validate(dto, { whitelist: true });
         expect(errors.map((error) => error.property)).toEqual(
-            expect.arrayContaining(["name", "category", "minimumQuantity", "property"])
+            expect.arrayContaining(["name", "categoryId", "minimumQuantity", "property"])
         );
         expect(dto).not.toHaveProperty("unexpected");
     });

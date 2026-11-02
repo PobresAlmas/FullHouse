@@ -1,5 +1,6 @@
 import {
     BadRequestException,
+    ConflictException,
     ForbiddenException,
     Injectable,
     NotFoundException,
@@ -14,6 +15,9 @@ import { CreatePantryMovementDto } from "./dto/create-pantry-movement.dto.js";
 import { UpdatePantryItemDto } from "./dto/update-pantry-item.dto.js";
 import { PantryItemListRecord, PantryItemRecord, PantryRepository } from "./pantry.repository.js";
 import { ResidenceAccessService } from "../residences/residence-access.service.js";
+import { cleanPantryCategoryName, normalizePantryCategoryName } from "./pantry-categories.js";
+import { CreatePantryCategoryDto } from "./dto/create-pantry-category.dto.js";
+import { UpdatePantryCategoryDto } from "./dto/update-pantry-category.dto.js";
 
 function dateFromString(value: string) {
     return new Date(value + "T00:00:00.000Z");
@@ -38,6 +42,86 @@ export class PantryService {
         }));
     }
 
+    async findCategories(residenceId: string, userId: string) {
+        await this.residenceAccess.requireMembership(residenceId, userId);
+        return (await this.repository.findCategories(residenceId)).map((category) => ({
+            id: category.id,
+            name: category.nome,
+        }));
+    }
+
+    async createCategory(residenceId: string, data: CreatePantryCategoryDto, userId: string) {
+        await this.residenceAccess.requireCreateEditPermission(residenceId, userId);
+        const name = cleanPantryCategoryName(data.name);
+        const normalizedName = normalizePantryCategoryName(name);
+        if (!normalizedName) throw new BadRequestException("O nome da categoria não é válido.");
+        try {
+            const category = await this.repository.createCategory({
+                residenceId,
+                name,
+                normalizedName,
+            });
+            return { id: category.id, name: category.nome };
+        } catch (error) {
+            if (this.isUniqueViolation(error)) {
+                throw new ConflictException("Já existe uma categoria com esse nome nesta casa.");
+            }
+            throw error;
+        }
+    }
+
+    async updateCategory(
+        residenceId: string,
+        categoryId: string,
+        data: UpdatePantryCategoryDto,
+        userId: string
+    ) {
+        await this.residenceAccess.requireCreateEditPermission(residenceId, userId);
+        const existing = await this.repository.findCategory(residenceId, categoryId);
+        if (!existing) throw new NotFoundException("A categoria não foi encontrada.");
+        if (data.name === undefined) return { id: existing.id, name: existing.nome };
+        const name = cleanPantryCategoryName(data.name);
+        const normalizedName = normalizePantryCategoryName(name);
+        if (!normalizedName) throw new BadRequestException("O nome da categoria não é válido.");
+        try {
+            const renamed = await this.repository.renameCategory({
+                residenceId,
+                categoryId,
+                name,
+                normalizedName,
+            });
+            if (!renamed) throw new NotFoundException("A categoria não foi encontrada.");
+            return { id: categoryId, name };
+        } catch (error) {
+            if (this.isUniqueViolation(error)) {
+                throw new ConflictException("Já existe uma categoria com esse nome nesta casa.");
+            }
+            throw error;
+        }
+    }
+
+    async removeCategory(residenceId: string, categoryId: string, userId: string) {
+        await this.residenceAccess.requireCreateEditPermission(residenceId, userId);
+        const category = await this.repository.findCategory(residenceId, categoryId);
+        if (!category) throw new NotFoundException("A categoria não foi encontrada.");
+        if ((await this.repository.countItemsInCategory(categoryId)) > 0) {
+            throw new ConflictException(
+                "Esta categoria está sendo usada por itens da despensa. Reclassifique os itens antes de removê-la."
+            );
+        }
+        try {
+            await this.repository.deleteCategory(residenceId, categoryId);
+        } catch (error) {
+            if (this.isForeignKeyViolation(error)) {
+                throw new ConflictException(
+                    "Esta categoria está sendo usada por itens da despensa. Reclassifique os itens antes de removê-la."
+                );
+            }
+            throw error;
+        }
+        return { id: categoryId, deleted: true };
+    }
+
     async findItems(residenceId: string, userId: string, search?: string) {
         const membership = await this.residenceAccess.requireMembership(residenceId, userId);
         const memberId = membership.memberId;
@@ -52,6 +136,8 @@ export class PantryService {
     async createItem(residenceId: string, data: CreatePantryItemDto, userId: string) {
         const membership = await this.residenceAccess.requireMembership(residenceId, userId);
         const memberId = membership.memberId;
+        const category = await this.repository.findCategory(residenceId, data.categoryId);
+        if (!category) throw new BadRequestException("Selecione uma categoria desta residência.");
         const ownerMemberId =
             data.property === "COMUNITARIO"
                 ? null
@@ -64,7 +150,8 @@ export class PantryService {
             residenceId,
             creatorMemberId: memberId,
             name: data.name,
-            category: data.category,
+            categoryId: category.id,
+            categoryName: category.nome,
             property: data.property as propriedade_item_enum,
             ownerMemberId,
             unit: data.unit as unidade_item_enum,
@@ -85,6 +172,12 @@ export class PantryService {
         const member = { id: membership.memberId, papel: membership.role };
         const existing = await this.repository.findItem(residenceId, itemId, membership.memberId);
         if (!existing) throw new NotFoundException("O item não está disponível nesta residência.");
+        const category = data.categoryId
+            ? await this.repository.findCategory(residenceId, data.categoryId)
+            : null;
+        if (data.categoryId && !category) {
+            throw new BadRequestException("Selecione uma categoria desta residência.");
+        }
         this.assertCanManageOwnedItem(existing, member);
         if (
             data.unit &&
@@ -111,7 +204,8 @@ export class PantryService {
 
         await this.repository.updateItem(itemId, {
             name: data.name,
-            category: data.category,
+            categoryId: category?.id,
+            categoryName: category?.nome,
             property,
             ownerMemberId,
             unit: data.unit as unidade_item_enum | undefined,
@@ -194,6 +288,18 @@ export class PantryService {
         }
     }
 
+    private isUniqueViolation(error: unknown): boolean {
+        return (
+            typeof error === "object" && error !== null && "code" in error && error.code === "P2002"
+        );
+    }
+
+    private isForeignKeyViolation(error: unknown): boolean {
+        return (
+            typeof error === "object" && error !== null && "code" in error && error.code === "P2003"
+        );
+    }
+
     private mapItem(item: PantryItemRecord | PantryItemListRecord, currentMemberId: string) {
         if (!item) throw new NotFoundException("O item não está disponível nesta residência.");
         const owner = item.participacao_item_despensa_dono_participacao_idToparticipacao;
@@ -204,7 +310,8 @@ export class PantryService {
         return {
             id: item.id,
             name: item.nome,
-            category: item.categoria,
+            categoryId: item.categoria_id,
+            category: item.categoria_despensa.nome,
             property: item.propriedade,
             ownerMemberId: owner?.id ?? null,
             ownerName: owner ? owner.usuario.apelido || owner.usuario.nome : "Casa",

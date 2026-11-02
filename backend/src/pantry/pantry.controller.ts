@@ -17,11 +17,49 @@ import { CreatePantryMovementDto } from "./dto/create-pantry-movement.dto.js";
 import { UpdatePantryItemDto } from "./dto/update-pantry-item.dto.js";
 import { PantryItemListQueryDto } from "./dto/pantry-item-list-query.dto.js";
 import { PantryService } from "./pantry.service.js";
+import { CreatePantryCategoryDto } from "./dto/create-pantry-category.dto.js";
+import { UpdatePantryCategoryDto } from "./dto/update-pantry-category.dto.js";
 
 @Controller("residences/:residenceId/pantry")
 @UseGuards(JwtAuthGuard)
 export class PantryController {
     constructor(private readonly pantryService: PantryService) {}
+
+    @Get("categories")
+    findCategories(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.pantryService.findCategories(residenceId, user.id);
+    }
+
+    @Post("categories")
+    createCategory(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @Body() data: CreatePantryCategoryDto,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.pantryService.createCategory(residenceId, data, user.id);
+    }
+
+    @Patch("categories/:categoryId")
+    updateCategory(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @Param("categoryId", new ParseUUIDPipe({ version: "4" })) categoryId: string,
+        @Body() data: UpdatePantryCategoryDto,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.pantryService.updateCategory(residenceId, categoryId, data, user.id);
+    }
+
+    @Delete("categories/:categoryId")
+    removeCategory(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @Param("categoryId", new ParseUUIDPipe({ version: "4" })) categoryId: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.pantryService.removeCategory(residenceId, categoryId, user.id);
+    }
 
     @Get("members")
     findMembers(

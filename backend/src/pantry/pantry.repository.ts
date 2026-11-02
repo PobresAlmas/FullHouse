@@ -7,6 +7,7 @@ import type {
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const itemInclude = {
+    categoria_despensa: { select: { id: true, nome: true } },
     participacao_item_despensa_dono_participacao_idToparticipacao: {
         select: { id: true, usuario: { select: { nome: true, apelido: true } } },
     },
@@ -27,6 +28,59 @@ export class PantryRepository {
                 usuario: { select: { nome: true, apelido: true } },
             },
             orderBy: [{ usuario: { nome: "asc" } }, { id: "asc" }],
+        });
+    }
+
+    findCategories(residenceId: string) {
+        return this.prisma.categoria_despensa.findMany({
+            where: { casa_id: residenceId },
+            orderBy: [{ nome: "asc" }, { id: "asc" }],
+        });
+    }
+
+    findCategory(residenceId: string, categoryId: string) {
+        return this.prisma.categoria_despensa.findFirst({
+            where: { id: categoryId, casa_id: residenceId },
+        });
+    }
+
+    createCategory(data: { residenceId: string; name: string; normalizedName: string }) {
+        return this.prisma.categoria_despensa.create({
+            data: {
+                casa_id: data.residenceId,
+                nome: data.name,
+                nome_normalizado: data.normalizedName,
+            },
+        });
+    }
+
+    renameCategory(data: {
+        residenceId: string;
+        categoryId: string;
+        name: string;
+        normalizedName: string;
+    }) {
+        return this.prisma.$transaction(async (transaction) => {
+            const updated = await transaction.categoria_despensa.updateMany({
+                where: { id: data.categoryId, casa_id: data.residenceId },
+                data: { nome: data.name, nome_normalizado: data.normalizedName },
+            });
+            if (!updated.count) return false;
+            await transaction.item_despensa.updateMany({
+                where: { categoria_id: data.categoryId },
+                data: { categoria: data.name },
+            });
+            return true;
+        });
+    }
+
+    countItemsInCategory(categoryId: string) {
+        return this.prisma.item_despensa.count({ where: { categoria_id: categoryId } });
+    }
+
+    deleteCategory(residenceId: string, categoryId: string) {
+        return this.prisma.categoria_despensa.deleteMany({
+            where: { id: categoryId, casa_id: residenceId },
         });
     }
 
@@ -119,7 +173,8 @@ export class PantryRepository {
         residenceId: string;
         creatorMemberId: string;
         name: string;
-        category: string;
+        categoryId: string;
+        categoryName: string;
         property: propriedade_item_enum;
         ownerMemberId: string | null;
         unit: unidade_item_enum;
@@ -133,7 +188,8 @@ export class PantryRepository {
                     casa_id: data.residenceId,
                     criado_por_participacao_id: data.creatorMemberId,
                     nome: data.name,
-                    categoria: data.category,
+                    categoria: data.categoryName,
+                    categoria_id: data.categoryId,
                     propriedade: data.property,
                     dono_participacao_id: data.ownerMemberId,
                     unidade: data.unit,
@@ -161,7 +217,8 @@ export class PantryRepository {
         itemId: string,
         data: {
             name?: string;
-            category?: string;
+            categoryId?: string;
+            categoryName?: string;
             property?: propriedade_item_enum;
             ownerMemberId?: string | null;
             unit?: unidade_item_enum;
@@ -173,7 +230,9 @@ export class PantryRepository {
             where: { id: itemId },
             data: {
                 ...(data.name !== undefined ? { nome: data.name } : {}),
-                ...(data.category !== undefined ? { categoria: data.category } : {}),
+                ...(data.categoryId !== undefined
+                    ? { categoria_id: data.categoryId, categoria: data.categoryName }
+                    : {}),
                 ...(data.property !== undefined ? { propriedade: data.property } : {}),
                 ...(data.ownerMemberId !== undefined
                     ? { dono_participacao_id: data.ownerMemberId }
