@@ -19,14 +19,10 @@ describe("StorageService", () => {
     let send: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
         service = new StorageService(config as ConfigService);
         send = vi.fn().mockResolvedValue({});
         (service as { s3: { send: typeof send } }).s3.send = send;
     });
-
-    afterEach(() => vi.useRealTimers());
 
     it("uploads file bytes and returns the public avatar URL", async () => {
         const file = {
@@ -34,16 +30,18 @@ describe("StorageService", () => {
             buffer: Buffer.from("image"),
             mimetype: "image/png",
         };
-        await expect(service.upload(file)).resolves.toBe(
-            "http://localhost:9000/fullhouse/avatars/1767225600000-avatar.png"
+        const publicUrl = await service.upload(file);
+        expect(publicUrl).toMatch(
+            /^http:\/\/localhost:9000\/fullhouse\/avatars\/[0-9a-f-]{36}-avatar\.png$/i
         );
         const command = send.mock.calls[0][0] as PutObjectCommand;
         expect(command.input).toMatchObject({
             Bucket: "fullhouse",
-            Key: "avatars/1767225600000-avatar.png",
+            Key: expect.stringMatching(/^avatars\/[0-9a-f-]{36}-avatar\.png$/i),
             Body: file.buffer,
             ContentType: file.mimetype,
         });
+        expect(publicUrl.endsWith(command.input.Key as string)).toBe(true);
     });
 
     it("propagates object storage errors", async () => {

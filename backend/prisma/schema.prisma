@@ -72,12 +72,16 @@ model casa {
 
 model comprovante_pagamento {
   id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  despesa_id                  String?                       @db.Uuid
   rateio_despesa_id           String?                       @db.Uuid
   pagamento_id                String?                       @db.Uuid
   arquivo_url                 String                        @db.VarChar(500)
   tipo_arquivo                tipo_arquivo_comprovante_enum
-  enviado_por_participacao_id String                        @db.Uuid
-  participacao                participacao                  @relation(fields: [enviado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  enviado_por_participacao_id String?                       @db.Uuid
+  enviado_por_usuario_id      String?                       @db.Uuid
+  despesa                     despesa?                      @relation(fields: [despesa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  enviado_por_usuario         usuario?                      @relation(fields: [enviado_por_usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  participacao                participacao?                 @relation(fields: [enviado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   pagamento                   pagamento?                    @relation(fields: [pagamento_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   rateio_despesa              rateio_despesa?               @relation(fields: [rateio_despesa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
@@ -199,6 +203,7 @@ model despesa {
   status                   status_despesa_enum       @default(ABERTA)
   quitada_em               DateTime?                 @db.Timestamptz(6)
   cuidado_pet              cuidado_pet[]
+  comprovante_pagamento    comprovante_pagamento[]
   casa                     casa?                     @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   participacao             participacao?             @relation(fields: [pago_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   subgrupo                 subgrupo?                 @relation(fields: [subgrupo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -373,7 +378,7 @@ model leitura_conversa {
 model lembrete {
   id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   usuario_id          String            @db.Uuid
-  titulo              String            @db.VarChar(150)
+  titulo              String            @db.VarChar(200)
   lembrar_em          DateTime          @db.Timestamptz(6)
   instancia_tarefa_id String?           @db.Uuid
   despesa_id          String?           @db.Uuid
@@ -724,6 +729,7 @@ model usuario {
   excluido_em       DateTime?           @db.Timestamptz(6)
   casa              casa[]
   convite_casa      convite_casa[]
+  comprovante_pagamento comprovante_pagamento[]
   definicao_tarefa  definicao_tarefa[]
   despesa           despesa[]
   instancia_tarefa  instancia_tarefa[]

@@ -1,7 +1,7 @@
 # Sprint 01 — Requisitos implementados
 
-**Responsável:** Iago<br>
-**Módulo:** Gestão de despesas<br>
+**Responsável:** Iago
+**Módulo:** Gestão de despesas
 **Requisitos relacionados:** RF005 e RF006 — US004 e US005
 
 ## 1. Requisitos funcionais
