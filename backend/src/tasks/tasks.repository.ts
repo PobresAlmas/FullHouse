@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "../generated/prisma/client.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { CreateTaskDto, TaskAssignmentType, TaskPeriodicity } from "./dto/create-task.dto.js";
 import { TaskListQueryDto } from "./dto/task-list-query.dto.js";
@@ -53,23 +54,47 @@ export class TasksRepository {
         });
     }
 
-    findTasks(residenceId: string, query: TaskListQueryDto) {
-        return this.prisma.instancia_tarefa.findMany({
-            where: {
-                definicao_tarefa: {
-                    casa_id: residenceId,
-                    escopo: "CASA",
-                    ...(query.periodicity ? { periodicidade: query.periodicity } : {}),
-                    ...(query.search
-                        ? {
+    findTasks(residenceId: string, query: TaskListQueryDto, userId: string) {
+        const definitionWhere = {
+            casa_id: residenceId,
+            escopo: "CASA",
+            AND: [
+                {
+                    OR: [
+                        { visibilidade: "PUBLICA" },
+                        {
+                            visibilidade: "PRIVADA",
+                            participacao: { usuario: { id: userId } },
+                        },
+                    ],
+                },
+                ...(query.periodicity ? [{ periodicidade: query.periodicity }] : []),
+                ...(query.search
+                    ? [
+                          {
                               OR: [
-                                  { titulo: { contains: query.search, mode: "insensitive" } },
-                                  { descricao: { contains: query.search, mode: "insensitive" } },
+                                  {
+                                      titulo: {
+                                          contains: query.search,
+                                          mode: "insensitive" as const,
+                                      },
+                                  },
+                                  {
+                                      descricao: {
+                                          contains: query.search,
+                                          mode: "insensitive" as const,
+                                      },
+                                  },
                                   { tags: { has: query.search } },
                               ],
-                          }
-                        : {}),
-                },
+                          },
+                      ]
+                    : []),
+            ],
+        } satisfies Prisma.definicao_tarefaWhereInput;
+        return this.prisma.instancia_tarefa.findMany({
+            where: {
+                definicao_tarefa: definitionWhere,
                 ...(query.status ? { status: query.status } : { status: { not: "CANCELADA" } }),
                 ...(query.assigneeId ? { responsavel_participacao_id: query.assigneeId } : {}),
             },
@@ -78,11 +103,201 @@ export class TasksRepository {
         });
     }
 
-    findTask(residenceId: string, taskId: string) {
+    findTask(residenceId: string, taskId: string, userId: string) {
         return this.prisma.instancia_tarefa.findFirst({
-            where: { id: taskId, definicao_tarefa: { casa_id: residenceId, escopo: "CASA" } },
+            where: {
+                id: taskId,
+                definicao_tarefa: {
+                    casa_id: residenceId,
+                    escopo: "CASA",
+                    OR: [
+                        { visibilidade: "PUBLICA" },
+                        {
+                            visibilidade: "PRIVADA",
+                            participacao: { usuario: { id: userId } },
+                        },
+                    ],
+                },
+            },
             include: taskInclude,
         });
+    }
+
+    findPersonalTasks(userId: string) {
+        return this.prisma.instancia_tarefa.findMany({
+            where: {
+                definicao_tarefa: { escopo: "INDIVIDUAL", casa_id: null, usuario_id: userId },
+                status: { not: "CANCELADA" },
+            },
+            include: taskInclude,
+            orderBy: [{ prazo_limite: "asc" }, { data_prevista: "asc" }, { id: "asc" }],
+        });
+    }
+
+    findPersonalTask(userId: string, taskId: string) {
+        return this.prisma.instancia_tarefa.findFirst({
+            where: {
+                id: taskId,
+                definicao_tarefa: { escopo: "INDIVIDUAL", casa_id: null, usuario_id: userId },
+            },
+            include: taskInclude,
+        });
+    }
+
+    async createPersonal(userId: string, data: CreateTaskDto) {
+        const dueAt = dateFromIso(data.dueAt);
+        return this.prisma.$transaction(async (transaction) => {
+            const definition = await transaction.definicao_tarefa.create({
+                data: {
+                    escopo: "INDIVIDUAL",
+                    usuario_id: userId,
+                    titulo: data.title,
+                    descricao: data.description ?? null,
+                    tags: data.tags ?? [],
+                    cor: data.color ?? null,
+                    visibilidade: data.visibility ?? "PRIVADA",
+                    periodicidade: data.repeats
+                        ? (data.periodicity ?? TaskPeriodicity.SEMANAL)
+                        : TaskPeriodicity.PERSONALIZADA,
+                    regra_recorrencia: recurrenceRule(data.repeats ?? false),
+                    tipo_atribuicao: TaskAssignmentType.FIXA,
+                    data_inicio: dateOnly(dueAt),
+                    data_fim: data.repeats ? null : dateOnly(dueAt),
+                },
+            });
+            const instance = await transaction.instancia_tarefa.create({
+                data: {
+                    definicao_tarefa_id: definition.id,
+                    data_prevista: dateOnly(dueAt),
+                    prazo_limite: dueAt,
+                    responsavel_usuario_id: userId,
+                },
+            });
+            if (data.reminderMinutesBefore != null) {
+                await transaction.lembrete.create({
+                    data: {
+                        usuario_id: userId,
+                        titulo: data.title,
+                        lembrar_em: new Date(dueAt.getTime() - data.reminderMinutesBefore * 60_000),
+                        instancia_tarefa_id: instance.id,
+                    },
+                });
+            }
+            return instance.id;
+        });
+    }
+
+    async updatePersonal(
+        taskId: string,
+        existing: NonNullable<Awaited<ReturnType<TasksRepository["findPersonalTask"]>>>,
+        data: UpdateTaskDto,
+        userId: string
+    ) {
+        const dueAt = data.dueAt
+            ? dateFromIso(data.dueAt)
+            : (existing.prazo_limite ?? existing.data_prevista);
+        const recurrence = existing.definicao_tarefa.regra_recorrencia as {
+            repeats?: boolean;
+        } | null;
+        const repeats = data.repeats ?? recurrence?.repeats ?? false;
+        const periodicity = data.periodicity ?? existing.definicao_tarefa.periodicidade;
+        await this.prisma.$transaction(async (transaction) => {
+            await transaction.definicao_tarefa.update({
+                where: { id: existing.definicao_tarefa_id },
+                data: {
+                    ...(data.title !== undefined ? { titulo: data.title } : {}),
+                    ...(data.description !== undefined ? { descricao: data.description } : {}),
+                    ...(data.tags !== undefined ? { tags: data.tags } : {}),
+                    ...(data.color !== undefined ? { cor: data.color } : {}),
+                    ...(data.visibility !== undefined ? { visibilidade: data.visibility } : {}),
+                    ...(data.repeats !== undefined || data.periodicity !== undefined
+                        ? {
+                              periodicidade: repeats ? periodicity : TaskPeriodicity.PERSONALIZADA,
+                              regra_recorrencia: recurrenceRule(repeats),
+                              data_fim: repeats ? null : dateOnly(dueAt),
+                          }
+                        : {}),
+                },
+            });
+            await transaction.instancia_tarefa.update({
+                where: { id: taskId },
+                data: {
+                    ...(data.dueAt !== undefined
+                        ? { data_prevista: dateOnly(dueAt), prazo_limite: dueAt }
+                        : {}),
+                },
+            });
+            if (data.reminderMinutesBefore !== undefined || data.dueAt !== undefined) {
+                await transaction.lembrete.deleteMany({ where: { instancia_tarefa_id: taskId } });
+                if (data.reminderMinutesBefore != null) {
+                    await transaction.lembrete.create({
+                        data: {
+                            usuario_id: userId,
+                            titulo: data.title ?? existing.definicao_tarefa.titulo,
+                            lembrar_em: new Date(
+                                dueAt.getTime() - data.reminderMinutesBefore * 60_000
+                            ),
+                            instancia_tarefa_id: taskId,
+                        },
+                    });
+                }
+            }
+        });
+    }
+
+    completePersonal(
+        taskId: string,
+        userId: string,
+        completedAt: Date,
+        nextDueAt: Date | null,
+        reminderMinutesBefore: number | null,
+        title: string
+    ) {
+        return this.prisma.$transaction(async (transaction) => {
+            const completed = await transaction.instancia_tarefa.update({
+                where: { id: taskId },
+                data: { status: "CONCLUIDA", concluida_em: completedAt },
+            });
+            await transaction.lembrete.deleteMany({ where: { instancia_tarefa_id: taskId } });
+            if (nextDueAt) {
+                const nextInstance = await transaction.instancia_tarefa.create({
+                    data: {
+                        definicao_tarefa_id: completed.definicao_tarefa_id,
+                        data_prevista: dateOnly(nextDueAt),
+                        prazo_limite: nextDueAt,
+                        responsavel_usuario_id: userId,
+                    },
+                });
+                if (reminderMinutesBefore !== null) {
+                    await transaction.lembrete.create({
+                        data: {
+                            usuario_id: userId,
+                            titulo: title,
+                            lembrar_em: new Date(
+                                nextDueAt.getTime() - reminderMinutesBefore * 60_000
+                            ),
+                            instancia_tarefa_id: nextInstance.id,
+                        },
+                    });
+                }
+            }
+            return completed;
+        });
+    }
+
+    async removePersonal(userId: string, taskId: string) {
+        const task = await this.findPersonalTask(userId, taskId);
+        if (!task) return false;
+        await this.prisma.$transaction(async (transaction) => {
+            await transaction.lembrete.deleteMany({
+                where: { instancia_tarefa: { definicao_tarefa_id: task.definicao_tarefa_id } },
+            });
+            await transaction.instancia_tarefa.updateMany({
+                where: { definicao_tarefa_id: task.definicao_tarefa_id },
+                data: { status: "CANCELADA" },
+            });
+        });
+        return true;
     }
 
     async create(
@@ -105,6 +320,7 @@ export class TasksRepository {
                     descricao: data.description ?? null,
                     tags: data.tags ?? [],
                     cor: data.color ?? null,
+                    visibilidade: data.visibility ?? "PUBLICA",
                     periodicidade: repeats
                         ? (data.periodicity ?? TaskPeriodicity.SEMANAL)
                         : TaskPeriodicity.PERSONALIZADA,
@@ -192,6 +408,7 @@ export class TasksRepository {
                     ...(data.description !== undefined ? { descricao: data.description } : {}),
                     ...(data.tags !== undefined ? { tags: data.tags } : {}),
                     ...(data.color !== undefined ? { cor: data.color } : {}),
+                    ...(data.visibility !== undefined ? { visibilidade: data.visibility } : {}),
                     ...(data.assignmentType !== undefined
                         ? {
                               tipo_atribuicao: data.assignmentType,

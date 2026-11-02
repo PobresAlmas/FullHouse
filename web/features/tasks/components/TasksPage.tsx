@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import Link from "next/link";
 import {
     Bell,
     CalendarDays,
@@ -10,24 +9,32 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock3,
-    House,
+    LogOut,
     Plus,
     Repeat2,
-    Settings,
     Trash2,
     X,
 } from "lucide-react";
 import {
+    completePersonalTask,
     completeTask,
+    createPersonalTask,
+    createTaskExchangeRequest,
     createTask,
+    deletePersonalTask,
     deleteTask,
+    getPersonalTasks,
     getTaskMembers,
     getTaskResidences,
+    getTaskExchangeRequests,
     getTasks,
+    respondToTaskExchange,
+    updatePersonalTask,
     updateTask,
 } from "@/features/tasks/api/tasks.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import type {
     Task,
     TaskAssignmentType,
@@ -35,6 +42,7 @@ import type {
     TaskMember,
     TaskPeriodicity,
     TaskResidence,
+    TaskExchangeRequest,
 } from "@/features/tasks/api/tasks.api";
 import {
     canCreateOrEditResidenceContent,
@@ -44,7 +52,7 @@ import {
 type TaskFormState = {
     title: string;
     description: string;
-    tags: string;
+    tags: string[];
     assigneeId: string;
     assignmentType: TaskAssignmentType;
     assigneeIds: string[];
@@ -54,13 +62,14 @@ type TaskFormState = {
     periodicity: TaskPeriodicity;
     hasReminder: boolean;
     reminderMinutesBefore: string;
+    visibility: "PUBLICA" | "PRIVADA";
 };
-type TaskTab = "all" | "mine" | "completed";
+type TaskTab = "all" | "overdue" | "pending" | "completed";
 
 const initialForm: TaskFormState = {
     title: "",
     description: "",
-    tags: "",
+    tags: [],
     assigneeId: "",
     assignmentType: "FIXA",
     assigneeIds: [],
@@ -70,6 +79,7 @@ const initialForm: TaskFormState = {
     periodicity: "SEMANAL",
     hasReminder: true,
     reminderMinutesBefore: "30",
+    visibility: "PUBLICA",
 };
 const periodicityLabels: Record<TaskPeriodicity, string> = {
     DIARIA: "Diariamente",
@@ -85,6 +95,14 @@ const tagColors = [
     "bg-emerald-100 text-emerald-700",
     "bg-sky-100 text-sky-700",
     "bg-yellow-100 text-yellow-800",
+];
+const tagDotColors = [
+    "bg-violet-500",
+    "bg-pink-500",
+    "bg-amber-500",
+    "bg-emerald-500",
+    "bg-sky-500",
+    "bg-yellow-500",
 ];
 const inputClass =
     "w-full rounded-lg border border-[#d3cbd7] bg-white px-3 py-2.5 text-sm outline-none transition focus:border-[#4f7f63] focus:ring-2 focus:ring-[#4f7f63]/15";
@@ -123,7 +141,7 @@ function taskToForm(task: Task): TaskFormState {
     return {
         title: task.title,
         description: task.description ?? "",
-        tags: task.tags.join(", "),
+        tags: task.tags,
         assigneeId: task.assignee?.id ?? "",
         assignmentType: task.assignmentType ?? "FIXA",
         assigneeIds: task.rotationMemberIds ?? [],
@@ -141,20 +159,19 @@ function taskToForm(task: Task): TaskFormState {
                   )
               ).toString()
             : "30",
+        visibility: task.visibility ?? "PUBLICA",
     };
 }
 function toTaskInput(form: TaskFormState): TaskInput {
     return {
         title: form.title.trim(),
         description: form.description.trim() || null,
-        tags: form.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
+        tags: form.tags,
         assigneeId: form.assigneeId || null,
         assignmentType: form.assignmentType,
         assigneeIds: form.assignmentType === "RODIZIO" ? form.assigneeIds : [],
         color: form.color,
+        visibility: form.visibility,
         dueAt: new Date(form.dueAt).toISOString(),
         repeats: form.repeats,
         ...(form.repeats ? { periodicity: form.periodicity } : {}),
@@ -162,57 +179,12 @@ function toTaskInput(form: TaskFormState): TaskInput {
     };
 }
 
-function readPersonalTasks(userId: string): Task[] {
-    try {
-        const stored = window.localStorage.getItem(`fullhouse:personal-tasks:${userId}`);
-        const parsed: unknown = stored ? JSON.parse(stored) : [];
-        return Array.isArray(parsed) ? (parsed as Task[]) : [];
-    } catch {
-        return [];
-    }
-}
-
-function savePersonalTasks(userId: string, tasks: Task[]) {
-    try {
-        window.localStorage.setItem(`fullhouse:personal-tasks:${userId}`, JSON.stringify(tasks));
-    } catch {
-        /* A tarefa continua disponível na tela enquanto esta sessão estiver aberta. */
-    }
-}
-
 function isPersonalTask(task: Task) {
-    return task.id.startsWith("local-");
-}
-
-function toPersonalTask(input: TaskInput, existing?: Task): Task {
-    const dueDate = new Date(input.dueAt);
-    const reminderAt =
-        input.reminderMinutesBefore == null
-            ? null
-            : new Date(dueDate.getTime() - input.reminderMinutesBefore * 60_000).toISOString();
-    return {
-        id: existing?.id ?? `local-${crypto.randomUUID()}`,
-        definitionId: existing?.definitionId ?? `local-${crypto.randomUUID()}`,
-        title: input.title,
-        description: input.description ?? null,
-        tags: input.tags ?? [],
-        color: input.color ?? null,
-        assignmentType: input.assignmentType ?? "FIXA",
-        rotationMemberIds: input.assigneeIds ?? [],
-        residenceId: null,
-        assignee: null,
-        dueAt: input.dueAt,
-        periodicity: input.periodicity ?? existing?.periodicity ?? "SEMANAL",
-        repeats: input.repeats ?? false,
-        reminderAt,
-        status: existing?.status ?? "PENDENTE",
-        completedAt: existing?.completedAt ?? null,
-    };
+    return task.scope === "INDIVIDUAL";
 }
 
 export default function TasksPage() {
-    const { user } = useAuth();
-    const userId = user?.id ?? "anonymous";
+    const { user, logout } = useAuth();
     const [residences, setResidences] = useState<TaskResidence[]>([]);
     const [residenceId, setResidenceId] = useState("");
     const [members, setMembers] = useState<TaskMember[]>([]);
@@ -232,32 +204,46 @@ export default function TasksPage() {
     const [showForm, setShowForm] = useState(false);
     const [confirmDeleteId, setConfirmDeleteId] = useState("");
     const [error, setError] = useState("");
+    const [dataError, setDataError] = useState("");
     const [notice, setNotice] = useState("");
+    const [exchangeRequests, setExchangeRequests] = useState<TaskExchangeRequest[]>([]);
+    const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
+    const [logoutError, setLogoutError] = useState("");
+    const profileMenuRef = useRef<HTMLDivElement>(null);
 
     const residence = residences.find((item) => item.id === residenceId) ?? null;
-    const houseName = residence?.name ?? "Nenhuma casa associada";
     const myMemberId = residence?.membership?.id ?? "";
+    const userName = user?.name?.trim() || user?.email?.split("@")[0] || "Minha conta";
+    const avatarInitial = user?.name?.trim().charAt(0) || user?.email?.trim().charAt(0) || "?";
     const canEditHouseTasks = canCreateOrEditResidenceContent(
         residence?.membership?.role,
         residence?.creationEditPolicy
     );
     const canDeleteHouseTasks = isResidenceManager(residence?.membership?.role);
 
-    const loadResidenceData = useCallback(
-        async (id: string) => {
-            const [nextMembers, nextTasks] = await Promise.all([getTaskMembers(id), getTasks(id)]);
-            const localTasks = readPersonalTasks(userId);
-            setMembers(nextMembers);
-            setTasks([...nextTasks, ...localTasks]);
-        },
-        [userId]
-    );
+    useEffect(() => {
+        document.documentElement.classList.add("tasks-hide-page-scrollbar");
+        return () => document.documentElement.classList.remove("tasks-hide-page-scrollbar");
+    }, []);
+
+    const loadResidenceData = useCallback(async (id: string) => {
+        const [nextMembers, nextTasks] = await Promise.all([getTaskMembers(id), getTasks(id)]);
+        setMembers(nextMembers);
+        setTasks(nextTasks);
+        try {
+            setExchangeRequests(await getTaskExchangeRequests(id));
+        } catch (requestError: unknown) {
+            setExchangeRequests([]);
+            setError(getErrorMessage(requestError));
+        }
+    }, []);
 
     useEffect(() => {
         let active = true;
-        const localTasks = readPersonalTasks(userId);
-        getTaskResidences()
-            .then(async (available) => {
+        async function loadInitialContext() {
+            try {
+                const available = await getTaskResidences();
                 if (!active) return;
                 setResidences(available);
                 const id = available[0]?.id ?? "";
@@ -268,37 +254,40 @@ export default function TasksPage() {
                         getTaskMembers(id),
                         getTasks(id),
                     ]);
-                    if (active) {
-                        setMembers(nextMembers);
-                        setTasks([...nextTasks, ...localTasks]);
-                        setNotice("");
-                    }
+                    if (!active) return;
+                    setMembers(nextMembers);
+                    setTasks(nextTasks);
+                    setNotice("");
+                    getTaskExchangeRequests(id)
+                        .then((requests) => active && setExchangeRequests(requests))
+                        .catch((requestError: unknown) => {
+                            if (active) {
+                                setExchangeRequests([]);
+                                setError(getErrorMessage(requestError));
+                            }
+                        });
                 } else {
-                    setTasks(localTasks);
-                    setNotice(
-                        "Modo pessoal ativo. As tarefas criadas sem casa ficam salvas neste navegador."
-                    );
-                }
-            })
-            .catch(() => {
-                if (active) {
-                    setResidences([]);
-                    setResidenceId("");
+                    const personalTasks = await getPersonalTasks();
+                    if (!active) return;
+                    setTasks(personalTasks);
                     setMembers([]);
-                    setTasks(localTasks);
-                    setError("");
-                    setNotice(
-                        "Modo pessoal ativo. As tarefas criadas sem casa ficam salvas neste navegador."
-                    );
+                    setExchangeRequests([]);
                 }
-            })
-            .finally(() => {
+            } catch (loadError: unknown) {
+                if (active) {
+                    const message = getErrorMessage(loadError);
+                    setError(message);
+                    setDataError(message);
+                }
+            } finally {
                 if (active) setLoading(false);
-            });
+            }
+        }
+        void loadInitialContext();
         return () => {
             active = false;
         };
-    }, [userId]);
+    }, []);
 
     useEffect(() => {
         if (!showForm) return;
@@ -309,15 +298,34 @@ export default function TasksPage() {
         return () => window.removeEventListener("keydown", closeOnEscape);
     }, [showForm]);
 
+    useEffect(() => {
+        if (!profileMenuOpen) return;
+        function closeMenu(event: PointerEvent) {
+            if (event.target instanceof Node && !profileMenuRef.current?.contains(event.target)) {
+                setProfileMenuOpen(false);
+            }
+        }
+        function closeOnEscape(event: KeyboardEvent) {
+            if (event.key === "Escape") setProfileMenuOpen(false);
+        }
+        document.addEventListener("pointerdown", closeMenu);
+        document.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.removeEventListener("pointerdown", closeMenu);
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [profileMenuOpen]);
+
+    const contextualTasks = tasks;
     const categories = useMemo(
         () =>
-            [...new Set(tasks.flatMap((task) => task.tags))].sort((a, b) =>
+            [...new Set(contextualTasks.flatMap((task) => task.tags))].sort((a, b) =>
                 a.localeCompare(b, "pt-BR")
             ),
-        [tasks]
+        [contextualTasks]
     );
     const todayKey = localDateKey(new Date());
-    const activeTasks = tasks.filter(
+    const activeTasks = contextualTasks.filter(
         (task) => task.status !== "CONCLUIDA" && task.status !== "CANCELADA"
     );
     const overdueTasks = activeTasks.filter(
@@ -326,7 +334,7 @@ export default function TasksPage() {
     const todayTasks = activeTasks.filter(
         (task) => taskDateKey(task) === todayKey && task.status !== "ATRASADA"
     );
-    const todayCompleted = tasks.filter(
+    const todayCompleted = contextualTasks.filter(
         (task) => task.status === "CONCLUIDA" && task.completedAt?.slice(0, 10) === todayKey
     );
     const myPending = activeTasks.filter(
@@ -335,22 +343,23 @@ export default function TasksPage() {
 
     const visibleTasks = useMemo(() => {
         const normalized = search.trim().toLocaleLowerCase("pt-BR");
-        return tasks
+        return contextualTasks
             .filter((task) => {
-                if (scope === "personal" && !isPersonalTask(task)) return false;
-                if (scope === "home" && isPersonalTask(task)) return false;
+                const overdue = task.status === "ATRASADA" || taskDateKey(task) < todayKey;
                 if (
-                    activeTab === "mine" &&
-                    !isPersonalTask(task) &&
-                    task.assignee?.id !== myMemberId
+                    activeTab === "overdue" &&
+                    (task.status === "CONCLUIDA" || task.status === "CANCELADA" || !overdue)
+                )
+                    return false;
+                if (
+                    activeTab === "pending" &&
+                    task.status !== "PENDENTE" &&
+                    task.status !== "EM_ANDAMENTO" &&
+                    !overdue
                 )
                     return false;
                 if (activeTab === "completed" && task.status !== "CONCLUIDA") return false;
-                if (
-                    activeTab !== "completed" &&
-                    (task.status === "CONCLUIDA" || task.status === "CANCELADA")
-                )
-                    return false;
+                if (task.status === "CANCELADA") return false;
                 if (activeTag && !task.tags.includes(activeTag)) return false;
                 if (
                     normalized &&
@@ -364,26 +373,73 @@ export default function TasksPage() {
                 return true;
             })
             .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
-    }, [activeTab, activeTag, myMemberId, scope, search, selectedDate, tasks]);
+    }, [
+        activeTab,
+        activeTag,
+        search,
+        selectedDate,
+        contextualTasks,
+        todayKey,
+    ]);
+
+    const visibleExchangeRequests = exchangeRequests;
 
     async function changeResidence(id: string) {
         setResidenceId(id);
         setScope("home");
+        setTasks([]);
+        setMembers([]);
+        setExchangeRequests([]);
         setError("");
+        setDataError("");
         setNotice("");
         setLoading(true);
         try {
             await loadResidenceData(id);
         } catch (loadError: unknown) {
-            setError(getErrorMessage(loadError));
+            const message = getErrorMessage(loadError);
+            setError(message);
+            setDataError(message);
+        } finally {
+            setLoading(false);
+        }
+    }
+    async function changeScope(nextScope: "personal" | "home") {
+        if (nextScope === "home" && !residenceId) return;
+        setScope(nextScope);
+        setActiveTab("all");
+        setSelectedDate("");
+        setActiveTag("");
+        setTasks([]);
+        setMembers([]);
+        setExchangeRequests([]);
+        setError("");
+        setDataError("");
+        setLoading(true);
+        try {
+            if (nextScope === "personal") {
+                const personalTasks = await getPersonalTasks();
+                setTasks(personalTasks);
+            } else {
+                await loadResidenceData(residenceId);
+            }
+        } catch (loadError: unknown) {
+            const message = getErrorMessage(loadError);
+            setError(message);
+            setDataError(message);
         } finally {
             setLoading(false);
         }
     }
     function openCreateForm() {
-        if (scope === "home" && !canEditHouseTasks) return;
+        if (scope === "home" && (!residenceId || !myMemberId)) return;
         setEditingTask(null);
-        setForm({ ...initialForm, dueAt: `${todayKey}T19:00` });
+        setForm({
+            ...initialForm,
+            dueAt: `${todayKey}T19:00`,
+            assigneeId: scope === "home" && !canEditHouseTasks ? myMemberId : "",
+            visibility: scope === "personal" ? "PRIVADA" : "PUBLICA",
+        });
         setError("");
         setShowForm(true);
     }
@@ -400,11 +456,16 @@ export default function TasksPage() {
 
     async function submitTask(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        const isHomeTask = editingTask
-            ? !isPersonalTask(editingTask)
-            : Boolean(residenceId && scope === "home");
-        if (isHomeTask && !canEditHouseTasks) {
-            setError("A configuração desta residência não permite criar ou editar tarefas.");
+        const isHomeTask = editingTask ? !isPersonalTask(editingTask) : scope === "home";
+        if (
+            isHomeTask &&
+            (form.assignmentType === "FIXA" ? !form.assigneeId : form.assigneeIds.length < 2)
+        ) {
+            setError(
+                form.assignmentType === "FIXA"
+                    ? "Selecione um responsável para a tarefa."
+                    : "Selecione pelo menos dois moradores para o rodízio."
+            );
             return;
         }
         setSaving(true);
@@ -413,33 +474,38 @@ export default function TasksPage() {
         try {
             const data = toTaskInput(form);
             if (!isHomeTask) {
-                const savedTask = toPersonalTask(data, editingTask ?? undefined);
-                const localTasks = readPersonalTasks(userId);
-                const nextLocalTasks = editingTask
-                    ? localTasks.map((task) => (task.id === savedTask.id ? savedTask : task))
-                    : [...localTasks, savedTask];
-                savePersonalTasks(userId, nextLocalTasks);
+                const personalData = { ...data };
+                delete personalData.assigneeId;
+                delete personalData.assigneeIds;
+                delete personalData.assignmentType;
+                const savedTask = editingTask
+                    ? await updatePersonalTask(editingTask.id, personalData)
+                    : await createPersonalTask(personalData);
                 setTasks((items) =>
                     editingTask
                         ? items.map((task) => (task.id === savedTask.id ? savedTask : task))
                         : [...items, savedTask]
                 );
-                setNotice(
-                    residenceId
-                        ? "Tarefa pessoal atualizada neste navegador."
-                        : "Tarefa salva neste navegador."
-                );
+                setNotice(editingTask ? "Tarefa pessoal atualizada." : "Tarefa pessoal criada.");
                 setShowForm(false);
                 setEditingTask(null);
                 setForm(initialForm);
                 return;
             }
+            const residenceData = canEditHouseTasks
+                ? data
+                : {
+                      ...data,
+                      assigneeId: myMemberId,
+                      assignmentType: "FIXA" as const,
+                      assigneeIds: [],
+                  };
             if (editingTask) {
-                const updated = await updateTask(residenceId, editingTask.id, data);
+                const updated = await updateTask(residenceId, editingTask.id, residenceData);
                 setTasks((items) => items.map((item) => (item.id === updated.id ? updated : item)));
                 setNotice("Tarefa atualizada com sucesso.");
             } else {
-                const created = await createTask(residenceId, data);
+                const created = await createTask(residenceId, residenceData);
                 setTasks((items) => [...items, created]);
                 setNotice("Tarefa criada com sucesso.");
             }
@@ -456,15 +522,7 @@ export default function TasksPage() {
         setError("");
         try {
             if (isPersonalTask(task)) {
-                const completed: Task = {
-                    ...task,
-                    status: "CONCLUIDA",
-                    completedAt: new Date().toISOString(),
-                };
-                const nextLocalTasks = readPersonalTasks(userId).map((item) =>
-                    item.id === task.id ? completed : item
-                );
-                savePersonalTasks(userId, nextLocalTasks);
+                const completed = await completePersonalTask(task.id);
                 setTasks((items) =>
                     items.map((item) => (item.id === completed.id ? completed : item))
                 );
@@ -486,10 +544,7 @@ export default function TasksPage() {
         try {
             const task = tasks.find((item) => item.id === taskId);
             if (task && isPersonalTask(task)) {
-                const nextLocalTasks = readPersonalTasks(userId).filter(
-                    (item) => item.id !== taskId
-                );
-                savePersonalTasks(userId, nextLocalTasks);
+                await deletePersonalTask(taskId);
                 setTasks((items) => items.filter((item) => item.id !== taskId));
                 setConfirmDeleteId("");
                 setNotice("Tarefa removida.");
@@ -504,81 +559,133 @@ export default function TasksPage() {
             setError(getErrorMessage(deleteError));
         }
     }
+    async function requestExchange(task: Task, recipientMemberId: string, targetTaskId?: string) {
+        if (!residenceId || !recipientMemberId) return;
+        setError("");
+        try {
+            await createTaskExchangeRequest(residenceId, task.id, recipientMemberId, targetTaskId);
+            setExchangeRequests(await getTaskExchangeRequests(residenceId));
+            setNotice("Pedido de troca enviado.");
+        } catch (requestError: unknown) {
+            setError(getErrorMessage(requestError));
+        }
+    }
+    async function respondToExchange(
+        request: TaskExchangeRequest,
+        status: "ACEITA" | "RECUSADA",
+        targetTaskId?: string
+    ) {
+        if (!residenceId) return;
+        setError("");
+        try {
+            await respondToTaskExchange(residenceId, request.id, status, targetTaskId);
+            await loadResidenceData(residenceId);
+            setNotice(status === "ACEITA" ? "Troca aceita." : "Solicitação recusada.");
+        } catch (requestError: unknown) {
+            setError(getErrorMessage(requestError));
+        }
+    }
+
+    async function handleLogout() {
+        setLoggingOut(true);
+        setLogoutError("");
+        try {
+            await logout();
+        } catch (logoutFailure: unknown) {
+            setLogoutError(getErrorMessage(logoutFailure));
+            setLoggingOut(false);
+        }
+    }
 
     return (
         <div className="min-h-screen bg-[#f8f4fa] text-[#29252d] md:flex">
             <AppSidebar activeSection="tasks" residenceName={residence?.name} />
 
             <div className="min-w-0 flex-1">
-                <header className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] bg-[#fffaff] px-5 py-3 md:px-7">
-                    <div>
-                        <h1 className="text-xl font-bold">Bom dia</h1>
-                        <p className="flex items-center gap-1 text-xs text-[#77717c]">
-                            <House size={12} />{" "}
-                            {scope === "personal" ? "Tarefas pessoais" : houseName}
-                        </p>
-                    </div>
-                    <div
-                        className="flex items-center gap-1 rounded-xl bg-[#e8e5e9] p-0.5 text-xs"
-                        aria-label="Escopo da casa"
-                    >
-                        <button
-                            type="button"
-                            aria-pressed={scope === "personal"}
-                            onClick={() => setScope("personal")}
-                            className={`rounded-lg px-4 py-2 ${scope === "personal" ? "bg-[#4e812f] font-medium text-white" : "text-[#77717c]"}`}
-                        >
-                            Pessoal
-                        </button>
-                        {residences.length > 1 ? (
-                            <label className="sr-only" htmlFor="task-residence">
-                                Selecionar casa
-                            </label>
-                        ) : null}
-                        {residences.length > 1 ? (
-                            <select
-                                id="task-residence"
-                                value={residenceId}
-                                onChange={(event) => void changeResidence(event.target.value)}
-                                className="max-w-[180px] rounded-lg bg-[#4e812f] px-4 py-2 font-medium text-white outline-none"
-                            >
-                                {residences.map((item) => (
-                                    <option
-                                        key={item.id}
-                                        value={item.id}
-                                        className="bg-white text-[#29252d]"
+                <AppPageHeader
+                    greetingName={userName}
+                    residenceName={scope === "home" ? residence?.name : undefined}
+                    subtitle={scope === "personal" ? "Tarefas pessoais" : undefined}
+                    residenceControl={
+                        residences.length > 0 ? (
+                            <div className="flex rounded-xl bg-[#e8e7eb] p-1" aria-label="Contexto da Home">
+                                <button
+                                    type="button"
+                                    disabled={loading}
+                                    aria-pressed={scope === "personal"}
+                                    onClick={() => void changeScope("personal")}
+                                    className={`min-w-28 rounded-lg px-5 py-2 text-xs ${scope === "personal" ? "bg-[#4e812f] text-white" : "text-[#3e3a41]"}`}
+                                >
+                                    Pessoal
+                                </button>
+                                {residences.length === 1 ? (
+                                    <button
+                                        type="button"
+                                        disabled={loading}
+                                        onClick={() => void changeScope("home")}
+                                        aria-pressed={scope === "home"}
+                                        className={`rounded-lg px-5 py-2 text-xs ${scope === "home" ? "bg-[#4e812f] text-white" : "text-[#3e3a41]"}`}
                                     >
-                                        {item.name}
-                                    </option>
-                                ))}
-                            </select>
-                        ) : (
+                                        {residence?.name}
+                                    </button>
+                                ) : (
+                                    <select
+                                        aria-label="Residência"
+                                        value={residenceId}
+                                        disabled={loading}
+                                        onChange={(event) => void changeResidence(event.target.value)}
+                                        className="max-w-48 rounded-lg bg-[#4e812f] px-3 py-2 text-xs text-white outline-none focus-visible:ring-2 focus-visible:ring-[#4e812f]"
+                                    >
+                                        {residences.map((item) => (
+                                            <option key={item.id} value={item.id}>
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                        ) : null
+                    }
+                    settingsHref="/settings"
+                    profile={
+                        <div className="relative" ref={profileMenuRef}>
                             <button
                                 type="button"
-                                aria-pressed={scope === "home"}
-                                disabled={!residenceId}
-                                onClick={() => setScope("home")}
-                                className={`max-w-[180px] truncate rounded-lg px-4 py-2 ${scope === "home" ? "bg-[#4e812f] font-medium text-white" : "text-[#a19ba5]"}`}
+                                onClick={() => {
+                                    setProfileMenuOpen((open) => !open);
+                                    setLogoutError("");
+                                }}
+                                aria-label={`Abrir menu da conta de ${userName}`}
+                                aria-haspopup="menu"
+                                aria-expanded={profileMenuOpen}
+                                className="grid size-10 place-items-center rounded-full bg-[#4b825f] font-semibold text-white transition hover:bg-[#3e704f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
                             >
-                                {residenceId ? houseName : "Residência"}
+                                {avatarInitial.toLocaleUpperCase("pt-BR")}
                             </button>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-3 text-[#514c56]">
-                        <Link
-                            href="/settings"
-                            aria-label="Configurações"
-                            className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
-                        >
-                            <Settings size={19} />
-                        </Link>
-                        <span className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white">
-                            {user?.email.slice(0, 1).toUpperCase() ?? "?"}
-                        </span>
-                    </div>
-                </header>
+                            {profileMenuOpen && (
+                                <div role="menu" aria-label="Menu da conta" className="absolute right-0 top-12 z-30 w-64 rounded-xl border border-[#d2c8d5] bg-white p-3 text-[#302a32] shadow-lg">
+                                    <div className="border-b border-[#eee8ef] px-2 pb-3">
+                                        <p className="truncate text-sm font-semibold">{userName}</p>
+                                        {user?.email && <p className="truncate text-xs text-[#77717a]">{user.email}</p>}
+                                    </div>
+                                    {logoutError && <p role="alert" className="px-2 pt-2 text-xs text-red-700">Não foi possível sair: {logoutError}</p>}
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => void handleLogout()}
+                                        disabled={loggingOut}
+                                        className="mt-2 flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-[#514c56] transition hover:bg-[#f7f2fa] disabled:cursor-wait disabled:opacity-60"
+                                    >
+                                        <LogOut size={16} />
+                                        {loggingOut ? "Saindo…" : "Sair"}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    }
+                />
 
-                <main className="mx-auto max-w-[1600px] p-4 md:p-6 xl:p-[30px]">
+                <main className="mx-auto max-w-[1600px] p-5 md:p-6">
                     {error && (
                         <div
                             role="alert"
@@ -606,7 +713,8 @@ export default function TasksPage() {
                                         {new Intl.DateTimeFormat("pt-BR", {
                                             dateStyle: "full",
                                         }).format(new Date())}{" "}
-                                        · {members.length} moradores
+                                        · {members.length}{" "}
+                                        {members.length === 1 ? "morador" : "moradores"}
                                     </p>
                                 </div>
                                 {(scope === "personal" || canEditHouseTasks) && (
@@ -650,19 +758,25 @@ export default function TasksPage() {
                             </div>
 
                             <div className="mb-4 flex flex-wrap items-center gap-2">
-                                <div className="inline-flex overflow-hidden rounded-full border border-[#302a32] text-xs">
+                                <div
+                                    className="inline-flex max-w-full flex-nowrap gap-1 overflow-x-auto rounded-full bg-[#f0edf2] p-1 text-xs"
+                                    role="group"
+                                    aria-label="Filtrar por status"
+                                >
                                     {(
                                         [
                                             ["all", "Todas"],
-                                            ["mine", "Minhas"],
+                                            ["overdue", "Atrasadas"],
+                                            ["pending", "Pendentes"],
                                             ["completed", "Concluídas"],
                                         ] as [TaskTab, string][]
-                                    ).map(([tab, label], index) => (
+                                    ).map(([tab, label]) => (
                                         <button
                                             key={tab}
                                             type="button"
                                             onClick={() => setActiveTab(tab)}
-                                            className={`px-4 py-1.5 ${index < 2 ? "border-r border-[#302a32]" : ""} ${activeTab === tab ? "bg-[#b9dda8] text-[#263922]" : "bg-white hover:bg-[#f4f0f5]"}`}
+                                            aria-pressed={activeTab === tab}
+                                            className={`shrink-0 rounded-full px-3 py-2 text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#356a22] ${activeTab === tab ? "bg-white font-semibold text-[#356a22] shadow-[0_2px_0_#4e812f]" : "bg-transparent text-[#554f59] hover:bg-white/70"}`}
                                         >
                                             {label}
                                         </button>
@@ -677,8 +791,8 @@ export default function TasksPage() {
                                 />
                             </div>
                             <div className="mb-4">
-                                <p className="mb-2 text-[11px] font-semibold">Categorias</p>
-                                <div className="flex flex-wrap gap-2">
+                                <p className="mb-2 text-xs font-semibold text-[#39333e]">Categorias</p>
+                                <div className="flex flex-wrap gap-2.5">
                                     <TagFilter
                                         label="Todas"
                                         active={!activeTag}
@@ -688,7 +802,7 @@ export default function TasksPage() {
                                         <TagFilter
                                             key={tag}
                                             label={tag}
-                                            color={tagColors[index % tagColors.length]}
+                                            color={tagDotColors[index % tagDotColors.length]}
                                             active={activeTag === tag}
                                             onClick={() =>
                                                 setActiveTag(activeTag === tag ? "" : tag)
@@ -700,6 +814,8 @@ export default function TasksPage() {
                             <TaskList
                                 tasks={visibleTasks}
                                 loading={loading}
+                                dataError={dataError}
+                                onRetry={() => void changeScope(scope)}
                                 hasResidence={residences.length > 0}
                                 selectedDate={selectedDate}
                                 onSelectDate={setSelectedDate}
@@ -710,6 +826,10 @@ export default function TasksPage() {
                                 confirmDeleteId={confirmDeleteId}
                                 onConfirmDelete={removeTask}
                                 onAskDelete={setConfirmDeleteId}
+                                members={members}
+                                myMemberId={myMemberId}
+                                exchangeTasks={scope === "home" ? contextualTasks : []}
+                                onRequestExchange={requestExchange}
                             />
                         </section>
 
@@ -726,7 +846,13 @@ export default function TasksPage() {
                                 onDateChange={setSelectedDate}
                                 myMemberId={myMemberId}
                             />
-                            <ExchangeRequests />
+                            <ExchangeRequests
+                                requests={scope === "home" ? visibleExchangeRequests : []}
+                                loading={loading}
+                                tasks={scope === "home" ? contextualTasks : []}
+                                myMemberId={myMemberId}
+                                onRespond={respondToExchange}
+                            />
                         </aside>
                     </div>
                 </main>
@@ -736,6 +862,9 @@ export default function TasksPage() {
                 <TaskModal
                     form={form}
                     members={members}
+                    myMemberId={myMemberId}
+                    canAssignOthers={canEditHouseTasks}
+                    existingTags={categories}
                     editing={Boolean(editingTask)}
                     saving={saving}
                     error={error}
@@ -795,10 +924,10 @@ function TagFilter({
         <button
             type="button"
             onClick={onClick}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] transition ${active ? "border-[#b9dda8] bg-[#b9dda8] text-[#263922]" : "border-[#ded7e1] bg-white hover:bg-[#f6f2f7]"}`}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#356a22] ${active ? "border-[#8bb876] bg-[#dcebd5] text-[#263922]" : "border-[#ded7e1] bg-white text-[#3f3944] hover:bg-[#f6f2f7]"}`}
         >
             <span
-                className={`size-2 rounded-full ${color || (active ? "bg-[#4e812f]" : "bg-[#b2adb5]")}`}
+                className={`size-2.5 shrink-0 rounded-full ${color || (active ? "bg-[#4e812f]" : "bg-[#8c8790]")}`}
             />
             {label}
         </button>
@@ -808,6 +937,8 @@ function TagFilter({
 function TaskList({
     tasks,
     loading,
+    dataError,
+    onRetry,
     hasResidence,
     selectedDate,
     onSelectDate,
@@ -818,9 +949,15 @@ function TaskList({
     confirmDeleteId,
     onConfirmDelete,
     onAskDelete,
+    members,
+    myMemberId,
+    exchangeTasks,
+    onRequestExchange,
 }: {
     tasks: Task[];
     loading: boolean;
+    dataError: string;
+    onRetry: () => void;
     hasResidence: boolean;
     selectedDate: string;
     onSelectDate: (date: string) => void;
@@ -831,6 +968,10 @@ function TaskList({
     confirmDeleteId: string;
     onConfirmDelete: (id: string) => void;
     onAskDelete: (id: string) => void;
+    members: TaskMember[];
+    myMemberId: string;
+    exchangeTasks: Task[];
+    onRequestExchange: (task: Task, recipientMemberId: string, targetTaskId?: string) => void;
 }) {
     const groups = useMemo(() => {
         const today = localDateKey(new Date());
@@ -864,6 +1005,21 @@ function TaskList({
     }, [tasks]);
     if (loading)
         return <p className="py-10 text-center text-sm text-[#77717c]">Carregando tarefas…</p>;
+    if (dataError)
+        return (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-8 text-center">
+                <p className="text-sm font-medium text-red-800">
+                    Não foi possível carregar as tarefas.
+                </p>
+                <button
+                    type="button"
+                    onClick={onRetry}
+                    className="mt-2 text-xs font-semibold text-red-800 underline"
+                >
+                    Tentar novamente
+                </button>
+            </div>
+        );
     if (tasks.length === 0)
         return (
             <EmptyTasks
@@ -902,6 +1058,12 @@ function TaskList({
                                 onConfirmDelete={() => onConfirmDelete(task.id)}
                                 onAskDelete={() => onAskDelete(task.id)}
                                 onCancelDelete={() => onAskDelete("")}
+                                members={members}
+                                myMemberId={myMemberId}
+                                exchangeTasks={exchangeTasks}
+                                onRequestExchange={(memberId, targetTaskId) =>
+                                    onRequestExchange(task, memberId, targetTaskId)
+                                }
                             />
                         ))}
                     </div>
@@ -939,6 +1101,10 @@ function TaskRow({
     onConfirmDelete,
     onAskDelete,
     onCancelDelete,
+    members,
+    myMemberId,
+    exchangeTasks,
+    onRequestExchange,
 }: {
     task: Task;
     onComplete: () => void;
@@ -949,8 +1115,34 @@ function TaskRow({
     onConfirmDelete: () => void;
     onAskDelete: () => void;
     onCancelDelete: () => void;
+    members: TaskMember[];
+    myMemberId: string;
+    exchangeTasks: Task[];
+    onRequestExchange: (recipientMemberId: string, targetTaskId?: string) => void;
 }) {
     const completed = task.status === "CONCLUIDA";
+    const [exchangeMenuOpen, setExchangeMenuOpen] = useState(false);
+    const [selectedRecipientId, setSelectedRecipientId] = useState("");
+    const [preferredTaskId, setPreferredTaskId] = useState("");
+    const otherMembers = members.filter((member) => member.id !== myMemberId);
+    const selectedRecipient = otherMembers.find((member) => member.id === selectedRecipientId);
+    const recipientTasks = exchangeTasks.filter(
+        (candidate) =>
+            candidate.id !== task.id &&
+            candidate.assignee?.id === selectedRecipientId &&
+            candidate.scope !== "INDIVIDUAL" &&
+            candidate.visibility !== "PRIVADA" &&
+            ["PENDENTE", "EM_ANDAMENTO", "ATRASADA"].includes(candidate.status)
+    );
+    const duplicatedNames = new Set(
+        otherMembers
+            .filter((member) => otherMembers.filter((other) => other.name === member.name).length > 1)
+            .map((member) => member.id)
+    );
+    const eligibleForExchange =
+        task.scope !== "INDIVIDUAL" &&
+        task.assignee?.id === myMemberId &&
+        ["PENDENTE", "EM_ANDAMENTO", "ATRASADA"].includes(task.status);
     return (
         <article
             style={{ borderLeftColor: task.color ?? undefined }}
@@ -999,7 +1191,7 @@ function TaskRow({
                     {task.tags.map((tag, index) => (
                         <span
                             key={tag}
-                            className={`rounded-full px-2 py-1 text-[9px] ${tagColors[index % tagColors.length]}`}
+                            className={`inline-flex items-center rounded-full border border-black/5 px-2.5 py-1 text-[10px] font-medium leading-none ${tagColors[index % tagColors.length]}`}
                         >
                             {tag}
                         </span>
@@ -1031,6 +1223,86 @@ function TaskRow({
                 </div>
             ) : (
                 <div className="flex items-center gap-1">
+                    {eligibleForExchange && members.some((member) => member.id !== myMemberId) && (
+                        <div className="relative">
+                            <button
+                                type="button"
+                                aria-label={`Solicitar troca da tarefa ${task.title}`}
+                                aria-haspopup="menu"
+                                aria-expanded={exchangeMenuOpen}
+                                onClick={() => {
+                                    setExchangeMenuOpen((open) => !open);
+                                    setSelectedRecipientId("");
+                                    setPreferredTaskId("");
+                                }}
+                                className="grid size-8 place-items-center rounded-full border border-[#cfc7d3] text-[#356a22] hover:bg-[#eff7eb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
+                            >
+                                <Repeat2 size={15} />
+                            </button>
+                            {exchangeMenuOpen && (
+                                <div role="dialog" aria-label="Solicitar troca" className="absolute right-0 top-9 z-20 w-60 rounded-lg border border-[#d7ceda] bg-white p-2 shadow-lg">
+                                    {!selectedRecipient ? (
+                                        <>
+                                            <p className="px-2 py-1.5 text-[10px] font-semibold text-[#77717c]">Solicitar troca com</p>
+                                            {otherMembers.map((member) => (
+                                                <button
+                                                    key={member.id}
+                                                    type="button"
+                                                    onClick={() => setSelectedRecipientId(member.id)}
+                                                    className="block w-full rounded-md px-2 py-2 text-left text-xs text-[#302a32] hover:bg-[#f3eff5] focus-visible:outline-2 focus-visible:outline-[#4e812f]"
+                                                >
+                                                    {member.name}
+                                                    {duplicatedNames.has(member.id) && (
+                                                        <span className="ml-1 text-[10px] text-[#77717c]">
+                                                            ({member.role.toLocaleLowerCase("pt-BR")}, …{member.id.slice(-4)})
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="mb-2 flex items-center justify-between gap-2">
+                                                <p className="truncate text-[10px] font-semibold text-[#302a32]">
+                                                    Trocar com {selectedRecipient.name}
+                                                    {duplicatedNames.has(selectedRecipient.id) && (
+                                                        <span className="ml-1 font-normal text-[#77717c]">
+                                                            ({selectedRecipient.role.toLocaleLowerCase("pt-BR")}, …{selectedRecipient.id.slice(-4)})
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                <button type="button" onClick={() => { setSelectedRecipientId(""); setPreferredTaskId(""); }} className="shrink-0 text-[10px] text-[#356a22] underline">Alterar</button>
+                                            </div>
+                                            <label className="grid gap-1 text-[10px] text-[#514c56]">
+                                                Tarefa desejada (opcional)
+                                                <select
+                                                    aria-label={`Tarefa desejada de ${selectedRecipient.name}`}
+                                                    value={preferredTaskId}
+                                                    onChange={(event) => setPreferredTaskId(event.target.value)}
+                                                    className="w-full rounded-md border border-[#d1c9d3] bg-white px-2 py-1.5 text-xs text-[#302a32]"
+                                                >
+                                                    <option value="">Sem preferência; deixa a pessoa decidir</option>
+                                                    {recipientTasks.map((candidate) => (
+                                                        <option key={candidate.id} value={candidate.id}>{candidate.title}</option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    onRequestExchange(selectedRecipient.id, preferredTaskId || undefined);
+                                                    setExchangeMenuOpen(false);
+                                                }}
+                                                className="mt-2 w-full rounded-md bg-[#4e812f] px-3 py-2 text-xs font-semibold text-white hover:bg-[#3e6b25]"
+                                            >
+                                                Enviar pedido
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                     {canEdit && (
                         <button
                             type="button"
@@ -1243,65 +1515,164 @@ function CalendarWidget({
     );
 }
 
-function ExchangeRequests() {
+function ExchangeRequests({
+    requests,
+    loading,
+    tasks,
+    myMemberId,
+    onRespond,
+}: {
+    requests: TaskExchangeRequest[];
+    loading: boolean;
+    tasks: Task[];
+    myMemberId: string;
+    onRespond: (
+        request: TaskExchangeRequest,
+        status: "ACEITA" | "RECUSADA",
+        targetTaskId?: string
+    ) => void;
+}) {
+    const [selectedTasks, setSelectedTasks] = useState<Record<string, string>>({});
+    const ownOpenTasks = tasks.filter(
+        (task) =>
+            task.scope !== "INDIVIDUAL" &&
+            task.assignee?.id === myMemberId &&
+            ["PENDENTE", "EM_ANDAMENTO", "ATRASADA"].includes(task.status)
+    );
+    const incoming = requests.filter(
+        (request) => request.incoming && request.status === "PENDENTE"
+    );
     return (
         <section className="rounded-xl border border-[#e9e2eb] bg-[#fffaff] p-4">
             <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[11px] font-semibold">Solicitações de troca</h2>
-                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[9px] text-red-600">
-                    2 novas
+                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] text-red-700">
+                    {incoming.length} novas
                 </span>
             </div>
-            {[
-                {
-                    name: "Ana",
-                    initial: "A",
-                    color: "bg-blue-600",
-                    from: "Limpar banheiro",
-                    fromDate: "Seg, 20/09",
-                    to: "Lavar louça",
-                    toDate: "Qui, 02/10",
-                },
-                {
-                    name: "Clidenor",
-                    initial: "C",
-                    color: "bg-violet-600",
-                    from: "Lavar chão",
-                    fromDate: "Seg, 20/09",
-                    to: "Lavar louça",
-                    toDate: "Qui, 02/10",
-                },
-            ].map((request) => (
-                <article
-                    key={request.name}
-                    className="mb-2 rounded-lg border border-[#d1c9d3] bg-white p-2.5 last:mb-0"
-                >
-                    <div className="mb-2 flex items-center gap-2">
-                        <span
-                            className={`grid size-7 place-items-center rounded-full ${request.color} text-[10px] font-semibold text-white`}
-                        >
-                            {request.initial}
-                        </span>
-                        <p className="text-[10px]">
-                            <strong>{request.name}</strong> quer trocar uma tarefa para você
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-[1fr_24px_1fr] items-center gap-1 text-[9px]">
-                        <div className="rounded bg-[#eee9f0] px-2 py-1.5">
-                            <span className="block truncate">{request.from}</span>
-                            <span className="text-[#77717c]">{request.fromDate}</span>
+            {loading ? (
+                <p className="py-5 text-center text-xs text-[#625c66]">Carregando solicitações…</p>
+            ) : requests.length === 0 ? (
+                <p className="py-5 text-center text-xs text-[#625c66]">
+                    Nenhuma solicitação de troca.
+                </p>
+            ) : (
+                requests.map((request) => {
+                    const recipientTaskChoices = ownOpenTasks.filter(
+                        (candidate) => candidate.id !== request.task.id
+                    );
+                    const selectedTargetTaskId =
+                        selectedTasks[request.id] ?? request.targetTask?.id ?? "";
+                    const selectedTargetIsAvailable = recipientTaskChoices.some(
+                        (candidate) => candidate.id === selectedTargetTaskId
+                    );
+                    return (
+                    <article
+                        key={request.id}
+                        className="mb-2 rounded-lg border border-[#d1c9d3] bg-white p-3 last:mb-0"
+                    >
+                        <div className="mb-2 flex items-center gap-2">
+                            <span className="grid size-7 place-items-center rounded-full bg-[#356a22] text-xs font-semibold text-white">
+                                {request.requester.slice(0, 1).toUpperCase()}
+                            </span>
+                            <p className="text-xs text-[#302a32]">
+                                <strong>{request.requester}</strong>{" "}
+                                {request.incoming
+                                    ? "propôs trocar tarefas com você:"
+                                    : `proposta para ${request.recipient}:`}
+                            </p>
                         </div>
-                        <span className="grid size-6 place-items-center rounded-full bg-[#f4f0f5] text-[#4e812f]">
-                            ⇄
-                        </span>
-                        <div className="rounded bg-[#eee9f0] px-2 py-1.5">
-                            <span className="block truncate">{request.to}</span>
-                            <span className="text-[#77717c]">{request.toDate}</span>
+                        <div className="grid grid-cols-[1fr_24px_1fr] items-center gap-1 text-xs">
+                            <div className="min-w-0 rounded-md bg-[#eee9f0] px-2 py-2">
+                                <span className="block truncate font-medium">
+                                    {request.task.title}
+                                </span>
+                                <span className="text-[#514c56]">
+                                    {formatDate(request.task.dueAt, { dateStyle: "medium" })}
+                                </span>
+                            </div>
+                            <span className="text-center text-[#356a22]" aria-label="troca por">
+                                ⇄
+                            </span>
+                            {request.incoming && request.status === "PENDENTE" ? (
+                                <label className="min-w-0 rounded-md bg-[#f4f0f5] px-2 py-2 text-[#514c56]">
+                                    <span className="mb-1 block text-[10px]">
+                                        {request.targetTask ? "Tarefa sugerida · confirme ou altere" : "Sua tarefa"}
+                                    </span>
+                                    <select
+                                        aria-label={`Escolher tarefa para trocar com ${request.requester}`}
+                                        value={selectedTargetTaskId}
+                                        onChange={(event) =>
+                                            setSelectedTasks((current) => ({
+                                                ...current,
+                                                [request.id]: event.target.value,
+                                            }))
+                                        }
+                                        className="w-full rounded border border-[#d1c9d3] bg-white px-1.5 py-1 text-[11px] text-[#302a32]"
+                                    >
+                                        <option value="">Escolha uma tarefa…</option>
+                                        {recipientTaskChoices.map((candidate) => (
+                                            <option key={candidate.id} value={candidate.id}>
+                                                {candidate.title}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {recipientTaskChoices.length === 0 && (
+                                        <span className="mt-1 block text-[10px]">Você não tem outra tarefa aberta disponível.</span>
+                                    )}
+                                </label>
+                            ) : request.targetTask ? (
+                                <div className="min-w-0 rounded-md bg-[#eee9f0] px-2 py-2">
+                                    <span className="block truncate font-medium">
+                                        {request.targetTask.title}
+                                    </span>
+                                    <span className="text-[#514c56]">
+                                        {formatDate(request.targetTask.dueAt, {
+                                            dateStyle: "medium",
+                                        })}
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="rounded-md bg-[#f4f0f5] px-2 py-2 text-[#514c56]">
+                                    Aguardando escolha do destinatário
+                                </div>
+                            )}
                         </div>
-                    </div>
-                    <p className="mt-2 text-right text-[9px] text-[#8b858e]">Ações indisponíveis</p>
-                </article>
-            ))}
+                        {request.incoming && request.status === "PENDENTE" ? (
+                            <div className="mt-2 flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => onRespond(request, "RECUSADA")}
+                                    className="rounded-md border border-[#4e812f] px-3 py-1.5 text-xs font-medium text-[#356a22] hover:bg-[#eff7eb]"
+                                >
+                                    Recusar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onRespond(request, "ACEITA", selectedTargetTaskId || undefined)}
+                                    disabled={!selectedTargetIsAvailable}
+                                    className="rounded-md bg-[#4e812f] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Aceitar
+                                </button>
+                            </div>
+                        ) : (
+                            <p className="mt-2 text-right text-xs text-[#514c56]">
+                                {!request.targetTask && request.status !== "PENDENTE"
+                                    ? "Solicitação encerrada"
+                                    : request.status === "PENDENTE"
+                                      ? "Aguardando resposta"
+                                      : request.status === "ACEITA"
+                                        ? "Aceita"
+                                        : request.status === "RECUSADA"
+                                          ? "Recusada"
+                                          : "Encerrada"}
+                            </p>
+                        )}
+                    </article>
+                    );
+                })
+            )}
         </section>
     );
 }
@@ -1309,6 +1680,9 @@ function ExchangeRequests() {
 function TaskModal({
     form,
     members,
+    myMemberId,
+    canAssignOthers,
+    existingTags,
     editing,
     saving,
     error,
@@ -1319,6 +1693,9 @@ function TaskModal({
 }: {
     form: TaskFormState;
     members: TaskMember[];
+    myMemberId: string;
+    canAssignOthers: boolean;
+    existingTags: string[];
     editing: boolean;
     saving: boolean;
     error: string;
@@ -1327,6 +1704,28 @@ function TaskModal({
     onClose: () => void;
     onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+    const [tagDraft, setTagDraft] = useState("");
+    function addTag(value: string) {
+        const normalized = value.trim();
+        if (!normalized) return;
+        const exists = form.tags.some(
+            (tag) => tag.toLocaleLowerCase("pt-BR") === normalized.toLocaleLowerCase("pt-BR")
+        );
+        if (!exists) onChange("tags", [...form.tags, normalized]);
+        setTagDraft("");
+    }
+    function toggleMember(memberId: string) {
+        if (form.assignmentType === "RODIZIO") {
+            onChange(
+                "assigneeIds",
+                form.assigneeIds.includes(memberId)
+                    ? form.assigneeIds.filter((id) => id !== memberId)
+                    : [...form.assigneeIds, memberId]
+            );
+        } else {
+            onChange("assigneeId", memberId);
+        }
+    }
     return (
         <div
             className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/30 p-4"
@@ -1365,8 +1764,7 @@ function TaskModal({
                             role="status"
                             className="rounded-lg border border-[#d8e7d1] bg-[#f0f6ed] p-2.5 text-xs text-[#456b35]"
                         >
-                            Modo pessoal: esta tarefa ficará salva apenas neste navegador. A
-                            sincronização com uma casa poderá ser adicionada depois.
+                            Esta tarefa ficará vinculada somente ao seu perfil pessoal.
                         </p>
                     )}
                     <label className="grid gap-1.5 text-[11px] font-medium">
@@ -1390,15 +1788,85 @@ function TaskModal({
                             className={`${inputClass} resize-y`}
                         />
                     </label>
-                    <label className="grid gap-1.5 text-[11px] font-medium">
-                        Tags
-                        <input
-                            value={form.tags}
-                            onChange={(event) => onChange("tags", event.target.value)}
-                            placeholder="Ex.: Limpeza, Banheiro (separadas por vírgula)"
-                            className={inputClass}
-                        />
-                    </label>
+                    <div className="grid gap-2 text-[11px] font-medium">
+                        <label htmlFor="task-tag-input">Tags</label>
+                        <div className="flex gap-2">
+                            <input
+                                id="task-tag-input"
+                                value={tagDraft}
+                                onChange={(event) => setTagDraft(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        addTag(tagDraft);
+                                    }
+                                }}
+                                placeholder="Digite uma tag"
+                                className={inputClass}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => addTag(tagDraft)}
+                                className="shrink-0 rounded-lg border border-[#4e812f] px-3 text-xs font-semibold text-[#356a22]"
+                            >
+                                + Nova tag
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5" aria-label="Tags selecionadas">
+                            {form.tags.map((tag, index) => (
+                                <button
+                                    key={tag}
+                                    type="button"
+                                    aria-pressed="true"
+                                    onClick={() =>
+                                        onChange(
+                                            "tags",
+                                            form.tags.filter((item) => item !== tag)
+                                        )
+                                    }
+                                    className={`rounded-full px-2.5 py-1 text-[10px] ${tagColors[index % tagColors.length]}`}
+                                >
+                                    {tag} ×
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5" aria-label="Sugestões de tags">
+                            {existingTags
+                                .filter((tag) => !form.tags.includes(tag))
+                                .map((tag, index) => (
+                                    <button
+                                        key={tag}
+                                        type="button"
+                                        aria-pressed="false"
+                                        onClick={() => addTag(tag)}
+                                        className={`rounded-full border border-[#d7ceda] px-2.5 py-1 text-[10px] ${tagColors[index % tagColors.length]}`}
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
+                        </div>
+                    </div>
+                    <fieldset className="grid gap-2 text-[11px] font-medium">
+                        <legend>Visibilidade</legend>
+                        <div className="flex flex-wrap gap-2">
+                            {(
+                                [
+                                    ["PUBLICA", "Comunitária"],
+                                    ["PRIVADA", "Privada"],
+                                ] as const
+                            ).map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    aria-pressed={form.visibility === value}
+                                    onClick={() => onChange("visibility", value)}
+                                    className={`rounded-full border px-3 py-1.5 text-xs ${form.visibility === value ? "border-[#4e812f] bg-[#e7f1e1] text-[#264d18]" : "border-[#d7ceda] bg-white text-[#514c56]"}`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                    </fieldset>
                     {hasResidence && (
                         <div className="grid gap-3 sm:grid-cols-2">
                             <label className="grid gap-1.5 text-[11px] font-medium">
@@ -1414,7 +1882,9 @@ function TaskModal({
                                     className={inputClass}
                                 >
                                     <option value="FIXA">Responsável fixo</option>
-                                    <option value="RODIZIO">Rodízio entre moradores</option>
+                                    {canAssignOthers && (
+                                        <option value="RODIZIO">Rodízio entre moradores</option>
+                                    )}
                                 </select>
                             </label>
                             <label className="grid gap-1.5 text-[11px] font-medium">
@@ -1428,46 +1898,45 @@ function TaskModal({
                             </label>
                         </div>
                     )}
-                    {form.assignmentType === "FIXA" ? (
-                        <label className="grid gap-1.5 text-[11px] font-medium">
-                            Responsável
-                            <select
-                                value={form.assigneeId}
-                                onChange={(event) => onChange("assigneeId", event.target.value)}
-                                className={inputClass}
-                            >
-                                <option value="">Sem responsável</option>
-                                {members.map((member) => (
-                                    <option key={member.id} value={member.id}>
-                                        {member.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                    ) : (
-                        <label className="grid gap-1.5 text-[11px] font-medium">
-                            Ordem do rodízio (selecione ao menos dois moradores)
-                            <select
-                                multiple
-                                value={form.assigneeIds}
-                                onChange={(event) =>
-                                    onChange(
-                                        "assigneeIds",
-                                        Array.from(
-                                            event.currentTarget.selectedOptions,
-                                            (option) => option.value
-                                        )
-                                    )
-                                }
-                                className={`${inputClass} min-h-24`}
-                            >
-                                {members.map((member) => (
-                                    <option key={member.id} value={member.id}>
-                                        {member.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
+                    {hasResidence && (
+                        <fieldset className="grid gap-2 text-[11px] font-medium">
+                            <legend>
+                                {form.assignmentType === "RODIZIO"
+                                    ? "Responsáveis · ordem do rodízio (selecione ao menos 2)"
+                                    : "Responsável *"}
+                            </legend>
+                            <div className="flex flex-wrap gap-2">
+                                {members
+                                    .filter((member) => canAssignOthers || member.id === myMemberId)
+                                    .map((member, index) => {
+                                        const selected =
+                                            form.assignmentType === "RODIZIO"
+                                                ? form.assigneeIds.includes(member.id)
+                                                : form.assigneeId === member.id;
+                                        return (
+                                            <button
+                                                key={member.id}
+                                                type="button"
+                                                aria-pressed={selected}
+                                                onClick={() => toggleMember(member.id)}
+                                                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${selected ? "border-[#4e812f] bg-[#b9dda8] text-[#203c17]" : "border-[#d7ceda] bg-white text-[#302a32]"}`}
+                                            >
+                                                <span
+                                                    className={`grid size-5 place-items-center rounded-full text-[10px] font-bold text-white ${["bg-[#4f7f63]", "bg-violet-700", "bg-blue-700", "bg-orange-700"][index % 4]}`}
+                                                >
+                                                    {member.name.slice(0, 1).toUpperCase()}
+                                                </span>
+                                                {member.name}
+                                            </button>
+                                        );
+                                    })}
+                            </div>
+                            {!canAssignOthers && (
+                                <p className="text-[10px] text-[#514c56]">
+                                    Você pode atribuir esta tarefa somente a si mesmo.
+                                </p>
+                            )}
+                        </fieldset>
                     )}
                     <div className="grid gap-3 sm:grid-cols-2">
                         <label className="grid gap-1.5 text-[11px] font-medium">

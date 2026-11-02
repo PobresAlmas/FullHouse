@@ -248,6 +248,7 @@ model instancia_tarefa {
   lembrete                                                                  lembrete[]
   penalidade                                                                penalidade[]
   solicitacao_troca_tarefa                                                  solicitacao_troca_tarefa[]
+  solicitacao_troca_tarefa_alvo                                             solicitacao_troca_tarefa[]   @relation("solicitacao_troca_tarefa_alvo")
 
   @@unique([definicao_tarefa_id, data_prevista], map: "uq_instancia_tarefa_data")
   @@index([definicao_tarefa_id], map: "idx_instancia_tarefa_definicao")
@@ -638,6 +639,7 @@ model saldo_negociacao {
 model solicitacao_troca_tarefa {
   id                                                                               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   instancia_tarefa_id                                                              String            @db.Uuid
+  alvo_instancia_tarefa_id                                                         String?           @db.Uuid
   solicitante_participacao_id                                                      String            @db.Uuid
   destinatario_participacao_id                                                     String            @db.Uuid
   tipo                                                                             tipo_troca_enum
@@ -645,6 +647,7 @@ model solicitacao_troca_tarefa {
   expira_em                                                                        DateTime?         @db.Timestamptz(6)
   participacao_solicitacao_troca_tarefa_destinatario_participacao_idToparticipacao participacao      @relation("solicitacao_troca_tarefa_destinatario_participacao_idToparticipacao", fields: [destinatario_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   instancia_tarefa                                                                 instancia_tarefa  @relation(fields: [instancia_tarefa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  instancia_tarefa_alvo                                                            instancia_tarefa? @relation("solicitacao_troca_tarefa_alvo", fields: [alvo_instancia_tarefa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   participacao_solicitacao_troca_tarefa_solicitante_participacao_idToparticipacao  participacao      @relation("solicitacao_troca_tarefa_solicitante_participacao_idToparticipacao", fields: [solicitante_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
