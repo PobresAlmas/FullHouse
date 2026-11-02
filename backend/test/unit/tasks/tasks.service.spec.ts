@@ -109,7 +109,7 @@ describe("TasksService business rules", () => {
                 completedAt: null,
             },
         ]);
-        expect(repository.findTasks).toHaveBeenCalledWith(residenceId, {});
+        expect(repository.findTasks).toHaveBeenCalledWith(residenceId, {}, userId);
     });
 
     it("does not expose tasks when the user has no active residence membership", async () => {
@@ -141,7 +141,7 @@ describe("TasksService business rules", () => {
             { id: memberId, userId },
             input
         );
-        expect(repository.findTask).toHaveBeenCalledWith(residenceId, taskId);
+        expect(repository.findTask).toHaveBeenCalledWith(residenceId, taskId, userId);
     });
 
     it("rejects recurring tasks without a supported frequency", async () => {
@@ -300,16 +300,25 @@ describe("TasksService business rules", () => {
         expect(repository.remove).not.toHaveBeenCalled();
     });
 
-    it("rejects creating a task when the residence policy restricts editing", async () => {
-        residenceAccess.requireCreateEditPermission.mockRejectedValueOnce(new ForbiddenException());
+    it("rejects assigning another resident when the residence policy restricts assignment", async () => {
+        residenceAccess.requireMembership.mockResolvedValueOnce({
+            residenceId,
+            memberId,
+            role: "MORADOR",
+            creationEditPolicy: "LIDERES",
+        });
 
         await expect(
             service.create(
                 residenceId,
-                { title: "Limpar cozinha", dueAt: dueAt.toISOString() },
+                {
+                    title: "Limpar cozinha",
+                    dueAt: dueAt.toISOString(),
+                    assigneeId: "member-2",
+                },
                 userId
             )
-        ).rejects.toBeInstanceOf(ForbiddenException);
+        ).rejects.toBeInstanceOf(BadRequestException);
         expect(repository.create).not.toHaveBeenCalled();
     });
 });

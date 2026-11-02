@@ -6,11 +6,20 @@ describe("PantryRepository", () => {
     let prisma: {
         casa: { findFirst: MockFunction };
         participacao: { findMany: MockFunction; findFirst: MockFunction };
+        categoria_despensa: {
+            findMany: MockFunction;
+            findFirst: MockFunction;
+            create: MockFunction;
+            updateMany: MockFunction;
+            deleteMany: MockFunction;
+        };
         item_despensa: {
             findMany: MockFunction;
             findFirst: MockFunction;
             create: MockFunction;
             update: MockFunction;
+            updateMany: MockFunction;
+            count: MockFunction;
             delete: MockFunction;
         };
         movimentacao_despensa: { groupBy: MockFunction; count: MockFunction };
@@ -22,11 +31,20 @@ describe("PantryRepository", () => {
         prisma = {
             casa: { findFirst: vi.fn() },
             participacao: { findMany: vi.fn(), findFirst: vi.fn() },
+            categoria_despensa: {
+                findMany: vi.fn(),
+                findFirst: vi.fn(),
+                create: vi.fn(),
+                updateMany: vi.fn(),
+                deleteMany: vi.fn(),
+            },
             item_despensa: {
                 findMany: vi.fn().mockResolvedValue([]),
                 findFirst: vi.fn().mockResolvedValue(null),
                 create: vi.fn(),
                 update: vi.fn(),
+                updateMany: vi.fn(),
+                count: vi.fn(),
                 delete: vi.fn(),
             },
             movimentacao_despensa: { groupBy: vi.fn().mockResolvedValue([]), count: vi.fn() },
@@ -41,6 +59,83 @@ describe("PantryRepository", () => {
             where: { casa_id: "home-1", data_saida: null },
             select: { id: true, usuario: { select: { nome: true, apelido: true } } },
             orderBy: [{ usuario: { nome: "asc" } }, { id: "asc" }],
+        });
+    });
+
+    it("lists, finds, and creates categories within the requested residence", () => {
+        repository.findCategories("home-1");
+        expect(prisma.categoria_despensa.findMany).toHaveBeenCalledWith({
+            where: { casa_id: "home-1" },
+            orderBy: [{ nome: "asc" }, { id: "asc" }],
+        });
+        repository.findCategory("home-1", "category-1");
+        expect(prisma.categoria_despensa.findFirst).toHaveBeenCalledWith({
+            where: { id: "category-1", casa_id: "home-1" },
+        });
+        repository.createCategory({
+            residenceId: "home-1",
+            name: "Padaria",
+            normalizedName: "padaria",
+        });
+        expect(prisma.categoria_despensa.create).toHaveBeenCalledWith({
+            data: { casa_id: "home-1", nome: "Padaria", nome_normalizado: "padaria" },
+        });
+    });
+
+    it("renames the category and its denormalized item labels in one transaction", async () => {
+        const tx = {
+            categoria_despensa: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+            item_despensa: { updateMany: vi.fn().mockResolvedValue({ count: 3 }) },
+        };
+        prisma.$transaction.mockImplementation((callback: (transaction: typeof tx) => unknown) =>
+            callback(tx)
+        );
+
+        await expect(
+            repository.renameCategory({
+                residenceId: "home-1",
+                categoryId: "category-1",
+                name: "Mercearia",
+                normalizedName: "mercearia",
+            })
+        ).resolves.toBe(true);
+        expect(tx.categoria_despensa.updateMany).toHaveBeenCalledWith({
+            where: { id: "category-1", casa_id: "home-1" },
+            data: { nome: "Mercearia", nome_normalizado: "mercearia" },
+        });
+        expect(tx.item_despensa.updateMany).toHaveBeenCalledWith({
+            where: { categoria_id: "category-1" },
+            data: { categoria: "Mercearia" },
+        });
+    });
+
+    it("does not rename detached item labels when the category is outside the residence", async () => {
+        const tx = {
+            categoria_despensa: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+            item_despensa: { updateMany: vi.fn() },
+        };
+        prisma.$transaction.mockImplementation((callback: (transaction: typeof tx) => unknown) =>
+            callback(tx)
+        );
+        await expect(
+            repository.renameCategory({
+                residenceId: "home-1",
+                categoryId: "foreign-category",
+                name: "Mercearia",
+                normalizedName: "mercearia",
+            })
+        ).resolves.toBe(false);
+        expect(tx.item_despensa.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("counts category usage and scopes category deletion to the residence", () => {
+        repository.countItemsInCategory("category-1");
+        expect(prisma.item_despensa.count).toHaveBeenCalledWith({
+            where: { categoria_id: "category-1" },
+        });
+        repository.deleteCategory("home-1", "category-1");
+        expect(prisma.categoria_despensa.deleteMany).toHaveBeenCalledWith({
+            where: { id: "category-1", casa_id: "home-1" },
         });
     });
 
@@ -141,7 +236,8 @@ describe("PantryRepository", () => {
                 residenceId: "home-1",
                 creatorMemberId: "member-1",
                 name: "Arroz",
-                category: "Grãos",
+                categoryId: "category-1",
+                categoryName: "Grãos",
                 property: "COMUNITARIO" as never,
                 ownerMemberId: null,
                 unit: "KG" as never,
@@ -180,7 +276,8 @@ describe("PantryRepository", () => {
             residenceId: "home-1",
             creatorMemberId: "member-1",
             name: "Arroz",
-            category: "Grãos",
+            categoryId: "category-1",
+            categoryName: "Grãos",
             property: "COMUNITARIO" as never,
             ownerMemberId: null,
             unit: "KG" as never,
@@ -286,7 +383,8 @@ describe("PantryRepository", () => {
         const expirationDate = new Date("2026-12-31T00:00:00.000Z");
         repository.updateItem("item-1", {
             name: "Feijão",
-            category: "Grãos",
+            categoryId: "category-1",
+            categoryName: "Grãos",
             property: "PRIVADO" as never,
             ownerMemberId: null,
             unit: "KG" as never,
@@ -297,6 +395,7 @@ describe("PantryRepository", () => {
             where: { id: "item-1" },
             data: {
                 nome: "Feijão",
+                categoria_id: "category-1",
                 categoria: "Grãos",
                 propriedade: "PRIVADO",
                 dono_participacao_id: null,

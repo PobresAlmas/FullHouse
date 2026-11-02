@@ -1,5 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { CreateTaskDto, TaskAssignmentType, TaskPeriodicity } from "./dto/create-task.dto.js";
+import {
+    CreateTaskDto,
+    TaskAssignmentType,
+    TaskPeriodicity,
+    TaskVisibility,
+} from "./dto/create-task.dto.js";
 import { TaskListQueryDto } from "./dto/task-list-query.dto.js";
 import { UpdateTaskDto } from "./dto/update-task.dto.js";
 import { TasksRepository } from "./tasks.repository.js";
@@ -7,7 +12,11 @@ import {
     isResidenceManager,
     ResidenceAccessService,
 } from "../residences/residence-access.service.js";
-import { planTaskCompletion } from "./task-completion.js";
+import {
+    getNextOccurrenceDate,
+    getReminderLeadMinutes,
+    planTaskCompletion,
+} from "./task-completion.js";
 
 @Injectable()
 export class TasksService {
@@ -25,41 +34,150 @@ export class TasksService {
         }));
     }
 
+    async findPersonal(userId: string) {
+        return (await this.repository.findPersonalTasks(userId)).map((task) => this.mapTask(task));
+    }
+
+    async findPersonalOne(taskId: string, userId: string) {
+        const task = await this.repository.findPersonalTask(userId, taskId);
+        if (!task) throw new NotFoundException("A tarefa não está disponível.");
+        return this.mapTask(task);
+    }
+
+    async createPersonal(data: CreateTaskDto, userId: string) {
+        if (
+            data.assigneeId ||
+            data.assigneeIds?.length ||
+            data.assignmentType === TaskAssignmentType.RODIZIO
+        ) {
+            throw new BadRequestException("Tarefas pessoais pertencem somente a você.");
+        }
+        if (
+            data.repeats &&
+            (!data.periodicity || data.periodicity === TaskPeriodicity.PERSONALIZADA)
+        ) {
+            throw new BadRequestException("Selecione uma frequência para a repetição.");
+        }
+        const taskId = await this.repository.createPersonal(userId, data);
+        return this.findPersonalOne(taskId, userId);
+    }
+
+    async updatePersonal(taskId: string, data: UpdateTaskDto, userId: string) {
+        if (
+            data.assigneeId !== undefined ||
+            data.assigneeIds !== undefined ||
+            data.assignmentType !== undefined
+        ) {
+            throw new BadRequestException("Tarefas pessoais pertencem somente a você.");
+        }
+        const existing = await this.repository.findPersonalTask(userId, taskId);
+        if (!existing) throw new NotFoundException("A tarefa não está disponível.");
+        if (existing.status === "CONCLUIDA" || existing.status === "CANCELADA") {
+            throw new BadRequestException(
+                "Não é possível editar uma tarefa concluída ou cancelada."
+            );
+        }
+        const repeats =
+            data.repeats ??
+            (existing.definicao_tarefa.regra_recorrencia as { repeats?: boolean } | null)
+                ?.repeats ??
+            false;
+        const periodicity = data.periodicity ?? existing.definicao_tarefa.periodicidade;
+        if (repeats && periodicity === TaskPeriodicity.PERSONALIZADA) {
+            throw new BadRequestException("Selecione uma frequência para a repetição.");
+        }
+        await this.repository.updatePersonal(taskId, existing, data, userId);
+        return this.findPersonalOne(taskId, userId);
+    }
+
+    async completePersonal(taskId: string, userId: string) {
+        const task = await this.repository.findPersonalTask(userId, taskId);
+        if (!task) throw new NotFoundException("A tarefa não está disponível.");
+        if (task.status === "CONCLUIDA" || task.status === "CANCELADA") {
+            throw new BadRequestException("Esta tarefa não pode ser concluída novamente.");
+        }
+        const recurrence = task.definicao_tarefa.regra_recorrencia as { repeats?: boolean } | null;
+        const dueAt = task.prazo_limite ?? task.data_prevista;
+        const nextDueAt = recurrence?.repeats
+            ? getNextOccurrenceDate(dueAt, task.definicao_tarefa.periodicidade)
+            : null;
+        const reminderLead = getReminderLeadMinutes(dueAt, task.lembrete[0]?.lembrar_em);
+        await this.repository.completePersonal(
+            taskId,
+            userId,
+            new Date(),
+            nextDueAt,
+            reminderLead,
+            task.definicao_tarefa.titulo
+        );
+        return this.findPersonalOne(taskId, userId);
+    }
+
+    async removePersonal(taskId: string, userId: string) {
+        if (!(await this.repository.removePersonal(userId, taskId))) {
+            throw new NotFoundException("A tarefa não está disponível.");
+        }
+        return { id: taskId, deleted: true };
+    }
+
     async findAll(residenceId: string, userId: string, query: TaskListQueryDto) {
         await this.residenceAccess.requireMembership(residenceId, userId);
-        return (await this.repository.findTasks(residenceId, query)).map((task) =>
+        return (await this.repository.findTasks(residenceId, query, userId)).map((task) =>
             this.mapTask(task)
         );
     }
 
     async findOne(residenceId: string, taskId: string, userId: string) {
         await this.residenceAccess.requireMembership(residenceId, userId);
-        const task = await this.requireTask(residenceId, taskId);
+        const task = await this.requireTask(residenceId, taskId, userId);
         return this.mapTask(task);
     }
 
     async create(residenceId: string, data: CreateTaskDto, userId: string) {
-        const membership = await this.residenceAccess.requireCreateEditPermission(
-            residenceId,
-            userId
-        );
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
         const repeats = data.repeats ?? false;
         if (repeats && (!data.periodicity || data.periodicity === TaskPeriodicity.PERSONALIZADA)) {
             throw new BadRequestException("Selecione uma frequÃªncia para a repetiÃ§Ã£o.");
         }
+        const mayAssignOthers =
+            membership.creationEditPolicy !== "LIDERES" || isResidenceManager(membership.role);
         const rotationIds = data.assigneeIds ?? [];
-        if (data.assignmentType === TaskAssignmentType.RODIZIO && rotationIds.length < 2) {
+        const assignmentType = data.assignmentType ?? TaskAssignmentType.FIXA;
+        if (!mayAssignOthers) {
+            if (
+                data.assignmentType === TaskAssignmentType.RODIZIO ||
+                (data.assigneeId && data.assigneeId !== membership.memberId)
+            ) {
+                throw new BadRequestException("Você só pode atribuir a tarefa a si mesmo.");
+            }
+        }
+        const effectiveAssigneeId = mayAssignOthers ? data.assigneeId : membership.memberId;
+        if (data.visibility === TaskVisibility.PRIVADA && assignmentType === TaskAssignmentType.RODIZIO) {
+            throw new BadRequestException("Tarefas privadas precisam de um responsável fixo.");
+        }
+        const rotationIdsForTask = mayAssignOthers ? rotationIds : [];
+        if (assignmentType === TaskAssignmentType.RODIZIO && rotationIdsForTask.length < 2) {
             throw new BadRequestException("Selecione pelo menos dois moradores para o rodízio.");
         }
         const validatedRotation = await Promise.all(
-            rotationIds.map((memberId) => this.requireActiveMember(residenceId, memberId))
+            rotationIdsForTask.map((memberId) => this.requireActiveMember(residenceId, memberId))
         );
         const assignee =
-            data.assignmentType === TaskAssignmentType.RODIZIO
+            assignmentType === TaskAssignmentType.RODIZIO
                 ? (validatedRotation[0] ?? null)
-                : data.assigneeId
-                  ? await this.requireActiveMember(residenceId, data.assigneeId)
+                : effectiveAssigneeId
+                  ? await this.requireActiveMember(residenceId, effectiveAssigneeId)
                   : null;
+        if (!assignee) {
+            throw new BadRequestException(
+                mayAssignOthers
+                    ? "Selecione um responsável pela tarefa."
+                    : "Selecione você como responsável pela tarefa."
+            );
+        }
+        if (data.visibility === TaskVisibility.PRIVADA && assignee?.id !== membership.memberId) {
+            throw new BadRequestException("Tarefas privadas só podem ser atribuídas a você.");
+        }
         const taskId = await this.repository.create(
             residenceId,
             userId,
@@ -71,8 +189,11 @@ export class TasksService {
     }
 
     async update(residenceId: string, taskId: string, data: UpdateTaskDto, userId: string) {
-        await this.residenceAccess.requireCreateEditPermission(residenceId, userId);
-        const existing = await this.requireTask(residenceId, taskId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
+        const existing = await this.requireTask(residenceId, taskId, userId);
         if (existing.status === "CONCLUIDA" || existing.status === "CANCELADA") {
             throw new BadRequestException(
                 "NÃ£o Ã© possÃ­vel editar uma tarefa concluÃ­da ou cancelada."
@@ -88,14 +209,24 @@ export class TasksService {
             throw new BadRequestException("Selecione uma frequÃªncia para a repetiÃ§Ã£o.");
         }
 
-        const assignee =
-            data.assigneeId === undefined
-                ? undefined
-                : data.assigneeId === null
-                  ? null
-                  : await this.requireActiveMember(residenceId, data.assigneeId);
-        const rotationIds = data.assigneeIds;
         const assignmentType = data.assignmentType ?? existing.definicao_tarefa.tipo_atribuicao;
+        const fallbackAssigneeId =
+            data.assignmentType === TaskAssignmentType.FIXA
+                ? (existing.responsavel_participacao_id ??
+                  existing.definicao_tarefa.fila_rodizio[0]?.participacao_id ??
+                  null)
+                : undefined;
+        const requestedAssigneeId =
+            data.assigneeId === undefined && data.assignmentType === TaskAssignmentType.FIXA
+                ? fallbackAssigneeId
+                : data.assigneeId;
+        const assignee =
+            requestedAssigneeId === undefined
+                ? undefined
+                : requestedAssigneeId === null
+                  ? null
+                  : await this.requireActiveMember(residenceId, requestedAssigneeId);
+        const rotationIds = data.assigneeIds;
         if (assignmentType === TaskAssignmentType.RODIZIO) {
             const ids =
                 rotationIds ??
@@ -107,6 +238,28 @@ export class TasksService {
             }
             await Promise.all(
                 ids.map((memberId) => this.requireActiveMember(residenceId, memberId))
+            );
+        }
+        const effectiveAssigneeId =
+            assignmentType === TaskAssignmentType.RODIZIO
+                ? (rotationIds?.[0] ??
+                  existing.responsavel_participacao_id ??
+                  existing.definicao_tarefa.fila_rodizio[0]?.participacao_id ??
+                  null)
+                : assignee === undefined
+                  ? existing.responsavel_participacao_id
+                  : (assignee?.id ?? null);
+        if (!effectiveAssigneeId) {
+            throw new BadRequestException("Selecione um responsável pela tarefa.");
+        }
+        if (
+            (data.visibility ?? existing.definicao_tarefa.visibilidade) ===
+                TaskVisibility.PRIVADA &&
+            (assignmentType === TaskAssignmentType.RODIZIO ||
+                effectiveAssigneeId !== membership.memberId)
+        ) {
+            throw new BadRequestException(
+                "Tarefas privadas só podem ser atribuídas a você sem rodízio."
             );
         }
         const previousReminderMinutes = existing.lembrete[0]
@@ -137,7 +290,7 @@ export class TasksService {
 
     async complete(residenceId: string, taskId: string, userId: string) {
         const membership = await this.residenceAccess.requireMembership(residenceId, userId);
-        const task = await this.requireTask(residenceId, taskId);
+        const task = await this.requireTask(residenceId, taskId, userId);
         if (task.status === "CONCLUIDA") {
             throw new BadRequestException("A tarefa jÃ¡ foi concluÃ­da.");
         }
@@ -180,7 +333,7 @@ export class TasksService {
 
     async remove(residenceId: string, taskId: string, userId: string) {
         await this.residenceAccess.requireManager(residenceId, userId);
-        const task = await this.requireTask(residenceId, taskId);
+        const task = await this.requireTask(residenceId, taskId, userId);
         await this.repository.remove(task.definicao_tarefa_id);
         return { id: taskId, deleted: true };
     }
@@ -193,8 +346,8 @@ export class TasksService {
         return { id: member.id, userId: member.usuario_id };
     }
 
-    private async requireTask(residenceId: string, taskId: string) {
-        const task = await this.repository.findTask(residenceId, taskId);
+    private async requireTask(residenceId: string, taskId: string, userId: string) {
+        const task = await this.repository.findTask(residenceId, taskId, userId);
         if (!task) throw new NotFoundException("A tarefa nÃ£o estÃ¡ disponÃ­vel.");
         return task;
     }
@@ -204,8 +357,9 @@ export class TasksService {
         const isOverdue =
             (task.status === "PENDENTE" || task.status === "EM_ANDAMENTO") &&
             dueAt.getTime() < Date.now();
-        const assignee =
+        const memberAssignee =
             task.participacao_instancia_tarefa_responsavel_participacao_idToparticipacao;
+        const userAssignee = task.usuario;
         const recurrence = task.definicao_tarefa.regra_recorrencia as { repeats?: boolean } | null;
         const reminder = task.lembrete[0] ?? null;
 
@@ -216,16 +370,20 @@ export class TasksService {
             description: task.definicao_tarefa.descricao,
             tags: task.definicao_tarefa.tags,
             color: task.definicao_tarefa.cor,
+            visibility: task.definicao_tarefa.visibilidade,
+            scope: task.definicao_tarefa.escopo,
             assignmentType: task.definicao_tarefa.tipo_atribuicao,
             rotationMemberIds:
                 task.definicao_tarefa.fila_rodizio?.map((entry) => entry.participacao_id) ?? [],
             residenceId: task.definicao_tarefa.casa_id,
-            assignee: assignee
+            assignee: memberAssignee
                 ? {
-                      id: assignee.id,
-                      name: assignee.usuario.apelido || assignee.usuario.nome,
+                      id: memberAssignee.id,
+                      name: memberAssignee.usuario.apelido || memberAssignee.usuario.nome,
                   }
-                : null,
+                : userAssignee
+                  ? { id: userAssignee.id, name: userAssignee.apelido || userAssignee.nome }
+                  : null,
             dueAt: dueAt.toISOString(),
             periodicity: task.definicao_tarefa.periodicidade,
             repeats: recurrence?.repeats ?? false,

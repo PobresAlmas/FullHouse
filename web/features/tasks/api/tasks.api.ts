@@ -5,6 +5,8 @@ export type TaskPeriodicity = "DIARIA" | "SEMANAL" | "QUINZENAL" | "MENSAL" | "P
 
 export type TaskStatus = "PENDENTE" | "EM_ANDAMENTO" | "CONCLUIDA" | "ATRASADA" | "CANCELADA";
 export type TaskAssignmentType = "FIXA" | "RODIZIO";
+export type TaskVisibility = "PUBLICA" | "PRIVADA";
+export type TaskScope = "CASA" | "INDIVIDUAL";
 
 export interface TaskMember {
     id: string;
@@ -21,6 +23,8 @@ export interface Task {
     description: string | null;
     tags: string[];
     color: string | null;
+    visibility?: TaskVisibility;
+    scope?: TaskScope;
     assignmentType: TaskAssignmentType;
     rotationMemberIds: string[];
     residenceId: string | null;
@@ -41,6 +45,7 @@ export interface TaskInput {
     assignmentType?: TaskAssignmentType;
     assigneeIds?: string[];
     color?: string | null;
+    visibility?: TaskVisibility;
     dueAt: string;
     repeats?: boolean;
     periodicity?: TaskPeriodicity;
@@ -99,4 +104,71 @@ export async function completeTask(residenceId: string, taskId: string): Promise
 
 export async function deleteTask(residenceId: string, taskId: string): Promise<void> {
     await api.delete(`${residenceTasksPath(residenceId)}/${taskId}`);
+}
+
+export async function getPersonalTasks(): Promise<Task[]> {
+    const response = await api.get<Task[]>("/tasks/personal");
+    return response.data;
+}
+
+export async function createPersonalTask(data: TaskInput): Promise<Task> {
+    const response = await api.post<Task>("/tasks/personal", data);
+    return response.data;
+}
+
+export async function updatePersonalTask(taskId: string, data: Partial<TaskInput>): Promise<Task> {
+    const response = await api.patch<Task>(`/tasks/personal/${taskId}`, data);
+    return response.data;
+}
+
+export async function completePersonalTask(taskId: string): Promise<Task> {
+    const response = await api.patch<Task>(`/tasks/personal/${taskId}/complete`);
+    return response.data;
+}
+
+export async function deletePersonalTask(taskId: string): Promise<void> {
+    await api.delete(`/tasks/personal/${taskId}`);
+}
+
+export interface TaskExchangeRequest {
+    id: string;
+    status: "PENDENTE" | "ACEITA" | "RECUSADA" | "EXPIRADA" | "CANCELADA";
+    type: "PONTUAL" | "PERMANENTE";
+    incoming: boolean;
+    requester: string;
+    recipient: string;
+    task: { id: string; title: string; dueAt: string };
+    targetTask: { id: string; title: string; dueAt: string } | null;
+}
+
+export async function getTaskExchangeRequests(residenceId: string): Promise<TaskExchangeRequest[]> {
+    const response = await api.get<TaskExchangeRequest[]>(
+        `/residences/${residenceId}/task-exchange-requests`
+    );
+    return response.data;
+}
+
+export async function createTaskExchangeRequest(
+    residenceId: string,
+    taskId: string,
+    recipientMemberId: string,
+    targetTaskId?: string
+): Promise<void> {
+    await api.post(`/residences/${residenceId}/task-exchange-requests`, {
+        taskId,
+        recipientMemberId,
+        ...(targetTaskId ? { targetTaskId } : {}),
+    });
+}
+
+export async function respondToTaskExchange(
+    residenceId: string,
+    requestId: string,
+    status: "ACEITA" | "RECUSADA",
+    targetTaskId?: string
+): Promise<void> {
+    await api.patch(`/residences/${residenceId}/task-exchange-requests/${requestId}`, {
+        status,
+        ...(targetTaskId ? { targetTaskId } : {}),
+    });
 }
