@@ -9,7 +9,6 @@ import { Prisma } from "../generated/prisma/client.js";
 import {
     CreateExpenseDto,
     ExpensePaymentStatus,
-    ExpenseScope,
 } from "./dto/create-expense.dto.js";
 import { UpdateExpenseDto } from "./dto/update-expense.dto.js";
 import { CreateExpenseSubgroupDto } from "./dto/create-expense-subgroup.dto.js";

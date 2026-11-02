@@ -34,7 +34,7 @@ describe("expenses API client", () => {
         vi.mocked(api.get).mockResolvedValue({ data: [expense] });
 
         await expect(getExpenses()).resolves.toEqual([expense]);
-        expect(api.get).toHaveBeenCalledWith("/expenses");
+        expect(api.get).toHaveBeenCalledWith("/expenses", { params: { scope: "HOME" } });
     });
 
     it("creates an expense without requiring a subgroup or a house field", async () => {

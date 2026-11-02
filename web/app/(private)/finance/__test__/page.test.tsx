@@ -128,7 +128,9 @@ describe("FinancePage expense CRUD", () => {
                 date: "2026-10-12",
                 homeId: "home-id",
                 subgroupId: null,
+                scope: "HOME",
                 paymentStatus: "PENDING",
+                paymentDate: null,
             })
         );
         expect(await screen.findByRole("row", { name: /Internet/ })).toBeInTheDocument();

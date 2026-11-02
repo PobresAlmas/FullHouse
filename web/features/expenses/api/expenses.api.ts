@@ -133,10 +133,11 @@ export async function getExpenses(scope: ExpenseScope = "HOME"): Promise<Expense
 }
 
 export async function setExpensePaymentStatus(id: string, paid: boolean) {
-    const response = await api.patch<{ id: string; paymentStatus: "PENDING" | "PAID"; paidAt: string | null }>(
-        `/expenses/${id}/personal-payment`,
-        { paid }
-    );
+    const response = await api.patch<{
+        id: string;
+        paymentStatus: "PENDING" | "PAID";
+        paidAt: string | null;
+    }>(`/expenses/${id}/personal-payment`, { paid });
     return response.data;
 }
 
