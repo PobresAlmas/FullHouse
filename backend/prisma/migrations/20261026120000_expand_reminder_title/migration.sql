@@ -1,0 +1,2 @@
+ALTER TABLE "lembrete"
+ALTER COLUMN "titulo" TYPE VARCHAR(200);

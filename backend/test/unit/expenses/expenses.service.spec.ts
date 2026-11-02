@@ -29,6 +29,7 @@ describe("ExpensesService CRUD", () => {
         valor_total: { toFixed: () => "119.87" },
         data_vencimento: new Date("2026-10-11T00:00:00.000Z"),
         status: "QUITADA",
+        estrategia_rateio: "IGUALITARIO" as const,
         quitada_em: new Date("2026-10-11T00:00:00.000Z"),
         subgrupo: { id: "subgroup-id", nome: "Casa" },
         participacao: { usuario: { nome: "Emilson", apelido: null } },
@@ -65,7 +66,11 @@ describe("ExpensesService CRUD", () => {
         residenceAccess = {
             requireMembership: vi.fn().mockResolvedValue({ memberId: memberParticipationId }),
         };
-        service = new ExpensesService(repository as never, residenceAccess as never);
+        service = new ExpensesService(
+            repository as never,
+            residenceAccess as never,
+            { upload: vi.fn() } as never
+        );
     });
 
     it("returns active residence members after confirming the requesting user's membership", async () => {
@@ -248,8 +253,16 @@ describe("ExpensesService CRUD", () => {
                 homeId: "home-id",
                 homeName: "Grifinória",
                 subgroup: null,
+                scope: "HOME",
+                sourceLabel: "Grifinória",
+                totalAmount: "119.87",
+                allocationStrategy: "IGUALITARIO",
+                canEdit: true,
                 paidBy: null,
                 paidAt: null,
+                reminder: null,
+                proofs: [],
+                allocations: [],
                 paymentStatus: "PENDING",
             },
         ]);

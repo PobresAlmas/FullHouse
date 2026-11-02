@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import { ExpensesRepository } from "../../../src/expenses/expenses.repository.js";
 import { Prisma } from "../../../src/generated/prisma/client.js";
 
@@ -118,6 +119,12 @@ describe("ExpensesRepository.createSubgroup", () => {
             homeId: "home-id",
             homeName: "Casa",
             members: ["Ana", "Bibi"],
+            memberIds: ["member-1", "member-2"],
+            memberDetails: [
+                { id: "member-1", name: "Ana" },
+                { id: "member-2", name: "Bibi" },
+            ],
+            canEdit: true,
         });
         expect($transaction).toHaveBeenCalledOnce();
         expect(tx.subgrupo.create).toHaveBeenCalledWith({
@@ -177,9 +184,17 @@ describe("ExpensesRepository writes", () => {
         deleteMany = vi.fn().mockResolvedValue({ count: 0 });
         createMany = vi.fn();
         const transaction = {
-            despesa: { create, update, findUnique },
+            despesa: {
+                create,
+                update,
+                findUnique,
+                findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "expense-id" }),
+            },
             rateio_despesa: { deleteMany, createMany },
             subgrupo: { findFirst: vi.fn() },
+            participacao: {
+                findMany: vi.fn().mockResolvedValue([{ id: "member-1" }, { id: "member-2" }]),
+            },
         };
         repository = new ExpensesRepository({
             despesa: { create, update },
@@ -248,7 +263,10 @@ describe("ExpensesRepository writes", () => {
                     ],
                 }),
             },
-            despesa: { create: vi.fn().mockResolvedValue(expenseRecord) },
+            despesa: {
+                create: vi.fn().mockResolvedValue(expenseRecord),
+                findUniqueOrThrow: vi.fn().mockResolvedValue(expenseRecord),
+            },
             rateio_despesa: { createMany: vi.fn().mockResolvedValue({ count: 2 }) },
         };
         const $transaction = vi.fn((callback: (tx: typeof transaction) => unknown) =>
@@ -285,6 +303,111 @@ describe("ExpensesRepository writes", () => {
         });
     });
 
+    it("persists a non-equal custom split for each active subgroup participant", async () => {
+        const create = vi.fn().mockResolvedValue({ id: "expense-id" });
+        const createMany = vi.fn().mockResolvedValue({ count: 2 });
+        const transaction = {
+            subgrupo: {
+                findFirst: vi.fn().mockResolvedValue({
+                    membro_subgrupo: [
+                        { participacao_id: "member-a" },
+                        { participacao_id: "member-b" },
+                    ],
+                }),
+            },
+            despesa: {
+                create,
+                findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "expense-id" }),
+            },
+            rateio_despesa: { createMany },
+        };
+        repository = new ExpensesRepository({
+            $transaction: vi.fn((callback: (tx: typeof transaction) => unknown) =>
+                callback(transaction)
+            ),
+        } as never);
+
+        await repository.create(
+            {
+                description: "Energia",
+                amount: "10.00",
+                date: "2026-11-01",
+                subgroupId: "group-id",
+                paymentStatus: "PENDING",
+                allocations: [
+                    { participationId: "member-a", amount: "7.25" },
+                    { participationId: "member-b", amount: "2.75" },
+                ],
+            },
+            "home-id",
+            "creator-id"
+        );
+
+        expect(create.mock.calls[0][0].data.estrategia_rateio).toBe("PERSONALIZADO");
+        expect(createMany).toHaveBeenCalledWith({
+            data: [
+                {
+                    despesa_id: "expense-id",
+                    participacao_id: "member-a",
+                    valor_devido: new Prisma.Decimal("7.25"),
+                },
+                {
+                    despesa_id: "expense-id",
+                    participacao_id: "member-b",
+                    valor_devido: new Prisma.Decimal("2.75"),
+                },
+            ],
+        });
+    });
+
+    it.each([
+        ["a split whose sum differs from the account total", [
+            { participationId: "member-a", amount: "7.00" },
+            { participationId: "member-b", amount: "2.00" },
+        ]],
+        ["a split that omits an active participant", [
+            { participationId: "member-a", amount: "10.00" },
+        ]],
+    ])("rejects %s", async (_label, allocations) => {
+        const createMany = vi.fn();
+        const transaction = {
+            subgrupo: {
+                findFirst: vi.fn().mockResolvedValue({
+                    membro_subgrupo: [
+                        { participacao_id: "member-a" },
+                        { participacao_id: "member-b" },
+                    ],
+                }),
+            },
+            despesa: {
+                create: vi.fn().mockResolvedValue({ id: "expense-id" }),
+                findUniqueOrThrow: vi.fn(),
+            },
+            rateio_despesa: { createMany },
+        };
+        repository = new ExpensesRepository({
+            $transaction: vi.fn((callback: (tx: typeof transaction) => unknown) =>
+                callback(transaction)
+            ),
+        } as never);
+
+        await expect(
+            repository.create(
+                {
+                    description: "Energia",
+                    amount: "10.00",
+                    date: "2026-11-01",
+                    subgroupId: "group-id",
+                    paymentStatus: "PENDING",
+                    allocations,
+                },
+                "home-id",
+                "creator-id"
+            )
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(createMany).not.toHaveBeenCalled();
+    });
+
     it("does not create subgroup expenses if there are no active subgroup members", async () => {
         const transaction = {
             subgrupo: { findFirst: vi.fn().mockResolvedValue({ membro_subgrupo: [] }) },
@@ -309,7 +432,7 @@ describe("ExpensesRepository writes", () => {
                 "home-id",
                 "creator-id"
             )
-        ).rejects.toThrow("O subgrupo não possui participantes ativos.");
+        ).rejects.toThrow("Não há moradores ativos para dividir a despesa.");
         expect(transaction.despesa.create).not.toHaveBeenCalled();
     });
 
@@ -350,6 +473,7 @@ describe("ExpensesRepository writes", () => {
                     rateio_despesa: [{ participacao_id: "old-member", pago: false }],
                 }),
                 update: vi.fn().mockResolvedValue({ id: "expense-id" }),
+                findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "expense-id" }),
             },
             rateio_despesa: {
                 deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -360,6 +484,7 @@ describe("ExpensesRepository writes", () => {
                     membro_subgrupo: [{ participacao_id: "new-b" }, { participacao_id: "new-a" }],
                 }),
             },
+            participacao: { findMany: vi.fn().mockResolvedValue([{ id: "member-1" }]) },
         };
         repository = new ExpensesRepository({
             $transaction: vi.fn((callback: (tx: typeof transaction) => unknown) =>
@@ -421,7 +546,7 @@ describe("ExpensesRepository writes", () => {
         expect(transaction.rateio_despesa.deleteMany).toHaveBeenCalledOnce();
     });
 
-    it("removes pending subgroup allocations when clearing the subgroup", async () => {
+    it("recalculates an equal house allocation when clearing the subgroup", async () => {
         const transaction = {
             despesa: {
                 findUnique: vi.fn().mockResolvedValue({
@@ -430,12 +555,14 @@ describe("ExpensesRepository writes", () => {
                     rateio_despesa: [{ participacao_id: "old-member", pago: false }],
                 }),
                 update: vi.fn().mockResolvedValue({ id: "expense-id" }),
+                findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "expense-id" }),
             },
             rateio_despesa: {
                 deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
                 createMany: vi.fn(),
             },
             subgrupo: { findFirst: vi.fn() },
+            participacao: { findMany: vi.fn().mockResolvedValue([{ id: "member-1" }]) },
         };
         repository = new ExpensesRepository({
             $transaction: vi.fn((callback: (tx: typeof transaction) => unknown) =>
@@ -456,7 +583,15 @@ describe("ExpensesRepository writes", () => {
             null
         );
         expect(transaction.rateio_despesa.deleteMany).toHaveBeenCalledOnce();
-        expect(transaction.rateio_despesa.createMany).not.toHaveBeenCalled();
+        expect(transaction.rateio_despesa.createMany).toHaveBeenCalledWith({
+            data: [
+                {
+                    despesa_id: "expense-id",
+                    participacao_id: "member-1",
+                    valor_devido: new Prisma.Decimal("30.00"),
+                },
+            ],
+        });
     });
 
     it("marks removed expenses as cancelled instead of deleting records", async () => {

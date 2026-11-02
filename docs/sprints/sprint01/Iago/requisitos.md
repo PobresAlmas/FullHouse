@@ -1,7 +1,7 @@
 # Sprint 01 — Requisitos implementados
 
-**Responsável:** Iago<br>
-**Módulo:** Gestão de despesas<br>
+**Responsável:** Iago
+**Módulo:** Gestão de despesas e subgrupos
 **Requisitos relacionados:** RF005 e RF006 — US004 e US005
 
 ## 1. Requisitos funcionais
@@ -58,8 +58,20 @@ André relatou que cada morador avisa no grupo de mensagens da casa quando paga 
 
 Além dos requisitos acima, a implementação da tela Financeiro contempla listagem, edição e exclusão lógica de despesas, status geral Pendente/Pago, filtro por status, validações de entrada e totalizador da lista. O subgrupo é opcional.
 
-O fluxo atual não configura despesas fixas e não controla parcelas ou pagamentos individuais por morador. A diferença entre os critérios do documento de requisitos e o escopo implementado está detalhada em `implementacao.md` e `testes.md`.
+O fluxo atual não configura despesas fixas. O backend registra parcelas e o estado de pagamento individual; a conclusão automática da despesa quando todos pagam não está implementada. As diferenças restantes estão detalhadas em `implementacao.md` e `testes.md`.
 
-## 4. Base documental
+## 4. Critérios complementares — Subgrupos de despesas
 
-Os requisitos foram consultados em `docs/req.pdf`, em RF005, RF006 e nos cartões US004 (página lógica 14) e US005 (página lógica 15). O escopo desta entrega é o CRUD de despesas na tela Financeiro.
+Os critérios abaixo registram o escopo complementar implementado para subgrupos. Eles não são requisitos RF numerados no documento `docs/req.pdf`.
+
+- Criar subgrupo com nome e selecionar moradores ativos da residência.
+- Permitir que somente o criador edite o nome e os participantes do subgrupo.
+- Associar várias despesas individuais a um mesmo subgrupo.
+- Dividir cada despesa entre os participantes do subgrupo por valores iguais ou personalizados. O rateio personalizado deve incluir os participantes e somar o valor total da despesa.
+- Anexar comprovante à despesa correspondente, mantendo comprovantes independentes para as despesas do mesmo subgrupo.
+
+Os testes unitários correspondentes e seu resultado estão registrados em `testes.md`; os arquivos ficam em `backend/test/unit/expenses/`.
+
+## 5. Base documental
+
+Os requisitos originais foram consultados em `docs/req.pdf`, em RF005, RF006 e nos cartões US004 (página lógica 14) e US005 (página lógica 15). Os critérios complementares de subgrupos documentam funcionalidades posteriores da tela Financeiro.
