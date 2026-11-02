@@ -21,11 +21,8 @@ export class UpdatePantryItemDto {
     name?: string;
 
     @IsOptional()
-    @IsString()
-    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
-    @MinLength(1)
-    @MaxLength(80)
-    category?: string;
+    @IsUUID("4")
+    categoryId?: string;
 
     @IsOptional()
     @IsIn(["COMUNITARIO", "PRIVADO", "DONO_ESPECIFICO"])

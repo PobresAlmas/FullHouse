@@ -1,5 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
+import {
+    DEFAULT_PANTRY_CATEGORIES,
+    normalizePantryCategoryName,
+} from "../pantry/pantry-categories.js";
 
 @Injectable()
 export class ResidencesRepository {
@@ -14,6 +18,14 @@ export class ResidencesRepository {
             const membership = await transaction.participacao.create({
                 data: { casa_id: residence.id, usuario_id: userId, papel: "LIDER" },
                 select: { id: true, papel: true },
+            });
+
+            await transaction.categoria_despensa.createMany({
+                data: DEFAULT_PANTRY_CATEGORIES.map((nome) => ({
+                    casa_id: residence.id,
+                    nome,
+                    nome_normalizado: normalizePantryCategoryName(nome),
+                })),
             });
 
             return { residence, membership };

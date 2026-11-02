@@ -12,6 +12,7 @@ const item = {
     id: ITEM_ID,
     name: "Arroz",
     category: "Grãos",
+    categoryId: "bc3c5c4b-3f52-4faf-9341-2370fcde6cee",
     property: "COMUNITARIO",
     ownerMemberId: null,
     ownerName: "Casa",
@@ -26,6 +27,10 @@ describe("Pantry HTTP API (e2e)", () => {
     let app: INestApplication<App>;
     let authenticatedCookie: () => Promise<string>;
     const pantryService = {
+        findCategories: vi.fn(),
+        createCategory: vi.fn(),
+        updateCategory: vi.fn(),
+        removeCategory: vi.fn(),
         findMembers: vi.fn(),
         findItems: vi.fn(),
         createItem: vi.fn(),
@@ -36,6 +41,10 @@ describe("Pantry HTTP API (e2e)", () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
+        pantryService.findCategories.mockResolvedValue([{ id: ITEM_ID, name: "Grãos" }]);
+        pantryService.createCategory.mockResolvedValue({ id: ITEM_ID, name: "Padaria" });
+        pantryService.updateCategory.mockResolvedValue({ id: ITEM_ID, name: "Mercearia" });
+        pantryService.removeCategory.mockResolvedValue({ id: ITEM_ID, deleted: true });
         pantryService.findMembers.mockResolvedValue([{ id: "member-1", name: "Emilson" }]);
         pantryService.findItems.mockResolvedValue([item]);
         pantryService.createItem.mockResolvedValue(item);
@@ -58,6 +67,45 @@ describe("Pantry HTTP API (e2e)", () => {
             .expect(401);
     });
 
+    it("lists, creates, renames, and deletes categories through authenticated routes", async () => {
+        const cookie = await authenticatedCookie();
+        await request(app.getHttpServer())
+            .get(`/residences/${RESIDENCE_ID}/pantry/categories`)
+            .set("Cookie", cookie)
+            .expect(200)
+            .expect([{ id: ITEM_ID, name: "Grãos" }]);
+        await request(app.getHttpServer())
+            .post(`/residences/${RESIDENCE_ID}/pantry/categories`)
+            .set("Cookie", cookie)
+            .send({ name: "  Padaria  " })
+            .expect(201)
+            .expect({ id: ITEM_ID, name: "Padaria" });
+        expect(pantryService.createCategory).toHaveBeenCalledWith(
+            RESIDENCE_ID,
+            { name: "Padaria" },
+            USER_ID
+        );
+        await request(app.getHttpServer())
+            .patch(`/residences/${RESIDENCE_ID}/pantry/categories/${ITEM_ID}`)
+            .set("Cookie", cookie)
+            .send({ name: "Mercearia" })
+            .expect(200)
+            .expect({ id: ITEM_ID, name: "Mercearia" });
+        await request(app.getHttpServer())
+            .delete(`/residences/${RESIDENCE_ID}/pantry/categories/${ITEM_ID}`)
+            .set("Cookie", cookie)
+            .expect(200)
+            .expect({ id: ITEM_ID, deleted: true });
+        expect(pantryService.findCategories).toHaveBeenCalledWith(RESIDENCE_ID, USER_ID);
+        expect(pantryService.updateCategory).toHaveBeenCalledWith(
+            RESIDENCE_ID,
+            ITEM_ID,
+            { name: "Mercearia" },
+            USER_ID
+        );
+        expect(pantryService.removeCategory).toHaveBeenCalledWith(RESIDENCE_ID, ITEM_ID, USER_ID);
+    });
+
     it("lists household members and trims search queries on the HTTP route", async () => {
         const cookie = await authenticatedCookie();
         await request(app.getHttpServer())
@@ -78,7 +126,7 @@ describe("Pantry HTTP API (e2e)", () => {
         const cookie = await authenticatedCookie();
         const payload = {
             name: "  Arroz  ",
-            category: " Grãos ",
+            categoryId: ITEM_ID,
             property: "COMUNITARIO",
             unit: "KG",
             initialQuantity: "2.5",
@@ -93,7 +141,7 @@ describe("Pantry HTTP API (e2e)", () => {
             RESIDENCE_ID,
             {
                 name: "Arroz",
-                category: "Grãos",
+                categoryId: ITEM_ID,
                 property: "COMUNITARIO",
                 unit: "KG",
                 initialQuantity: 2.5,
@@ -145,7 +193,7 @@ describe("Pantry HTTP API (e2e)", () => {
             .set("Cookie", cookie)
             .send({
                 name: "Arroz",
-                category: "Grãos",
+                categoryId: ITEM_ID,
                 property: "COMUNITARIO",
                 unit: "KG",
                 initialQuantity: 2.5,
@@ -166,7 +214,7 @@ describe("Pantry HTTP API (e2e)", () => {
             .set("Cookie", cookie)
             .send({
                 name: "",
-                category: "Grãos",
+                categoryId: ITEM_ID,
                 property: "PUBLICO",
                 unit: "KG",
                 initialQuantity: 1,

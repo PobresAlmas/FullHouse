@@ -19,11 +19,8 @@ export class CreatePantryItemDto {
     @MaxLength(150)
     name!: string;
 
-    @IsString()
-    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
-    @MinLength(1)
-    @MaxLength(80)
-    category!: string;
+    @IsUUID("4")
+    categoryId!: string;
 
     @IsIn(["COMUNITARIO", "PRIVADO", "DONO_ESPECIFICO"])
     property!: "COMUNITARIO" | "PRIVADO" | "DONO_ESPECIFICO";

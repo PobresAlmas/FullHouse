@@ -2,19 +2,19 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Start the frontend on port `3001` (the API uses port `3000`):
 
 ```bash
-npm run dev
+npm run dev -- --port 3001
 # or
-yarn dev
+yarn dev --port 3001
 # or
-pnpm dev
+pnpm dev --port 3001
 # or
-bun dev
+bun dev --port 3001
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3001](http://localhost:3001) with your browser. The backend API must be running at `http://localhost:3000`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

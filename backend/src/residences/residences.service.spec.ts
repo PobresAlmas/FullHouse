@@ -19,6 +19,7 @@ describe("residence creation", () => {
             participacao: {
                 create: vi.fn().mockResolvedValue({ id: "member-1", papel: "LIDER" }),
             },
+            categoria_despensa: { createMany: vi.fn().mockResolvedValue({ count: 8 }) },
         };
         const prisma = {
             $transaction: vi.fn((work: (tx: typeof transaction) => unknown) => work(transaction)),
@@ -44,6 +45,13 @@ describe("residence creation", () => {
             data: { casa_id: "residence-1", usuario_id: "user-1", papel: "LIDER" },
             select: { id: true, papel: true },
         });
+        expect(transaction.categoria_despensa.createMany).toHaveBeenCalledWith({
+            data: expect.arrayContaining([
+                { casa_id: "residence-1", nome: "Bebidas", nome_normalizado: "bebidas" },
+                { casa_id: "residence-1", nome: "Laticínios", nome_normalizado: "laticinios" },
+            ]),
+        });
+        expect(transaction.categoria_despensa.createMany.mock.calls[0][0].data).toHaveLength(8);
     });
 
     it("rolls back by propagating a failed membership insertion from the transaction", async () => {
@@ -51,6 +59,7 @@ describe("residence creation", () => {
         const transaction = {
             casa: { create: vi.fn().mockResolvedValue({ id: "residence-1" }) },
             participacao: { create: vi.fn().mockRejectedValue(failure) },
+            categoria_despensa: { createMany: vi.fn() },
         };
         const prisma = {
             $transaction: vi.fn(async (work: (tx: typeof transaction) => unknown) =>

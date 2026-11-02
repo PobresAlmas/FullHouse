@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
+import {
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+} from "@nestjs/common";
 import { PantryService } from "../../../src/pantry/pantry.service.js";
 
 describe("PantryService", () => {
@@ -6,7 +11,9 @@ describe("PantryService", () => {
     const record = (overrides: Record<string, unknown> = {}) => ({
         id: "item-1",
         nome: "Arroz",
+        categoria_id: "category-1",
         categoria: "Grãos",
+        categoria_despensa: { id: "category-1", nome: "Grãos" },
         propriedade: "COMUNITARIO",
         dono_participacao_id: null,
         unidade: "KG",
@@ -34,6 +41,12 @@ describe("PantryService", () => {
                 ]),
             findItems: vi.fn().mockResolvedValue([record()]),
             findItem: vi.fn().mockResolvedValue(record()),
+            findCategories: vi.fn().mockResolvedValue([{ id: "category-1", nome: "Grãos" }]),
+            findCategory: vi.fn().mockResolvedValue({ id: "category-1", nome: "Grãos" }),
+            createCategory: vi.fn().mockResolvedValue({ id: "category-2", nome: "Padaria" }),
+            renameCategory: vi.fn().mockResolvedValue(true),
+            countItemsInCategory: vi.fn().mockResolvedValue(0),
+            deleteCategory: vi.fn().mockResolvedValue({ count: 1 }),
             createItem: vi.fn().mockResolvedValue("item-1"),
             updateItem: vi.fn().mockResolvedValue(undefined),
             countMovements: vi.fn().mockResolvedValue(0),
@@ -47,6 +60,7 @@ describe("PantryService", () => {
                 role: member.papel,
                 creationEditPolicy: "TODOS",
             }),
+            requireCreateEditPermission: vi.fn().mockResolvedValue({ memberId: member.id }),
             requireActiveMember: vi.fn().mockResolvedValue({ id: "member-2" }),
         };
         service = new PantryService(repository as never, residenceAccess as never);
@@ -57,6 +71,113 @@ describe("PantryService", () => {
             { id: member.id, name: "Emil" },
         ]);
         expect(repository.findMembers).toHaveBeenCalledWith("home-1");
+    });
+
+    it("lists categories only after residence membership is confirmed", async () => {
+        await expect(service.findCategories("home-1", "user-1")).resolves.toEqual([
+            { id: "category-1", name: "Grãos" },
+        ]);
+        expect(repository.findCategories).toHaveBeenCalledWith("home-1");
+
+        residenceAccess.requireMembership.mockRejectedValueOnce(new NotFoundException());
+        await expect(service.findCategories("home-1", "outsider")).rejects.toBeInstanceOf(
+            NotFoundException
+        );
+        expect(repository.findCategories).toHaveBeenCalledTimes(1);
+    });
+
+    it("creates a normalized category only for members with edit permission", async () => {
+        repository.createCategory.mockResolvedValueOnce({
+            id: "category-2",
+            nome: "Produtos de Padaria",
+        });
+        await expect(
+            service.createCategory(
+                "home-1",
+                { name: "  Produtos   de   Padaria " } as never,
+                "user-1"
+            )
+        ).resolves.toEqual({ id: "category-2", name: "Produtos de Padaria" });
+        expect(repository.createCategory).toHaveBeenCalledWith({
+            residenceId: "home-1",
+            name: "Produtos de Padaria",
+            normalizedName: "produtos de padaria",
+        });
+        expect(residenceAccess.requireCreateEditPermission).toHaveBeenCalledWith(
+            "home-1",
+            "user-1"
+        );
+    });
+
+    it("rejects an empty normalized category name and duplicate names", async () => {
+        await expect(
+            service.createCategory("home-1", { name: "   " } as never, "user-1")
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(repository.createCategory).not.toHaveBeenCalled();
+
+        repository.createCategory.mockRejectedValueOnce({ code: "P2002" });
+        await expect(
+            service.createCategory("home-1", { name: " graos " } as never, "user-1")
+        ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("denies category changes when residence policy rejects the member", async () => {
+        residenceAccess.requireCreateEditPermission.mockRejectedValueOnce(new ForbiddenException());
+        await expect(
+            service.createCategory("home-1", { name: "Padaria" } as never, "user-1")
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.createCategory).not.toHaveBeenCalled();
+    });
+
+    it("renames a category and its items through the repository transaction", async () => {
+        await expect(
+            service.updateCategory(
+                "home-1",
+                "category-1",
+                { name: "  Mercearia   seca " } as never,
+                "user-1"
+            )
+        ).resolves.toEqual({ id: "category-1", name: "Mercearia seca" });
+        expect(repository.renameCategory).toHaveBeenCalledWith({
+            residenceId: "home-1",
+            categoryId: "category-1",
+            name: "Mercearia seca",
+            normalizedName: "mercearia seca",
+        });
+    });
+
+    it("distinguishes missing categories and duplicate category renames", async () => {
+        repository.findCategory.mockResolvedValueOnce(null);
+        await expect(
+            service.updateCategory("home-1", "missing", { name: "Nova" } as never, "user-1")
+        ).rejects.toBeInstanceOf(NotFoundException);
+
+        repository.renameCategory.mockRejectedValueOnce({ code: "P2002" });
+        await expect(
+            service.updateCategory("home-1", "category-1", { name: "Limpeza" } as never, "user-1")
+        ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it("blocks deletion while items use the category and deletes empty categories", async () => {
+        repository.countItemsInCategory.mockResolvedValueOnce(2);
+        await expect(service.removeCategory("home-1", "category-1", "user-1")).rejects.toThrow(
+            "Esta categoria está sendo usada por itens da despensa. Reclassifique os itens antes de removê-la."
+        );
+        expect(repository.deleteCategory).not.toHaveBeenCalled();
+
+        repository.countItemsInCategory.mockResolvedValueOnce(0);
+        await expect(service.removeCategory("home-1", "category-1", "user-1")).resolves.toEqual({
+            id: "category-1",
+            deleted: true,
+        });
+        expect(repository.deleteCategory).toHaveBeenCalledWith("home-1", "category-1");
+    });
+
+    it("maps a concurrent item insertion to a category deletion conflict", async () => {
+        repository.deleteCategory.mockRejectedValueOnce({ code: "P2003" });
+        await expect(service.removeCategory("home-1", "category-1", "user-1")).rejects.toThrow(
+            "Esta categoria está sendo usada por itens da despensa. Reclassifique os itens antes de removê-la."
+        );
     });
 
     it("passes an empty trimmed search as no filter", async () => {
@@ -111,7 +232,7 @@ describe("PantryService", () => {
             "home-1",
             {
                 name: "Arroz",
-                category: "Grãos",
+                categoryId: "category-1",
                 property: "COMUNITARIO",
                 unit: "KG",
                 initialQuantity: 2,
@@ -124,6 +245,8 @@ describe("PantryService", () => {
             expect.objectContaining({
                 residenceId: "home-1",
                 creatorMemberId: member.id,
+                categoryId: "category-1",
+                categoryName: "Grãos",
                 ownerMemberId: null,
                 expirationDate: new Date("2026-12-31T00:00:00.000Z"),
             })
@@ -132,12 +255,43 @@ describe("PantryService", () => {
         expect(residenceAccess.requireActiveMember).not.toHaveBeenCalled();
     });
 
+    it("rejects a category id that does not belong to the item's residence", async () => {
+        repository.findCategory.mockResolvedValueOnce(null);
+        await expect(
+            service.createItem(
+                "home-1",
+                {
+                    name: "Café",
+                    categoryId: "foreign-category",
+                    property: "COMUNITARIO",
+                    unit: "KG",
+                    initialQuantity: 1,
+                } as never,
+                "user-1"
+            )
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(repository.createItem).not.toHaveBeenCalled();
+    });
+
+    it("rejects moving an item to a category from a different residence", async () => {
+        repository.findCategory.mockResolvedValueOnce(null);
+        await expect(
+            service.updateItem(
+                "home-1",
+                "item-1",
+                { categoryId: "foreign-category" } as never,
+                "user-1"
+            )
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(repository.updateItem).not.toHaveBeenCalled();
+    });
+
     it("assigns private items to the authenticated member, ignoring a supplied owner", async () => {
         await service.createItem(
             "home-1",
             {
                 name: "Leite",
-                category: "Laticínios",
+                categoryId: "category-1",
                 property: "PRIVADO",
                 ownerMemberId: "member-2",
                 unit: "UNIDADE",
@@ -162,7 +316,7 @@ describe("PantryService", () => {
                 "home-1",
                 {
                     name: "Chocolate",
-                    category: "Doces",
+                    categoryId: "category-1",
                     property: "DONO_ESPECIFICO",
                     ownerMemberId: "foreign-member",
                     unit: "UNIDADE",

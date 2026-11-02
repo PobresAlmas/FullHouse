@@ -9,9 +9,15 @@ export interface PantryMember {
     name: string;
 }
 
+export interface PantryCategory {
+    id: string;
+    name: string;
+}
+
 export interface PantryItem {
     id: string;
     name: string;
+    categoryId?: string;
     category: string;
     property: PantryProperty;
     ownerMemberId: string | null;
@@ -25,7 +31,7 @@ export interface PantryItem {
 
 export interface PantryItemInput {
     name: string;
-    category: string;
+    categoryId: string;
     property: PantryProperty;
     ownerMemberId?: string | null;
     unit: PantryUnit;
@@ -36,7 +42,7 @@ export interface PantryItemInput {
 
 export interface PantryItemUpdateInput {
     name?: string;
-    category?: string;
+    categoryId?: string;
     property?: PantryProperty;
     ownerMemberId?: string | null;
     unit?: PantryUnit;
@@ -47,6 +53,42 @@ export interface PantryItemUpdateInput {
 export async function getPantryMembers(residenceId: string): Promise<PantryMember[]> {
     const response = await api.get<PantryMember[]>(`/residences/${residenceId}/pantry/members`);
     return response.data;
+}
+
+export async function getPantryCategories(residenceId: string): Promise<PantryCategory[]> {
+    const response = await api.get<PantryCategory[]>(
+        `/residences/${residenceId}/pantry/categories`
+    );
+    return response.data;
+}
+
+export async function createPantryCategory(
+    residenceId: string,
+    name: string
+): Promise<PantryCategory> {
+    const response = await api.post<PantryCategory>(
+        `/residences/${residenceId}/pantry/categories`,
+        {
+            name,
+        }
+    );
+    return response.data;
+}
+
+export async function updatePantryCategory(
+    residenceId: string,
+    categoryId: string,
+    name: string
+): Promise<PantryCategory> {
+    const response = await api.patch<PantryCategory>(
+        `/residences/${residenceId}/pantry/categories/${categoryId}`,
+        { name }
+    );
+    return response.data;
+}
+
+export async function deletePantryCategory(residenceId: string, categoryId: string): Promise<void> {
+    await api.delete(`/residences/${residenceId}/pantry/categories/${categoryId}`);
 }
 
 export async function getPantryItems(residenceId: string, search?: string): Promise<PantryItem[]> {

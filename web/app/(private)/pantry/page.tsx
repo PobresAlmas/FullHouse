@@ -10,6 +10,7 @@ import {
     Pencil,
     Plus,
     Search,
+    Tags,
     Trash2,
     UsersRound,
     X,
@@ -18,14 +19,19 @@ import { getPetResidences } from "@/features/pets/api/pets.api";
 import type { PetResidence } from "@/features/pets/api/pets.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import {
+    createPantryCategory,
     createPantryItem,
+    deletePantryCategory,
     deletePantryItem,
+    getPantryCategories,
     getPantryItems,
     getPantryMembers,
     registerPantryMovement,
+    updatePantryCategory,
     updatePantryItem,
 } from "@/features/pantry/api/pantry.api";
 import type {
+    PantryCategory,
     PantryItem,
     PantryItemInput,
     PantryMember,
@@ -39,7 +45,7 @@ import { AppPageHeader } from "@/components/layout/AppPageHeader";
 type TabKey = "all" | "communal" | "private" | "mine";
 type ItemFormState = {
     name: string;
-    category: string;
+    categoryId: string;
     property: PantryProperty;
     ownerMemberId: string;
     unit: PantryUnit;
@@ -52,7 +58,7 @@ type MovementModalState = { item: PantryItem; type: PantryMovementType } | null;
 
 const initialForm: ItemFormState = {
     name: "",
-    category: "",
+    categoryId: "",
     property: "COMUNITARIO",
     ownerMemberId: "",
     unit: "UNIDADE",
@@ -69,17 +75,6 @@ const unitLabels: Record<PantryUnit, string> = {
     ML: "ml",
     PACOTE: "pacote(s)",
 };
-
-const standardCategories = [
-    "Bebidas",
-    "Doces",
-    "Grãos",
-    "Higiene",
-    "Laticínios",
-    "Limpeza",
-    "Massas",
-    "Outros",
-];
 
 function getErrorMessage(error: unknown) {
     if (typeof error === "object" && error !== null && "message" in error) {
@@ -144,6 +139,7 @@ export default function PantryPage() {
     const [residences, setResidences] = useState<PetResidence[]>([]);
     const [residenceId, setResidenceId] = useState("");
     const [members, setMembers] = useState<PantryMember[]>([]);
+    const [categories, setCategories] = useState<PantryCategory[]>([]);
     const [items, setItems] = useState<PantryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
@@ -159,8 +155,11 @@ export default function PantryPage() {
     const [movementQuantity, setMovementQuantity] = useState("1");
     const [movementError, setMovementError] = useState("");
     const [form, setForm] = useState<ItemFormState>(initialForm);
-    const [customCategoryMode, setCustomCategoryMode] = useState(false);
     const [formError, setFormError] = useState("");
+    const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+    const [categoryDraft, setCategoryDraft] = useState("");
+    const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+    const [categoryError, setCategoryError] = useState("");
 
     const residence = useMemo(
         () => residences.find((item) => item.id === residenceId) ?? null,
@@ -169,14 +168,17 @@ export default function PantryPage() {
     const currentMemberId = residence?.membership?.id ?? "";
     const canManageHouse =
         residence?.membership?.role === "LIDER" || residence?.membership?.role === "ADMINISTRADOR";
+    const canManageCategories = residence?.creationEditPolicy !== "LIDERES" || canManageHouse;
 
     const loadResidenceData = useCallback(async (id: string) => {
-        const [nextMembers, nextItems] = await Promise.all([
+        const [nextMembers, nextItems, nextCategories] = await Promise.all([
             getPantryMembers(id),
             getPantryItems(id),
+            getPantryCategories(id),
         ]);
         setMembers(nextMembers);
         setItems(nextItems);
+        setCategories(nextCategories);
     }, []);
 
     useEffect(() => {
@@ -202,28 +204,17 @@ export default function PantryPage() {
     }, [loadResidenceData]);
 
     useEffect(() => {
-        if (!itemModal && !movementModal) return;
+        if (!itemModal && !movementModal && !categoryModalOpen) return;
         function closeOnEscape(event: KeyboardEvent) {
             if (event.key === "Escape") {
                 setItemModal(null);
                 setMovementModal(null);
+                setCategoryModalOpen(false);
             }
         }
         window.addEventListener("keydown", closeOnEscape);
         return () => window.removeEventListener("keydown", closeOnEscape);
-    }, [itemModal, movementModal]);
-
-    const categories = useMemo(
-        () =>
-            [...new Set(items.map((item) => item.category))].sort((a, b) =>
-                a.localeCompare(b, "pt-BR")
-            ),
-        [items]
-    );
-    const categoryChoices = useMemo(
-        () => [...new Set([...standardCategories, ...categories])],
-        [categories]
-    );
+    }, [categoryModalOpen, itemModal, movementModal]);
 
     const filteredItems = useMemo(() => {
         const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
@@ -231,7 +222,7 @@ export default function PantryPage() {
             if (activeTab === "communal" && item.property !== "COMUNITARIO") return false;
             if (activeTab === "private" && item.property === "COMUNITARIO") return false;
             if (activeTab === "mine" && !item.isMine) return false;
-            if (categoryFilter && item.category !== categoryFilter) return false;
+            if (categoryFilter && item.categoryId !== categoryFilter) return false;
             if (responsibleFilter === "__house__" && item.property !== "COMUNITARIO") return false;
             if (
                 responsibleFilter &&
@@ -274,6 +265,7 @@ export default function PantryPage() {
     async function changeResidence(id: string) {
         setResidenceId(id);
         setMembers([]);
+        setCategories([]);
         setItems([]);
         setLoading(true);
         setError("");
@@ -288,17 +280,19 @@ export default function PantryPage() {
     }
 
     function openCreateModal() {
-        setForm({ ...initialForm, ownerMemberId: currentMemberId });
-        setCustomCategoryMode(false);
+        setForm({
+            ...initialForm,
+            categoryId: categories[0]?.id ?? "",
+            ownerMemberId: currentMemberId,
+        });
         setFormError("");
         setItemModal({ mode: "create" });
     }
 
     function openEditModal(item: PantryItem) {
-        setCustomCategoryMode(![...standardCategories, ...categories].includes(item.category));
         setForm({
             name: item.name,
-            category: item.category,
+            categoryId: item.categoryId ?? "",
             property: item.property,
             ownerMemberId: item.ownerMemberId ?? currentMemberId,
             unit: item.unit,
@@ -321,7 +315,7 @@ export default function PantryPage() {
         const minimumQuantity = form.minimumQuantity.trim()
             ? Number(form.minimumQuantity.replace(",", "."))
             : null;
-        if (!form.name.trim() || !form.category.trim()) {
+        if (!form.name.trim() || !form.categoryId) {
             setFormError("Informe o nome e a categoria do item.");
             return;
         }
@@ -341,7 +335,7 @@ export default function PantryPage() {
             if (itemModal?.mode === "edit") {
                 await updatePantryItem(residenceId, itemModal.item.id, {
                     name: form.name.trim(),
-                    category: form.category.trim(),
+                    categoryId: form.categoryId,
                     property: form.property,
                     ownerMemberId: form.property === "DONO_ESPECIFICO" ? form.ownerMemberId : null,
                     unit: form.unit,
@@ -352,7 +346,7 @@ export default function PantryPage() {
             } else {
                 const payload: PantryItemInput = {
                     name: form.name.trim(),
-                    category: form.category.trim(),
+                    categoryId: form.categoryId,
                     property: form.property,
                     ownerMemberId: form.property === "DONO_ESPECIFICO" ? form.ownerMemberId : null,
                     unit: form.unit,
@@ -436,6 +430,58 @@ export default function PantryPage() {
         }
     }
 
+    function openCategoryModal() {
+        setCategoryDraft("");
+        setEditingCategoryId(null);
+        setCategoryError("");
+        setCategoryModalOpen(true);
+    }
+
+    function editCategory(category: PantryCategory) {
+        setEditingCategoryId(category.id);
+        setCategoryDraft(category.name);
+        setCategoryError("");
+    }
+
+    async function saveCategory(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (!residenceId || !categoryDraft.trim()) return;
+        setBusy(true);
+        setCategoryError("");
+        try {
+            if (editingCategoryId) {
+                await updatePantryCategory(residenceId, editingCategoryId, categoryDraft.trim());
+                setNotice("Categoria atualizada.");
+            } else {
+                await createPantryCategory(residenceId, categoryDraft.trim());
+                setNotice("Categoria criada.");
+            }
+            setCategoryDraft("");
+            setEditingCategoryId(null);
+            await loadResidenceData(residenceId);
+        } catch (saveError: unknown) {
+            setCategoryError(getErrorMessage(saveError));
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function removeCategory(category: PantryCategory) {
+        if (!residenceId || !window.confirm(`Excluir a categoria “${category.name}”?`)) return;
+        setBusy(true);
+        setCategoryError("");
+        try {
+            await deletePantryCategory(residenceId, category.id);
+            if (categoryFilter === category.id) setCategoryFilter("");
+            setNotice("Categoria removida.");
+            await loadResidenceData(residenceId);
+        } catch (removeError: unknown) {
+            setCategoryError(getErrorMessage(removeError));
+        } finally {
+            setBusy(false);
+        }
+    }
+
     const memberName =
         user?.name?.trim() ||
         members.find((member) => member.id === currentMemberId)?.name ||
@@ -511,6 +557,12 @@ export default function PantryPage() {
                         </section>
                     ) : (
                         <>
+                            <div className="mb-5">
+                                <h1 className="text-xl font-bold tracking-tight">Despensa</h1>
+                                <p className="mt-1 text-sm text-[#77717c]">
+                                    Organize os itens, categorias e validades da casa.
+                                </p>
+                            </div>
                             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                                 <div
                                     className="flex flex-wrap gap-1 rounded-xl bg-[#f1edf3] p-1"
@@ -542,14 +594,25 @@ export default function PantryPage() {
                                         onClick={() => setActiveTab("mine")}
                                     />
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={openCreateModal}
-                                    disabled={!residenceId || busy}
-                                    className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#4e812f] px-5 text-sm font-medium text-white hover:bg-[#3f6c26] disabled:opacity-50"
-                                >
-                                    <Plus size={17} /> Adicionar item
-                                </button>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={openCategoryModal}
+                                        disabled={!residenceId || busy}
+                                        className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#d9d1de] bg-white px-4 text-sm font-medium text-[#514c56] hover:bg-[#f6f2f7] disabled:opacity-50"
+                                    >
+                                        <Tags size={16} />
+                                        Gerenciar categorias
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={openCreateModal}
+                                        disabled={!residenceId || busy || categories.length === 0}
+                                        className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#4e812f] px-5 text-sm font-medium text-white hover:bg-[#3f6c26] disabled:opacity-50"
+                                    >
+                                        <Plus size={17} /> Adicionar item
+                                    </button>
+                                </div>
                             </div>
 
                             <section className="overflow-hidden rounded-xl border border-[#d6cdd9] bg-[#fffaff]">
@@ -573,8 +636,8 @@ export default function PantryPage() {
                                     >
                                         <option value="">Todas</option>
                                         {categories.map((category) => (
-                                            <option key={category} value={category}>
-                                                {category}
+                                            <option key={category.id} value={category.id}>
+                                                {category.name}
                                             </option>
                                         ))}
                                     </SelectFilter>
@@ -833,6 +896,137 @@ export default function PantryPage() {
                 </main>
             </div>
 
+            {categoryModalOpen && (
+                <div
+                    className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !busy)
+                            setCategoryModalOpen(false);
+                    }}
+                >
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="pantry-categories-title"
+                        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#e1d9e5] bg-[#fffaff] p-5 shadow-xl"
+                    >
+                        <div className="mb-5 flex items-start justify-between gap-3">
+                            <div>
+                                <h2 id="pantry-categories-title" className="text-lg font-bold">
+                                    Categorias da despensa
+                                </h2>
+                                <p className="mt-1 text-sm text-[#77717c]">
+                                    Os itens existentes acompanham as alterações de nome.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => setCategoryModalOpen(false)}
+                                aria-label="Fechar"
+                                className="grid size-9 place-items-center rounded-lg hover:bg-[#f1edf3] disabled:opacity-50"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        {canManageCategories ? (
+                            <form
+                                onSubmit={(event) => void saveCategory(event)}
+                                className="mb-4 grid gap-3"
+                            >
+                                <FormField
+                                    label={
+                                        editingCategoryId ? "Renomear categoria" : "Nova categoria"
+                                    }
+                                >
+                                    <input
+                                        autoFocus
+                                        required
+                                        maxLength={80}
+                                        value={categoryDraft}
+                                        onChange={(event) => setCategoryDraft(event.target.value)}
+                                        className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
+                                        placeholder="Ex.: Temperos"
+                                    />
+                                </FormField>
+                                {categoryError && (
+                                    <p
+                                        role="alert"
+                                        className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                                    >
+                                        {categoryError}
+                                    </p>
+                                )}
+                                <div className="flex justify-end gap-2">
+                                    {editingCategoryId && (
+                                        <button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => {
+                                                setEditingCategoryId(null);
+                                                setCategoryDraft("");
+                                                setCategoryError("");
+                                            }}
+                                            className="h-9 rounded-lg border border-[#d9d1de] px-3 text-sm"
+                                        >
+                                            Cancelar edição
+                                        </button>
+                                    )}
+                                    <button
+                                        type="submit"
+                                        disabled={busy || !categoryDraft.trim()}
+                                        className="h-9 rounded-lg bg-[#4e812f] px-4 text-sm font-medium text-white disabled:opacity-50"
+                                    >
+                                        {busy
+                                            ? "Salvando…"
+                                            : editingCategoryId
+                                              ? "Salvar nome"
+                                              : "Adicionar categoria"}
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <p className="mb-4 rounded-lg bg-[#f1edf3] p-3 text-sm text-[#625c66]">
+                                A política desta casa permite que apenas líderes e administradores
+                                alterem categorias.
+                            </p>
+                        )}
+                        <ul className="divide-y divide-[#e7e0e9] rounded-xl border border-[#e1d9e5] bg-white">
+                            {categories.map((category) => (
+                                <li
+                                    key={category.id}
+                                    className="flex items-center justify-between gap-3 px-3 py-2.5"
+                                >
+                                    <span className="text-sm">{category.name}</span>
+                                    {canManageCategories && (
+                                        <span className="flex shrink-0 gap-1">
+                                            <button
+                                                type="button"
+                                                disabled={busy}
+                                                onClick={() => editCategory(category)}
+                                                aria-label={`Renomear ${category.name}`}
+                                                className="grid size-8 place-items-center rounded-md text-[#625c66] hover:bg-[#f1edf3] disabled:opacity-40"
+                                            >
+                                                <Pencil size={15} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={busy}
+                                                onClick={() => void removeCategory(category)}
+                                                aria-label={`Excluir ${category.name}`}
+                                                className="grid size-8 place-items-center rounded-md text-[#9a5555] hover:bg-red-50 disabled:opacity-40"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </span>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                </div>
+            )}
+
             {itemModal && (
                 <div
                     className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
@@ -881,39 +1075,20 @@ export default function PantryPage() {
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <FormField label="Categoria">
                                     <select
-                                        required={!customCategoryMode}
-                                        value={customCategoryMode ? "__custom__" : form.category}
-                                        onChange={(event) => {
-                                            const isCustom = event.target.value === "__custom__";
-                                            setCustomCategoryMode(isCustom);
-                                            setForm({
-                                                ...form,
-                                                category: isCustom ? "" : event.target.value,
-                                            });
-                                        }}
+                                        required
+                                        value={form.categoryId}
+                                        onChange={(event) =>
+                                            setForm({ ...form, categoryId: event.target.value })
+                                        }
                                         className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
                                     >
                                         <option value="">Selecione uma categoria</option>
-                                        {categoryChoices.map((category) => (
-                                            <option key={category} value={category}>
-                                                {category}
+                                        {categories.map((category) => (
+                                            <option key={category.id} value={category.id}>
+                                                {category.name}
                                             </option>
                                         ))}
-                                        <option value="__custom__">Outra categoria</option>
                                     </select>
-                                    {customCategoryMode && (
-                                        <input
-                                            required
-                                            autoFocus
-                                            maxLength={80}
-                                            value={form.category}
-                                            onChange={(event) =>
-                                                setForm({ ...form, category: event.target.value })
-                                            }
-                                            className="mt-2 h-10 w-full rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                            placeholder="Digite a categoria"
-                                        />
-                                    )}
                                 </FormField>
                                 <fieldset className="grid gap-2 sm:col-span-2">
                                     <legend className="mb-2 text-xs font-medium">
