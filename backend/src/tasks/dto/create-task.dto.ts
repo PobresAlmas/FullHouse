@@ -29,6 +29,11 @@ export enum TaskAssignmentType {
     RODIZIO = "RODIZIO",
 }
 
+export enum TaskVisibility {
+    PUBLICA = "PUBLICA",
+    PRIVADA = "PRIVADA",
+}
+
 export class CreateTaskDto {
     @IsString()
     @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
@@ -67,6 +72,10 @@ export class CreateTaskDto {
     @IsString()
     @Matches(/^#[0-9A-Fa-f]{6}$/)
     color?: string | null;
+
+    @IsOptional()
+    @IsEnum(TaskVisibility)
+    visibility?: TaskVisibility;
 
     @IsDateString({}, { message: "Informe uma data e horÃ¡rio vÃ¡lidos." })
     dueAt!: string;

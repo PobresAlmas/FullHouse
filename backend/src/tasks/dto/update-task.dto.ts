@@ -15,7 +15,7 @@ import {
     MinLength,
     Matches,
 } from "class-validator";
-import { TaskAssignmentType, TaskPeriodicity } from "./create-task.dto.js";
+import { TaskAssignmentType, TaskPeriodicity, TaskVisibility } from "./create-task.dto.js";
 
 export class UpdateTaskDto {
     @IsOptional()
@@ -56,6 +56,10 @@ export class UpdateTaskDto {
     @IsString()
     @Matches(/^#[0-9A-Fa-f]{6}$/)
     color?: string | null;
+
+    @IsOptional()
+    @IsEnum(TaskVisibility)
+    visibility?: TaskVisibility;
 
     @IsOptional()
     @IsDateString()
