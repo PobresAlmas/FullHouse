@@ -373,14 +373,7 @@ export default function TasksPage() {
                 return true;
             })
             .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
-    }, [
-        activeTab,
-        activeTag,
-        search,
-        selectedDate,
-        contextualTasks,
-        todayKey,
-    ]);
+    }, [activeTab, activeTag, search, selectedDate, contextualTasks, todayKey]);
 
     const visibleExchangeRequests = exchangeRequests;
 
@@ -608,7 +601,10 @@ export default function TasksPage() {
                     subtitle={scope === "personal" ? "Tarefas pessoais" : undefined}
                     residenceControl={
                         residences.length > 0 ? (
-                            <div className="flex rounded-xl bg-[#e8e7eb] p-1" aria-label="Contexto da Home">
+                            <div
+                                className="flex rounded-xl bg-[#e8e7eb] p-1"
+                                aria-label="Contexto da Home"
+                            >
                                 <button
                                     type="button"
                                     disabled={loading}
@@ -633,7 +629,9 @@ export default function TasksPage() {
                                         aria-label="Residência"
                                         value={residenceId}
                                         disabled={loading}
-                                        onChange={(event) => void changeResidence(event.target.value)}
+                                        onChange={(event) =>
+                                            void changeResidence(event.target.value)
+                                        }
                                         className="max-w-48 rounded-lg bg-[#4e812f] px-3 py-2 text-xs text-white outline-none focus-visible:ring-2 focus-visible:ring-[#4e812f]"
                                     >
                                         {residences.map((item) => (
@@ -663,12 +661,24 @@ export default function TasksPage() {
                                 {avatarInitial.toLocaleUpperCase("pt-BR")}
                             </button>
                             {profileMenuOpen && (
-                                <div role="menu" aria-label="Menu da conta" className="absolute right-0 top-12 z-30 w-64 rounded-xl border border-[#d2c8d5] bg-white p-3 text-[#302a32] shadow-lg">
+                                <div
+                                    role="menu"
+                                    aria-label="Menu da conta"
+                                    className="absolute right-0 top-12 z-30 w-64 rounded-xl border border-[#d2c8d5] bg-white p-3 text-[#302a32] shadow-lg"
+                                >
                                     <div className="border-b border-[#eee8ef] px-2 pb-3">
                                         <p className="truncate text-sm font-semibold">{userName}</p>
-                                        {user?.email && <p className="truncate text-xs text-[#77717a]">{user.email}</p>}
+                                        {user?.email && (
+                                            <p className="truncate text-xs text-[#77717a]">
+                                                {user.email}
+                                            </p>
+                                        )}
                                     </div>
-                                    {logoutError && <p role="alert" className="px-2 pt-2 text-xs text-red-700">Não foi possível sair: {logoutError}</p>}
+                                    {logoutError && (
+                                        <p role="alert" className="px-2 pt-2 text-xs text-red-700">
+                                            Não foi possível sair: {logoutError}
+                                        </p>
+                                    )}
                                     <button
                                         type="button"
                                         role="menuitem"
@@ -791,7 +801,9 @@ export default function TasksPage() {
                                 />
                             </div>
                             <div className="mb-4">
-                                <p className="mb-2 text-xs font-semibold text-[#39333e]">Categorias</p>
+                                <p className="mb-2 text-xs font-semibold text-[#39333e]">
+                                    Categorias
+                                </p>
                                 <div className="flex flex-wrap gap-2.5">
                                     <TagFilter
                                         label="Todas"
@@ -1136,7 +1148,9 @@ function TaskRow({
     );
     const duplicatedNames = new Set(
         otherMembers
-            .filter((member) => otherMembers.filter((other) => other.name === member.name).length > 1)
+            .filter(
+                (member) => otherMembers.filter((other) => other.name === member.name).length > 1
+            )
             .map((member) => member.id)
     );
     const eligibleForExchange =
@@ -1240,21 +1254,31 @@ function TaskRow({
                                 <Repeat2 size={15} />
                             </button>
                             {exchangeMenuOpen && (
-                                <div role="dialog" aria-label="Solicitar troca" className="absolute right-0 top-9 z-20 w-60 rounded-lg border border-[#d7ceda] bg-white p-2 shadow-lg">
+                                <div
+                                    role="dialog"
+                                    aria-label="Solicitar troca"
+                                    className="absolute right-0 top-9 z-20 w-60 rounded-lg border border-[#d7ceda] bg-white p-2 shadow-lg"
+                                >
                                     {!selectedRecipient ? (
                                         <>
-                                            <p className="px-2 py-1.5 text-[10px] font-semibold text-[#77717c]">Solicitar troca com</p>
+                                            <p className="px-2 py-1.5 text-[10px] font-semibold text-[#77717c]">
+                                                Solicitar troca com
+                                            </p>
                                             {otherMembers.map((member) => (
                                                 <button
                                                     key={member.id}
                                                     type="button"
-                                                    onClick={() => setSelectedRecipientId(member.id)}
+                                                    onClick={() =>
+                                                        setSelectedRecipientId(member.id)
+                                                    }
                                                     className="block w-full rounded-md px-2 py-2 text-left text-xs text-[#302a32] hover:bg-[#f3eff5] focus-visible:outline-2 focus-visible:outline-[#4e812f]"
                                                 >
                                                     {member.name}
                                                     {duplicatedNames.has(member.id) && (
                                                         <span className="ml-1 text-[10px] text-[#77717c]">
-                                                            ({member.role.toLocaleLowerCase("pt-BR")}, …{member.id.slice(-4)})
+                                                            (
+                                                            {member.role.toLocaleLowerCase("pt-BR")}
+                                                            , …{member.id.slice(-4)})
                                                         </span>
                                                     )}
                                                 </button>
@@ -1267,30 +1291,55 @@ function TaskRow({
                                                     Trocar com {selectedRecipient.name}
                                                     {duplicatedNames.has(selectedRecipient.id) && (
                                                         <span className="ml-1 font-normal text-[#77717c]">
-                                                            ({selectedRecipient.role.toLocaleLowerCase("pt-BR")}, …{selectedRecipient.id.slice(-4)})
+                                                            (
+                                                            {selectedRecipient.role.toLocaleLowerCase(
+                                                                "pt-BR"
+                                                            )}
+                                                            , …{selectedRecipient.id.slice(-4)})
                                                         </span>
                                                     )}
                                                 </p>
-                                                <button type="button" onClick={() => { setSelectedRecipientId(""); setPreferredTaskId(""); }} className="shrink-0 text-[10px] text-[#356a22] underline">Alterar</button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedRecipientId("");
+                                                        setPreferredTaskId("");
+                                                    }}
+                                                    className="shrink-0 text-[10px] text-[#356a22] underline"
+                                                >
+                                                    Alterar
+                                                </button>
                                             </div>
                                             <label className="grid gap-1 text-[10px] text-[#514c56]">
                                                 Tarefa desejada (opcional)
                                                 <select
                                                     aria-label={`Tarefa desejada de ${selectedRecipient.name}`}
                                                     value={preferredTaskId}
-                                                    onChange={(event) => setPreferredTaskId(event.target.value)}
+                                                    onChange={(event) =>
+                                                        setPreferredTaskId(event.target.value)
+                                                    }
                                                     className="w-full rounded-md border border-[#d1c9d3] bg-white px-2 py-1.5 text-xs text-[#302a32]"
                                                 >
-                                                    <option value="">Sem preferência; deixa a pessoa decidir</option>
+                                                    <option value="">
+                                                        Sem preferência; deixa a pessoa decidir
+                                                    </option>
                                                     {recipientTasks.map((candidate) => (
-                                                        <option key={candidate.id} value={candidate.id}>{candidate.title}</option>
+                                                        <option
+                                                            key={candidate.id}
+                                                            value={candidate.id}
+                                                        >
+                                                            {candidate.title}
+                                                        </option>
                                                     ))}
                                                 </select>
                                             </label>
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    onRequestExchange(selectedRecipient.id, preferredTaskId || undefined);
+                                                    onRequestExchange(
+                                                        selectedRecipient.id,
+                                                        preferredTaskId || undefined
+                                                    );
                                                     setExchangeMenuOpen(false);
                                                 }}
                                                 className="mt-2 w-full rounded-md bg-[#4e812f] px-3 py-2 text-xs font-semibold text-white hover:bg-[#3e6b25]"
@@ -1567,109 +1616,119 @@ function ExchangeRequests({
                         (candidate) => candidate.id === selectedTargetTaskId
                     );
                     return (
-                    <article
-                        key={request.id}
-                        className="mb-2 rounded-lg border border-[#d1c9d3] bg-white p-3 last:mb-0"
-                    >
-                        <div className="mb-2 flex items-center gap-2">
-                            <span className="grid size-7 place-items-center rounded-full bg-[#356a22] text-xs font-semibold text-white">
-                                {request.requester.slice(0, 1).toUpperCase()}
-                            </span>
-                            <p className="text-xs text-[#302a32]">
-                                <strong>{request.requester}</strong>{" "}
-                                {request.incoming
-                                    ? "propôs trocar tarefas com você:"
-                                    : `proposta para ${request.recipient}:`}
-                            </p>
-                        </div>
-                        <div className="grid grid-cols-[1fr_24px_1fr] items-center gap-1 text-xs">
-                            <div className="min-w-0 rounded-md bg-[#eee9f0] px-2 py-2">
-                                <span className="block truncate font-medium">
-                                    {request.task.title}
+                        <article
+                            key={request.id}
+                            className="mb-2 rounded-lg border border-[#d1c9d3] bg-white p-3 last:mb-0"
+                        >
+                            <div className="mb-2 flex items-center gap-2">
+                                <span className="grid size-7 place-items-center rounded-full bg-[#356a22] text-xs font-semibold text-white">
+                                    {request.requester.slice(0, 1).toUpperCase()}
                                 </span>
-                                <span className="text-[#514c56]">
-                                    {formatDate(request.task.dueAt, { dateStyle: "medium" })}
-                                </span>
+                                <p className="text-xs text-[#302a32]">
+                                    <strong>{request.requester}</strong>{" "}
+                                    {request.incoming
+                                        ? "propôs trocar tarefas com você:"
+                                        : `proposta para ${request.recipient}:`}
+                                </p>
                             </div>
-                            <span className="text-center text-[#356a22]" aria-label="troca por">
-                                ⇄
-                            </span>
-                            {request.incoming && request.status === "PENDENTE" ? (
-                                <label className="min-w-0 rounded-md bg-[#f4f0f5] px-2 py-2 text-[#514c56]">
-                                    <span className="mb-1 block text-[10px]">
-                                        {request.targetTask ? "Tarefa sugerida · confirme ou altere" : "Sua tarefa"}
-                                    </span>
-                                    <select
-                                        aria-label={`Escolher tarefa para trocar com ${request.requester}`}
-                                        value={selectedTargetTaskId}
-                                        onChange={(event) =>
-                                            setSelectedTasks((current) => ({
-                                                ...current,
-                                                [request.id]: event.target.value,
-                                            }))
-                                        }
-                                        className="w-full rounded border border-[#d1c9d3] bg-white px-1.5 py-1 text-[11px] text-[#302a32]"
-                                    >
-                                        <option value="">Escolha uma tarefa…</option>
-                                        {recipientTaskChoices.map((candidate) => (
-                                            <option key={candidate.id} value={candidate.id}>
-                                                {candidate.title}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {recipientTaskChoices.length === 0 && (
-                                        <span className="mt-1 block text-[10px]">Você não tem outra tarefa aberta disponível.</span>
-                                    )}
-                                </label>
-                            ) : request.targetTask ? (
+                            <div className="grid grid-cols-[1fr_24px_1fr] items-center gap-1 text-xs">
                                 <div className="min-w-0 rounded-md bg-[#eee9f0] px-2 py-2">
                                     <span className="block truncate font-medium">
-                                        {request.targetTask.title}
+                                        {request.task.title}
                                     </span>
                                     <span className="text-[#514c56]">
-                                        {formatDate(request.targetTask.dueAt, {
-                                            dateStyle: "medium",
-                                        })}
+                                        {formatDate(request.task.dueAt, { dateStyle: "medium" })}
                                     </span>
                                 </div>
-                            ) : (
-                                <div className="rounded-md bg-[#f4f0f5] px-2 py-2 text-[#514c56]">
-                                    Aguardando escolha do destinatário
-                                </div>
-                            )}
-                        </div>
-                        {request.incoming && request.status === "PENDENTE" ? (
-                            <div className="mt-2 flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => onRespond(request, "RECUSADA")}
-                                    className="rounded-md border border-[#4e812f] px-3 py-1.5 text-xs font-medium text-[#356a22] hover:bg-[#eff7eb]"
-                                >
-                                    Recusar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => onRespond(request, "ACEITA", selectedTargetTaskId || undefined)}
-                                    disabled={!selectedTargetIsAvailable}
-                                    className="rounded-md bg-[#4e812f] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    Aceitar
-                                </button>
+                                <span className="text-center text-[#356a22]" aria-label="troca por">
+                                    ⇄
+                                </span>
+                                {request.incoming && request.status === "PENDENTE" ? (
+                                    <label className="min-w-0 rounded-md bg-[#f4f0f5] px-2 py-2 text-[#514c56]">
+                                        <span className="mb-1 block text-[10px]">
+                                            {request.targetTask
+                                                ? "Tarefa sugerida · confirme ou altere"
+                                                : "Sua tarefa"}
+                                        </span>
+                                        <select
+                                            aria-label={`Escolher tarefa para trocar com ${request.requester}`}
+                                            value={selectedTargetTaskId}
+                                            onChange={(event) =>
+                                                setSelectedTasks((current) => ({
+                                                    ...current,
+                                                    [request.id]: event.target.value,
+                                                }))
+                                            }
+                                            className="w-full rounded border border-[#d1c9d3] bg-white px-1.5 py-1 text-[11px] text-[#302a32]"
+                                        >
+                                            <option value="">Escolha uma tarefa…</option>
+                                            {recipientTaskChoices.map((candidate) => (
+                                                <option key={candidate.id} value={candidate.id}>
+                                                    {candidate.title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {recipientTaskChoices.length === 0 && (
+                                            <span className="mt-1 block text-[10px]">
+                                                Você não tem outra tarefa aberta disponível.
+                                            </span>
+                                        )}
+                                    </label>
+                                ) : request.targetTask ? (
+                                    <div className="min-w-0 rounded-md bg-[#eee9f0] px-2 py-2">
+                                        <span className="block truncate font-medium">
+                                            {request.targetTask.title}
+                                        </span>
+                                        <span className="text-[#514c56]">
+                                            {formatDate(request.targetTask.dueAt, {
+                                                dateStyle: "medium",
+                                            })}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="rounded-md bg-[#f4f0f5] px-2 py-2 text-[#514c56]">
+                                        Aguardando escolha do destinatário
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            <p className="mt-2 text-right text-xs text-[#514c56]">
-                                {!request.targetTask && request.status !== "PENDENTE"
-                                    ? "Solicitação encerrada"
-                                    : request.status === "PENDENTE"
-                                      ? "Aguardando resposta"
-                                      : request.status === "ACEITA"
-                                        ? "Aceita"
-                                        : request.status === "RECUSADA"
-                                          ? "Recusada"
-                                          : "Encerrada"}
-                            </p>
-                        )}
-                    </article>
+                            {request.incoming && request.status === "PENDENTE" ? (
+                                <div className="mt-2 flex justify-end gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => onRespond(request, "RECUSADA")}
+                                        className="rounded-md border border-[#4e812f] px-3 py-1.5 text-xs font-medium text-[#356a22] hover:bg-[#eff7eb]"
+                                    >
+                                        Recusar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            onRespond(
+                                                request,
+                                                "ACEITA",
+                                                selectedTargetTaskId || undefined
+                                            )
+                                        }
+                                        disabled={!selectedTargetIsAvailable}
+                                        className="rounded-md bg-[#4e812f] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        Aceitar
+                                    </button>
+                                </div>
+                            ) : (
+                                <p className="mt-2 text-right text-xs text-[#514c56]">
+                                    {!request.targetTask && request.status !== "PENDENTE"
+                                        ? "Solicitação encerrada"
+                                        : request.status === "PENDENTE"
+                                          ? "Aguardando resposta"
+                                          : request.status === "ACEITA"
+                                            ? "Aceita"
+                                            : request.status === "RECUSADA"
+                                              ? "Recusada"
+                                              : "Encerrada"}
+                                </p>
+                            )}
+                        </article>
                     );
                 })
             )}
