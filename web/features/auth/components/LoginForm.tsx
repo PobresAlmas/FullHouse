@@ -15,6 +15,11 @@ import { isApiError } from "@/services/api-error.utils";
 import { useEffect, useState } from "react";
 import { useAuthForm } from "../hooks/useAuthForm";
 
+function loginDestination() {
+    const requested = new URLSearchParams(window.location.search).get("returnTo");
+    return requested?.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+}
+
 export default function LoginForm() {
     const [errorMessage, setErrorMessage] = useState("");
 
@@ -29,14 +34,14 @@ export default function LoginForm() {
     const { user, loading, refreshUser } = useAuth();
 
     useEffect(() => {
-        if (!loading && user) router.replace("/");
+        if (!loading && user) router.replace(loginDestination());
     }, [loading, router, user]);
 
     async function onSubmit(data: LoginFormData) {
         try {
             await login(data);
             await refreshUser();
-            router.replace("/");
+            router.replace(loginDestination());
         } catch (error: unknown) {
             if (isApiError(error)) setErrorMessage(error.message);
         }

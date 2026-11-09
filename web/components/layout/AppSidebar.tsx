@@ -6,12 +6,21 @@ import {
     Package,
     PawPrint,
     ShoppingBasket,
+    BedDouble,
     Settings,
     UserRound,
 } from "lucide-react";
 
 export type AppSection =
-    "home" | "tasks" | "finance" | "pantry" | "shopping-list" | "pets" | "settings" | "profile";
+    | "home"
+    | "tasks"
+    | "finance"
+    | "pantry"
+    | "shopping-list"
+    | "pets"
+    | "rooms"
+    | "settings"
+    | "profile";
 
 const sections: { id: AppSection; label: string; href: string; icon: typeof House }[] = [
     { id: "home", label: "Home", href: "/", icon: House },
@@ -25,6 +34,7 @@ const sections: { id: AppSection; label: string; href: string; icon: typeof Hous
         icon: ShoppingBasket,
     },
     { id: "pets", label: "Pets", href: "/pets", icon: PawPrint },
+    { id: "rooms", label: "Quartos", href: "/rooms", icon: BedDouble },
     { id: "settings", label: "Configurações", href: "/settings", icon: Settings },
 ];
 const implementedSections: AppSection[] = [
@@ -34,6 +44,7 @@ const implementedSections: AppSection[] = [
     "pantry",
     "shopping-list",
     "pets",
+    "rooms",
 ];
 
 export function AppSidebar({

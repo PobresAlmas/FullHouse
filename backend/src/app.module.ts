@@ -18,6 +18,7 @@ import { TasksModule } from "./tasks/tasks.module.js";
 import { ResidencesModule } from "./residences/residences.module.js";
 import { HomeModule } from "./home/home.module.js";
 import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
+import { RoomsModule } from "./rooms/rooms.module.js";
 
 @Module({
     imports: [
@@ -48,6 +49,7 @@ import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
         ResidencesModule,
         HomeModule,
         ShoppingListModule,
+        RoomsModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService],
