@@ -1,3 +1,4 @@
+# pnpm 12 lifecycle-script allowlist; backend and web use separate lockfiles.
 allowBuilds:
     "@prisma/engines": true
     bcrypt: true

@@ -1,61 +1,52 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# API FullHouse
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST construída com NestJS, Prisma 7 e PostgreSQL. Ela atende a interface em `web/` e usa Silo como armazenamento de objetos compatível com S3.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Configurar e iniciar
 
-## Description
+Na raiz do repositório, copie `backend/.env.example` para `backend/.env` e ajuste os valores locais. O [guia principal](../README.md) explica como subir o stack completo ou iniciar somente PostgreSQL e Silo para executar a API no host.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+Na pasta `backend`:
 
 ```bash
-$ pnpm install
+pnpm install --frozen-lockfile
+pnpm db:generate
+pnpm exec prisma migrate deploy
+pnpm start:dev
 ```
 
-## Compile and run the project
+A API inicia em `http://localhost:3000`. `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e as configurações `MINIO_*` são obrigatórias. `RESEND_API_KEY` só é necessária para enviar e-mails de recuperação de senha. Os valores e a finalidade de cada variável estão em [`.env.example`](.env.example).
+
+## Prisma
+
+O cliente é gerado em `src/generated/prisma/` e está ignorado pelo Git. Execute `pnpm db:generate` depois de instalar as dependências, alterar `prisma/schema.prisma` ou trocar a versão do Prisma. `pnpm exec prisma migrate deploy` aplica as migrações existentes sem criar novas.
+
+## Verificações
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+pnpm test
+pnpm test:e2e
+pnpm lint
+pnpm build
 ```
 
-## Run tests
+Os testes unitários não precisam de banco. Os testes e2e e de integração precisam do PostgreSQL configurado em `DATABASE_URL`.
+
+## Proteções HTTP
+
+Helmet configura os cabeçalhos HTTP de segurança. O limite padrão é de 120 requisições por IP a cada minuto; rotas de autenticação aceitam até 20 por IP no mesmo período. O contador fica em memória e serve para desenvolvimento ou uma única instância. Instalações com várias réplicas precisam usar armazenamento compartilhado para manter um limite consistente.
+
+## Carga completa de dados para teste local
+
+Configure `DATABASE_URL`, `DEMO_USER_PASSWORD` e `HOME_TEST_MEMBER_PASSWORD` no arquivo `.env` do backend. As duas senhas precisam ter pelo menos 8 caracteres. Depois, execute na pasta `backend`:
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm run db:seed:test
 ```
+
+A carga cria ou preserva as contas de demonstração, uma residência com itens de despensa, e um segundo morador com tarefas e despesas de teste. Ela não apaga registros nem troca senhas de contas existentes e recusa execução com `NODE_ENV=production`.
+
+Contas novas usam os e-mails `demo@example.com`, `ana@example.com`, `bruno@example.com` e `morador.teste@example.com`. As três contas de demonstração usam `DEMO_USER_PASSWORD`; a conta do segundo morador usa `HOME_TEST_MEMBER_PASSWORD`.
 
 ## Testar a Home com dois moradores
 
@@ -83,69 +74,3 @@ pnpm run db:seed:home-test
 O comando carrega as variáveis de `backend/.env` automaticamente.
 
 Entre na aplicação com a conta principal para testar tarefas e despesas da casa; depois entre com o e-mail e a senha de teste para conferir os dados pessoais do segundo morador. O script usa a senha somente ao criar a conta. Em execuções posteriores, informe a mesma senha para continuar usando a conta já criada. Ele recusa execução com `NODE_ENV=production`.
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project:
-
-```bash
-$ pnpm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/overview) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

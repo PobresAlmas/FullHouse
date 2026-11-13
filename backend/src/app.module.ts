@@ -35,6 +35,7 @@ import { RoomsModule } from "./rooms/rooms.module.js";
                 MINIO_REGION: Joi.string().required(),
             }),
         }),
+        ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
         UsersModule,
         PrismaModule,
         AuthModule,
@@ -52,6 +53,6 @@ import { RoomsModule } from "./rooms/rooms.module.js";
         RoomsModule,
     ],
     controllers: [AppController],
-    providers: [AppService, PrismaService],
+    providers: [AppService, PrismaService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
