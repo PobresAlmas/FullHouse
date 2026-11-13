@@ -1,7 +1,7 @@
 # Sprint 01 — Implementação
 
-**Responsável:** Iago<br>
-**Módulo principal:** Gestão de despesas na tela Financeiro<br>
+**Responsável:** Iago
+**Módulo principal:** Gestão de despesas na tela Financeiro
 **Requisitos relacionados:** RF005 — US004; RF006 — US005 (parcial)
 
 ## 1. Visão geral

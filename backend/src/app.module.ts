@@ -18,8 +18,7 @@ import { TasksModule } from "./tasks/tasks.module.js";
 import { ResidencesModule } from "./residences/residences.module.js";
 import { HomeModule } from "./home/home.module.js";
 import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
-import { APP_GUARD } from "@nestjs/core";
-import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { RoomsModule } from "./rooms/rooms.module.js";
 
 @Module({
     imports: [
@@ -51,6 +50,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
         ResidencesModule,
         HomeModule,
         ShoppingListModule,
+        RoomsModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

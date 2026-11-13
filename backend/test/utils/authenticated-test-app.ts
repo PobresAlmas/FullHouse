@@ -46,6 +46,7 @@ export async function createAuthenticatedTestApp({
         );
     }
     await app.init();
+    await app.listen(0, "127.0.0.1");
     const jwt = app.get(JwtService);
 
     return {

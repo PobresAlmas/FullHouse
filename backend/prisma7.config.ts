@@ -1,8 +1,12 @@
 import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "prisma/config";
 
-// Prisma 7 loads this config before the CLI reads .env, so load the local file here.
-if (existsSync(".env")) process.loadEnvFile(".env");
+if (!process.env["DATABASE_URL"]) {
+    const envPath = resolve(dirname(fileURLToPath(import.meta.url)), ".env");
+    if (existsSync(envPath)) process.loadEnvFile(envPath);
+}
 
 export default defineConfig({
     schema: "prisma/schema.prisma",

@@ -1,7 +1,7 @@
 # Sprint 01 — Testes funcionais e evidências
 
-**Responsável:** Iago<br>
-**Módulo:** Gestão de despesas (tela Financeiro)<br>
+**Responsável:** Iago
+**Módulo:** Gestão de despesas (tela Financeiro)
 **Requisitos relacionados:** RF005 — US004; RF006 — US005 (parcial)<br>
 **Base documental:** Documento de Especificação de Requisitos do FullHouse, RF005/RF006 — US004/US005.
 
