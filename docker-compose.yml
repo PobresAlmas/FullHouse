@@ -3,27 +3,95 @@ services:
     image: postgres:18.1-alpine
     container_name: fullhouse-postgres
     environment:
-      POSTGRES_USER: fullhouse
-      POSTGRES_PASSWORD: fullhouse123
-      POSTGRES_DB: fullhouse
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in the root .env file}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in the root .env file}
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   minio:
-    image: docker.io/pgsty/silo
+    # Silo is a maintained MinIO fork with the S3 API and MINIO_* settings used by the backend.
+    image: docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     container_name: fullhouse-minio
     ports:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: fullhouse
-      MINIO_ROOT_PASSWORD: fullhouse123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in the root .env file}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in the root .env file}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
 
+  api:
+    image: node:22-bookworm-slim
+    container_name: fullhouse-api
+    working_dir: /workspace/backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?Set POSTGRES_USER in the root .env file}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the root .env file}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in the root .env file}?schema=public
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in the root .env file}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in the root .env file}
+      PORT: "3000"
+      FRONTEND_ORIGIN: http://localhost:3001
+    command:
+      - sh
+      - -c
+      - >-
+        corepack enable &&
+        pnpm install --frozen-lockfile &&
+        pnpm db:generate &&
+        pnpm exec prisma migrate deploy &&
+        pnpm start:dev
+    volumes:
+      - ./backend:/workspace/backend
+      - backend_node_modules:/workspace/backend/node_modules
+      - backend_prisma_client:/workspace/backend/src/generated/prisma
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+  web:
+    image: node:22-bookworm-slim
+    container_name: fullhouse-web
+    working_dir: /workspace/web
+    env_file:
+      - ./web/.env.local
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+    command:
+      - sh
+      - -c
+      - >-
+        corepack enable &&
+        pnpm install --frozen-lockfile &&
+        pnpm dev --hostname 0.0.0.0 --port 3001
+    volumes:
+      - ./web:/workspace/web
+      - web_node_modules:/workspace/web/node_modules
+      - web_next:/workspace/web/.next
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
   minio_data:
+  backend_node_modules:
+  backend_prisma_client:
+  web_node_modules:
+  web_next:

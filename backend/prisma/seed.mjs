@@ -48,9 +48,8 @@ async function ensureMembership(db, houseId, userId, role) {
     const existing = result.rows[0];
     if (existing) {
         if (existing.data_saida || existing.papel !== role) {
-            await db.query(
-                'UPDATE "participacao" SET data_saida = NULL, papel = $2 WHERE id = $1',
-                [existing.id, role]
+            throw new Error(
+                `O vínculo de teste existente está inativo ou tem papel diferente (${existing.id}). Não alterei esse vínculo.`
             );
         }
         return { id: existing.id };
@@ -61,6 +60,31 @@ async function ensureMembership(db, houseId, userId, role) {
         [id, houseId, userId, role]
     );
     return { id };
+}
+
+function normalizeCategoryName(name) {
+    return name
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+}
+
+async function ensurePantryCategory(db, houseId, name) {
+    const normalizedName = normalizeCategoryName(name);
+    const existing = await db.query(
+        'SELECT id FROM "categoria_despensa" WHERE casa_id = $1 AND nome_normalizado = $2 LIMIT 1',
+        [houseId, normalizedName]
+    );
+    if (existing.rowCount) return existing.rows[0].id;
+
+    const id = randomUUID();
+    await db.query(
+        'INSERT INTO "categoria_despensa" (id, casa_id, nome, nome_normalizado) VALUES ($1, $2, $3, $4)',
+        [id, houseId, name, normalizedName]
+    );
+    return id;
 }
 
 const client = await pool.connect();
@@ -195,14 +219,16 @@ try {
             [houseId, itemData.name]
         );
         if (existing.rowCount) continue;
+        const categoryId = await ensurePantryCategory(client, houseId, itemData.category);
         const itemId = randomUUID();
         await client.query(
-            'INSERT INTO "item_despensa" (id, casa_id, nome, categoria, propriedade, dono_participacao_id, unidade, criado_por_participacao_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+            'INSERT INTO "item_despensa" (id, casa_id, nome, categoria, categoria_id, propriedade, dono_participacao_id, unidade, criado_por_participacao_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
             [
                 itemId,
                 houseId,
                 itemData.name,
                 itemData.category,
+                categoryId,
                 itemData.property,
                 itemData.owner,
                 itemData.unit,

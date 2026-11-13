@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Res, UseGuards } from "@nestjs/common";
 import { RegisterDto } from "./dto/register.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { AuthService } from "./auth.service.js";
+import { Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "./guards/jwt-auth-guard.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import type { Response } from "express";
@@ -10,6 +11,7 @@ import { VerifyResetCodeDto } from "./dto/verify-reset-code.js";
 import { ResetPasswordDto } from "./dto/reset-password.dto.js";
 
 @Controller("auth")
+@Throttle({ default: { limit: 20, ttl: 60_000 } })
 export class AuthController {
     constructor(private readonly service: AuthService) {}
 

@@ -3,14 +3,28 @@ import { Resend } from "resend";
 
 @Injectable()
 export class EmailService {
-    private resend: Resend;
+    private resend?: Resend;
 
     constructor() {
-        this.resend = new Resend(process.env.RESEND_API_KEY);
+        const apiKey = process.env.RESEND_API_KEY;
+        if (apiKey) this.resend = new Resend(apiKey);
+    }
+
+    private getResendClient() {
+        if (this.resend) return this.resend;
+
+        const apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) {
+            throw new Error("Defina RESEND_API_KEY para enviar e-mails de recuperação.");
+        }
+
+        const resend = new Resend(apiKey);
+        this.resend = resend;
+        return resend;
     }
 
     async sendResetPasswordEmail(email: string, code: string) {
-        await this.resend.emails.send({
+        await this.getResendClient().emails.send({
             from: "FullHouse <onboarding@resend.dev>",
             to: email,
             subject: "Código para redefinir sua senha",

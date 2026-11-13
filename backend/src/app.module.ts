@@ -18,6 +18,8 @@ import { TasksModule } from "./tasks/tasks.module.js";
 import { ResidencesModule } from "./residences/residences.module.js";
 import { HomeModule } from "./home/home.module.js";
 import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
 @Module({
     imports: [
@@ -34,6 +36,7 @@ import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
                 MINIO_REGION: Joi.string().required(),
             }),
         }),
+        ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
         UsersModule,
         PrismaModule,
         AuthModule,
@@ -50,6 +53,6 @@ import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
         ShoppingListModule,
     ],
     controllers: [AppController],
-    providers: [AppService, PrismaService],
+    providers: [AppService, PrismaService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
