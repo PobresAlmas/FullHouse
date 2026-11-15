@@ -20,6 +20,7 @@ export class CreateRoomListingDto {
     @IsUUID("4")
     casaId!: string;
 
+    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
     @IsString()
     @MinLength(1)
     @MaxLength(150)
@@ -36,12 +37,14 @@ export class CreateRoomListingDto {
     @Max(99999999.99)
     preco!: number;
 
+    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
     @IsString()
     @MinLength(1)
     @MaxLength(100)
     cidade!: string;
 
     @IsOptional()
+    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
     @IsString()
     @MaxLength(100)
     bairro?: string;
@@ -55,6 +58,7 @@ export class CreateRoomListingDto {
     @IsBoolean()
     exibeEnderecoCompleto?: boolean;
 
+    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
     @IsString()
     @MinLength(3)
     @MaxLength(100)
