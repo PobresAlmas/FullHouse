@@ -1,6 +1,7 @@
 # Relatório geral dos testes — FullHouse
 
-**Atualizado em:** 15/11/2026  
+**Atualizado em:** 15/11/2026
+
 **Escopo:** inventário dos testes existentes em `backend/` e `web/`, seus objetivos, rotas relacionadas e situação da última execução.
 
 ## Resumo
