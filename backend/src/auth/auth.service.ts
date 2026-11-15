@@ -9,6 +9,9 @@ import { Response } from "express";
 import { PasswordResetService } from "../password-reset/password-reset.service.js";
 import { ResetPasswordDto } from "./dto/reset-password.dto.js";
 
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
 @Injectable()
 export class AuthService {
     constructor(
@@ -39,9 +42,27 @@ export class AuthService {
 
         if (!user) throw new UnauthorizedException("E-mail ou senha inválidos.");
 
+        if (user.login_bloqueado_ate) {
+            const now = new Date();
+            if (user.login_bloqueado_ate > now) {
+                throw new UnauthorizedException("E-mail ou senha inválidos.");
+            }
+
+            await this.usersService.clearExpiredLoginLock(user.id, now);
+        }
+
         const passwordValid = await this.passwordService.compare(data.password, user.senha_hash);
 
-        if (!passwordValid) throw new UnauthorizedException("E-mail ou senha inválidos.");
+        if (!passwordValid) {
+            await this.usersService.recordFailedLogin(
+                user.id,
+                MAX_FAILED_LOGIN_ATTEMPTS,
+                LOGIN_LOCKOUT_DURATION_MS
+            );
+            throw new UnauthorizedException("E-mail ou senha inválidos.");
+        }
+
+        await this.usersService.clearLoginFailures(user.id);
 
         const token = this.jwtService.sign({
             sub: user.id,

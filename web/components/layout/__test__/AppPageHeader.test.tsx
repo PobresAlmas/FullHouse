@@ -18,8 +18,8 @@ describe("AppPageHeader", () => {
         expect(screen.getByRole("button", { name: "Trocar residência" })).toBeInTheDocument();
         expect(
             screen.getByRole("link", { name: "Configurações" }).querySelector("svg")
-        ).toBeTruthy();
-        expect(screen.getByLabelText("Notificações").querySelector("svg")).toBeTruthy();
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText("Notificações").querySelector("svg")).toBeInTheDocument();
     });
 
     it.each([
