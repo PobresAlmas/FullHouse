@@ -22,6 +22,18 @@ export class UsersService {
         return this.repository.findByEmail(email);
     }
 
+    recordFailedLogin(userId: string, maxAttempts: number, lockDurationMs: number) {
+        return this.repository.recordFailedLogin(userId, maxAttempts, lockDurationMs);
+    }
+
+    clearLoginFailures(userId: string) {
+        return this.repository.clearLoginFailures(userId);
+    }
+
+    clearExpiredLoginLock(userId: string, now: Date) {
+        return this.repository.clearExpiredLoginLock(userId, now);
+    }
+
     async create(data: { name: string; nickname: string; email: string; password: string }) {
         const userExists = await this.repository.findByEmail(data.email);
 
