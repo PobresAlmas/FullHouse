@@ -9,11 +9,11 @@ Este documento registra a execução dos testes unitários das novas implementa�
 
 ## 2. Suítes unitárias
 
-| Módulo | Arquivos cobertos | Principais cenários | Evidência |
-| --- | --- | --- | --- |
-| Chat | `backend/test/unit/chat/` | Histórico, autorização por residência, autoria, validação de conteúdo, mensagens e stream SSE. | `Chat/image.png` |
-| Reuniões | `backend/test/unit/meetings/` | Agendamento, convites, respostas, permissões, reagendamento, cancelamento e persistência transacional. | `Reuniões/image.png` |
-| Regras da casa | `backend/test/unit/house-rules/` | Regras vigentes, criação e edição, autoria e acesso à residência. | `Regras/image.png` |
+| Módulo         | Arquivos cobertos                | Principais cenários                                                                                    | Evidência            |
+| -------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------- |
+| Chat           | `backend/test/unit/chat/`        | Histórico, autorização por residência, autoria, validação de conteúdo, mensagens e stream SSE.         | `Chat/image.png`     |
+| Reuniões       | `backend/test/unit/meetings/`    | Agendamento, convites, respostas, permissões, reagendamento, cancelamento e persistência transacional. | `Reuniões/image.png` |
+| Regras da casa | `backend/test/unit/house-rules/` | Regras vigentes, criação e edição, autoria e acesso à residência.                                      | `Regras/image.png`   |
 
 ## 3. Comandos
 

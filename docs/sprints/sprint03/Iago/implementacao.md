@@ -33,10 +33,10 @@ A tela está em `web/app/(private)/meetings/page.tsx`; o cliente HTTP está em `
 
 ## 6. Rastreabilidade
 
-| Funcionalidade | Implementação principal | Evidência |
-| --- | --- | --- |
-| Chat e mensagens ao vivo | `backend/src/chat/` e `web/app/(private)/chat/` | `docs/sprints/sprint03/Iago/Chat/image.png` |
-| Regras da residência | `backend/src/house-rules/` e `web/app/(private)/rules/` | `docs/sprints/sprint03/Iago/Regras/image.png` |
-| Reuniões e convites | `backend/src/meetings/` e `web/app/(private)/meetings/` | `docs/sprints/sprint03/Iago/Reuniões/image.png` |
+| Funcionalidade           | Implementação principal                                 | Evidência                                       |
+| ------------------------ | ------------------------------------------------------- | ----------------------------------------------- |
+| Chat e mensagens ao vivo | `backend/src/chat/` e `web/app/(private)/chat/`         | `docs/sprints/sprint03/Iago/Chat/image.png`     |
+| Regras da residência     | `backend/src/house-rules/` e `web/app/(private)/rules/` | `docs/sprints/sprint03/Iago/Regras/image.png`   |
+| Reuniões e convites      | `backend/src/meetings/` e `web/app/(private)/meetings/` | `docs/sprints/sprint03/Iago/Reuniões/image.png` |
 
 Os arquivos de testes, comandos e resultados estão em `docs/sprints/sprint03/Iago/testes.md`.
