@@ -18,6 +18,9 @@ import { TasksModule } from "./tasks/tasks.module.js";
 import { ResidencesModule } from "./residences/residences.module.js";
 import { HomeModule } from "./home/home.module.js";
 import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
+import { ChatModule } from "./chat/chat.module.js";
+import { HouseRulesModule } from "./house-rules/house-rules.module.js";
+import { MeetingsModule } from "./meetings/meetings.module.js";
 
 @Module({
     imports: [
@@ -48,6 +51,9 @@ import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
         ResidencesModule,
         HomeModule,
         ShoppingListModule,
+        ChatModule,
+        HouseRulesModule,
+        MeetingsModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService],

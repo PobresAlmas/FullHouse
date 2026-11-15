@@ -8,10 +8,23 @@ import {
     ShoppingBasket,
     Settings,
     UserRound,
+    MessageCircle,
+    ScrollText,
+    CalendarDays,
 } from "lucide-react";
 
 export type AppSection =
-    "home" | "tasks" | "finance" | "pantry" | "shopping-list" | "pets" | "settings" | "profile";
+    | "home"
+    | "tasks"
+    | "finance"
+    | "pantry"
+    | "shopping-list"
+    | "pets"
+    | "settings"
+    | "profile"
+    | "chat"
+    | "rules"
+    | "meetings";
 
 const sections: { id: AppSection; label: string; href: string; icon: typeof House }[] = [
     { id: "home", label: "Home", href: "/", icon: House },
@@ -25,6 +38,9 @@ const sections: { id: AppSection; label: string; href: string; icon: typeof Hous
         icon: ShoppingBasket,
     },
     { id: "pets", label: "Pets", href: "/pets", icon: PawPrint },
+    { id: "chat", label: "Chat da casa", href: "/chat", icon: MessageCircle },
+    { id: "rules", label: "Regras", href: "/rules", icon: ScrollText },
+    { id: "meetings", label: "Reuniões", href: "/meetings", icon: CalendarDays },
     { id: "settings", label: "Configurações", href: "/settings", icon: Settings },
 ];
 const implementedSections: AppSection[] = [
@@ -34,6 +50,9 @@ const implementedSections: AppSection[] = [
     "pantry",
     "shopping-list",
     "pets",
+    "chat",
+    "rules",
+    "meetings",
 ];
 
 export function AppSidebar({
