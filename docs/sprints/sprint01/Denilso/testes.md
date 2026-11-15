@@ -19,25 +19,25 @@ Na raiz `FullHouse/`, em terminais separados:
 
 ## Roteiro de validação e capturas
 
-| ID | História / cenário | Passos e resultado esperado | Captura sugerida | Resultado |
-| --- | --- | --- | --- | --- |
-| CT01 | US003 — periodicidade, cor e rodízio | Em Tarefas > Casa, crie tarefa recorrente, escolha cor e Rodízio com pelo menos dois moradores. A tarefa deve exibir cor e responsável inicial. Conclua como responsável; a próxima ocorrência deve alternar o responsável. | Formulário, tarefa criada e ocorrência seguinte. | Pendente |
-| CT02 | US003 — validação do rodízio | Tente salvar rodízio com menos de dois moradores. A API deve rejeitar e informar a regra. | Mensagem de validação. | Pendente |
-| CT03 | US006 — conclusão permitida | Como responsável, conclua uma tarefa; repita como administrador em outra. Deve registrar conclusão. | Tarefa antes/depois da conclusão. | Pendente |
-| CT04 | US006 — permissão e atraso | Como membro não responsável, tente concluir: API deve rejeitar. Deixe tarefa não concluída após o prazo: deve aparecer atrasada. | Erro de autorização e indicação de atraso. | Pendente |
-| CT05 | US007 — lembrete configurado | Crie tarefa com lembrete de alguns minutos antes do prazo. Edite a tarefa e confira se horário/minutos configurados permanecem. Este fluxo apenas persiste o lembrete; não há alerta disparado nesta entrega. | Formulário com lembrete e tarefa salva. | Pendente |
-| CT06 | US008 — calendário | Alterne Dia, Semana e Mês e selecione datas que tenham tarefas. Deve mostrar as tarefas previstas e marcar atrasos. | Captura de cada visão e detalhe de uma data. | Pendente |
-| CT07 | US016 — tarefa pessoal | No escopo Pessoal, crie, edite e conclua tarefa sem residência. Atualize a página no mesmo navegador: a tarefa deve continuar salva. No escopo Casa, a tarefa pessoal não deve aparecer. | Lista pessoal após atualização e lista Casa separada. | Pendente |
-| CT08 | US016 — separação por usuário | Faça login com outra conta no mesmo navegador e abra o escopo Pessoal. As tarefas da conta anterior não devem aparecer. | Escopo pessoal sem os dados da outra conta. | Pendente |
+| ID   | História / cenário                   | Passos e resultado esperado                                                                                                                                                                                                 | Captura sugerida                                      | Resultado |
+| ---- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | --------- |
+| CT01 | US003 — periodicidade, cor e rodízio | Em Tarefas > Casa, crie tarefa recorrente, escolha cor e Rodízio com pelo menos dois moradores. A tarefa deve exibir cor e responsável inicial. Conclua como responsável; a próxima ocorrência deve alternar o responsável. | Formulário, tarefa criada e ocorrência seguinte.      | Pendente  |
+| CT02 | US003 — validação do rodízio         | Tente salvar rodízio com menos de dois moradores. A API deve rejeitar e informar a regra.                                                                                                                                   | Mensagem de validação.                                | Pendente  |
+| CT03 | US006 — conclusão permitida          | Como responsável, conclua uma tarefa; repita como administrador em outra. Deve registrar conclusão.                                                                                                                         | Tarefa antes/depois da conclusão.                     | Pendente  |
+| CT04 | US006 — permissão e atraso           | Como membro não responsável, tente concluir: API deve rejeitar. Deixe tarefa não concluída após o prazo: deve aparecer atrasada.                                                                                            | Erro de autorização e indicação de atraso.            | Pendente  |
+| CT05 | US007 — lembrete configurado         | Crie tarefa com lembrete de alguns minutos antes do prazo. Edite a tarefa e confira se horário/minutos configurados permanecem. Este fluxo apenas persiste o lembrete; não há alerta disparado nesta entrega.               | Formulário com lembrete e tarefa salva.               | Pendente  |
+| CT06 | US008 — calendário                   | Alterne Dia, Semana e Mês e selecione datas que tenham tarefas. Deve mostrar as tarefas previstas e marcar atrasos.                                                                                                         | Captura de cada visão e detalhe de uma data.          | Pendente  |
+| CT07 | US016 — tarefa pessoal               | No escopo Pessoal, crie, edite e conclua tarefa sem residência. Atualize a página no mesmo navegador: a tarefa deve continuar salva. No escopo Casa, a tarefa pessoal não deve aparecer.                                    | Lista pessoal após atualização e lista Casa separada. | Pendente  |
+| CT08 | US016 — separação por usuário        | Faça login com outra conta no mesmo navegador e abra o escopo Pessoal. As tarefas da conta anterior não devem aparecer.                                                                                                     | Escopo pessoal sem os dados da outra conta.           | Pendente  |
 
 **Capturas:** salve imagens sem dados sensíveis em `docs/sprints/sprint01/Denilso/evidencias/`, com nomes como `CT01-rodizio.png`. Substitua “Pendente” pelo resultado observado e inclua o caminho da imagem na linha.
 
 ## Testes automatizados encontrados
 
-| Arquivo | Abrangência conhecida |
-| --- | --- |
-| `backend/test/unit/tasks/tasks.service.spec.ts` | Serviço de tarefas, associação à residência, validações, lembrete, conclusão e remoção. |
-| `backend/test/tasks.e2e-spec.ts` | Rotas autenticadas e validação HTTP; o serviço é simulado, não valida persistência real. |
+| Arquivo                                         | Abrangência conhecida                                                                    |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `backend/test/unit/tasks/tasks.service.spec.ts` | Serviço de tarefas, associação à residência, validações, lembrete, conclusão e remoção.  |
+| `backend/test/tasks.e2e-spec.ts`                | Rotas autenticadas e validação HTTP; o serviço é simulado, não valida persistência real. |
 
 Não foram localizados testes de interface para rodízio, calendário ou armazenamento local de tarefas pessoais.
 

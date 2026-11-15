@@ -11,14 +11,14 @@ Este documento registra os testes automatizados executados para a entrega de Pet
 
 ## 2. Resultado da execução automatizada
 
-| Suíte | Comando | Resultado observado |
-| --- | --- | --- |
-| Backend completo (unitários) | `cd backend && pnpm test` | **Aprovado:** 30 arquivos, 172 testes. |
-| Backend E2E completo | `cd backend && pnpm test:e2e` | **Aprovado:** 7 arquivos, 33 testes. |
-| Frontend completo | `cd web && pnpm exec vitest run` | **Aprovado:** 53 arquivos, 150 testes. |
-| Pets — serviço/repositório | `cd backend && pnpm exec vitest run src/pets/pets.service.spec.ts src/pets/pets.repository.spec.ts --reporter=dot` | **Aprovado:** 2 arquivos, 11 testes. |
-| Pets — endpoints E2E | `cd backend && pnpm exec vitest run --config ./vitest.config.e2e.ts test/pets.e2e-spec.ts --reporter=dot` | **Aprovado:** 1 arquivo, 6 testes. |
-| Pets — interface | `cd web && pnpm exec vitest run 'app/(private)/pets/__test__/page.test.tsx' --reporter=dot` | **Aprovado:** 1 arquivo, 4 testes. |
+| Suíte                        | Comando                                                                                                            | Resultado observado                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| Backend completo (unitários) | `cd backend && pnpm test`                                                                                          | **Aprovado:** 30 arquivos, 172 testes. |
+| Backend E2E completo         | `cd backend && pnpm test:e2e`                                                                                      | **Aprovado:** 7 arquivos, 33 testes.   |
+| Frontend completo            | `cd web && pnpm exec vitest run`                                                                                   | **Aprovado:** 53 arquivos, 150 testes. |
+| Pets — serviço/repositório   | `cd backend && pnpm exec vitest run src/pets/pets.service.spec.ts src/pets/pets.repository.spec.ts --reporter=dot` | **Aprovado:** 2 arquivos, 11 testes.   |
+| Pets — endpoints E2E         | `cd backend && pnpm exec vitest run --config ./vitest.config.e2e.ts test/pets.e2e-spec.ts --reporter=dot`          | **Aprovado:** 1 arquivo, 6 testes.     |
+| Pets — interface             | `cd web && pnpm exec vitest run 'app/(private)/pets/__test__/page.test.tsx' --reporter=dot`                        | **Aprovado:** 1 arquivo, 4 testes.     |
 
 As três suítes completas e os três comandos específicos de Pets terminaram com código de saída zero. Houve avisos do Vitest sobre o plugin `vite-tsconfig-paths`/configuração nativa, sem falhas associadas.
 
@@ -67,17 +67,17 @@ Esse comando gera o cliente localmente; não aplica migrações ao banco.
 
 Executar com dados fictícios em banco local de desenvolvimento. Preencher a coluna de resultado durante a demonstração; os cenários manuais **não foram executados nesta rodada**.
 
-| ID | Cenário | Passos | Resultado esperado | Status manual |
-| --- | --- | --- | --- | --- |
-| MP01 | Acesso à seção | Entrar com morador ativo e abrir Pets pelo menu. | A página mostra a casa atual, vínculo e lista/estado vazio. | A executar |
-| MP02 | Cadastro | Criar “Mel”, espécie Cachorro, raça e data de nascimento opcionais. | Pet aparece na lista e sua ficha pode ser aberta. | A executar |
-| MP03 | Validação | Tentar salvar sem nome ou espécie. | Formulário impede o envio e mostra validação. | A executar |
-| MP04 | Edição | Alterar nome/raça e salvar. | A ficha/lista mostra os valores atualizados após recarga. | A executar |
-| MP05 | Histórico | Registrar vacina com título, data e custo; abrir a ficha. | O evento fica visível no histórico, com data e valor. | A executar |
-| MP06 | Pagador/despesa | Selecionar membro ativo e despesa da mesma casa ao registrar cuidado. | Registro é salvo com as associações selecionadas. | A executar |
-| MP07 | Compartilhamento | Abrir sessão com outro morador ativo da mesma casa. | O segundo morador consegue consultar o pet e seu histórico. | A executar |
-| MP08 | Exclusão autorizada | Entrar com perfil autorizado conforme a regra atualmente implementada; pedir exclusão e confirmar. | Confirmação aparece e o pet some da listagem. | A executar |
-| MP09 | Escopo da residência | Acessar com usuário que não pertence à casa. | API não expõe os dados; interface apresenta erro/ausência de acesso. | A executar |
+| ID   | Cenário              | Passos                                                                                             | Resultado esperado                                                   | Status manual |
+| ---- | -------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------- |
+| MP01 | Acesso à seção       | Entrar com morador ativo e abrir Pets pelo menu.                                                   | A página mostra a casa atual, vínculo e lista/estado vazio.          | A executar    |
+| MP02 | Cadastro             | Criar “Mel”, espécie Cachorro, raça e data de nascimento opcionais.                                | Pet aparece na lista e sua ficha pode ser aberta.                    | A executar    |
+| MP03 | Validação            | Tentar salvar sem nome ou espécie.                                                                 | Formulário impede o envio e mostra validação.                        | A executar    |
+| MP04 | Edição               | Alterar nome/raça e salvar.                                                                        | A ficha/lista mostra os valores atualizados após recarga.            | A executar    |
+| MP05 | Histórico            | Registrar vacina com título, data e custo; abrir a ficha.                                          | O evento fica visível no histórico, com data e valor.                | A executar    |
+| MP06 | Pagador/despesa      | Selecionar membro ativo e despesa da mesma casa ao registrar cuidado.                              | Registro é salvo com as associações selecionadas.                    | A executar    |
+| MP07 | Compartilhamento     | Abrir sessão com outro morador ativo da mesma casa.                                                | O segundo morador consegue consultar o pet e seu histórico.          | A executar    |
+| MP08 | Exclusão autorizada  | Entrar com perfil autorizado conforme a regra atualmente implementada; pedir exclusão e confirmar. | Confirmação aparece e o pet some da listagem.                        | A executar    |
+| MP09 | Escopo da residência | Acessar com usuário que não pertence à casa.                                                       | API não expõe os dados; interface apresenta erro/ausência de acesso. | A executar    |
 
 **Atenção para MP08:** o código atual permite exclusão a Líder/Administrador, mas ainda não implementa a alternativa “criador do registro” explicitamente. Não registre esse critério como aprovado para criador não administrador até o ajuste e novo teste.
 

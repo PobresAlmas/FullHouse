@@ -361,13 +361,17 @@ describe("ExpensesRepository writes", () => {
     });
 
     it.each([
-        ["a split whose sum differs from the account total", [
-            { participationId: "member-a", amount: "7.00" },
-            { participationId: "member-b", amount: "2.00" },
-        ]],
-        ["a split that omits an active participant", [
-            { participationId: "member-a", amount: "10.00" },
-        ]],
+        [
+            "a split whose sum differs from the account total",
+            [
+                { participationId: "member-a", amount: "7.00" },
+                { participationId: "member-b", amount: "2.00" },
+            ],
+        ],
+        [
+            "a split that omits an active participant",
+            [{ participationId: "member-a", amount: "10.00" }],
+        ],
     ])("rejects %s", async (_label, allocations) => {
         const createMany = vi.fn();
         const transaction = {

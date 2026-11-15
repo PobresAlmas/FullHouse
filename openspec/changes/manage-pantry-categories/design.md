@@ -6,13 +6,13 @@ Cada categoria pertence a uma residência. Itens da despensa usam uma relação 
 
 Modelo conceitual:
 
-| Campo | Regra |
-| --- | --- |
-| `id` | Identificador estável. |
-| `residenceId` | Obrigatório; escopo de autorização e unicidade. |
-| `name` | Nome exibido, 1 a 80 caracteres após normalização de espaços. |
-| `normalizedName` | Chave de comparação usada para impedir duplicatas dentro da residência. |
-| `createdAt` / `updatedAt` | Datas definidas pelo servidor. |
+| Campo                     | Regra                                                                   |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `id`                      | Identificador estável.                                                  |
+| `residenceId`             | Obrigatório; escopo de autorização e unicidade.                         |
+| `name`                    | Nome exibido, 1 a 80 caracteres após normalização de espaços.           |
+| `normalizedName`          | Chave de comparação usada para impedir duplicatas dentro da residência. |
+| `createdAt` / `updatedAt` | Datas definidas pelo servidor.                                          |
 
 O item deve referenciar `categoryId`. A associação valida no servidor que item e categoria pertencem à mesma residência; preferir também restrição composta no banco. A FK de categoria usa exclusão restrita.
 

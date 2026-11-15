@@ -15,7 +15,10 @@ const { Client } = require("pg") as {
 };
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 const roomMigrationSql = await readFile(
-    new URL("../../prisma/migrations/20261109000000_add_room_listing_fields/migration.sql", import.meta.url),
+    new URL(
+        "../../prisma/migrations/20261109000000_add_room_listing_fields/migration.sql",
+        import.meta.url
+    ),
     "utf8"
 );
 

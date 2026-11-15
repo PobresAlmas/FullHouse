@@ -12,12 +12,12 @@ Esta documentação descreve os arquivos e comportamentos encontrados no reposit
 
 ## 2. Frontend
 
-| Arquivo | Responsabilidade |
-| --- | --- |
-| `web/app/(private)/pets/page.tsx` | Página autenticada, seleção da residência, formulário do pet, lista/ficha, histórico e formulários de cuidado. |
-| `web/features/pets/api/pets.api.ts` | Tipos TypeScript e chamadas HTTP de residências, membros, pets e cuidados. |
-| `web/app/(private)/finance/page.tsx` | Navegação que direciona o item Pets para `/pets`. |
-| `web/app/(private)/pets/__test__/page.test.tsx` | Testes da página: cadastro, troca de residência, detalhes/histórico, edição e confirmação de exclusão. |
+| Arquivo                                         | Responsabilidade                                                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `web/app/(private)/pets/page.tsx`               | Página autenticada, seleção da residência, formulário do pet, lista/ficha, histórico e formulários de cuidado. |
+| `web/features/pets/api/pets.api.ts`             | Tipos TypeScript e chamadas HTTP de residências, membros, pets e cuidados.                                     |
+| `web/app/(private)/finance/page.tsx`            | Navegação que direciona o item Pets para `/pets`.                                                              |
+| `web/app/(private)/pets/__test__/page.test.tsx` | Testes da página: cadastro, troca de residência, detalhes/histórico, edição e confirmação de exclusão.         |
 
 ### Fluxo de interface
 
@@ -31,17 +31,17 @@ Esta documentação descreve os arquivos e comportamentos encontrados no reposit
 
 ## 3. Backend
 
-| Arquivo | Responsabilidade |
-| --- | --- |
-| `backend/src/pets/pets.module.ts` | Registra o módulo e suas dependências. |
-| `backend/src/pets/pets.controller.ts` | Rotas REST protegidas por `JwtAuthGuard`; obtém o usuário autenticado via `CurrentUser`. |
-| `backend/src/pets/pets.service.ts` | Regras de autorização, validações entre residência/membro/despesa e transformação das respostas. |
-| `backend/src/pets/pets.repository.ts` | Consultas e gravações via Prisma. |
-| `backend/src/pets/dto/` | Validação de criação/edição, filtros e formato de resposta. |
-| `backend/src/app.module.ts` | Inclui `PetsModule` na aplicação. |
-| `backend/test/pets.e2e-spec.ts` | Exercita endpoints REST com JWT de teste, validação de body e códigos HTTP. |
-| `backend/src/pets/pets.service.spec.ts` | Testa regras de serviço e permissões de Pets/cuidados. |
-| `backend/src/pets/pets.repository.spec.ts` | Testa consultas, ordenação e filtro de despesa por residência. |
+| Arquivo                                    | Responsabilidade                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `backend/src/pets/pets.module.ts`          | Registra o módulo e suas dependências.                                                           |
+| `backend/src/pets/pets.controller.ts`      | Rotas REST protegidas por `JwtAuthGuard`; obtém o usuário autenticado via `CurrentUser`.         |
+| `backend/src/pets/pets.service.ts`         | Regras de autorização, validações entre residência/membro/despesa e transformação das respostas. |
+| `backend/src/pets/pets.repository.ts`      | Consultas e gravações via Prisma.                                                                |
+| `backend/src/pets/dto/`                    | Validação de criação/edição, filtros e formato de resposta.                                      |
+| `backend/src/app.module.ts`                | Inclui `PetsModule` na aplicação.                                                                |
+| `backend/test/pets.e2e-spec.ts`            | Exercita endpoints REST com JWT de teste, validação de body e códigos HTTP.                      |
+| `backend/src/pets/pets.service.spec.ts`    | Testa regras de serviço e permissões de Pets/cuidados.                                           |
+| `backend/src/pets/pets.repository.spec.ts` | Testa consultas, ordenação e filtro de despesa por residência.                                   |
 
 O `ValidationPipe` global em `backend/src/main.ts` usa `whitelist`, `forbidNonWhitelisted` e `transform`. Assim, campos inesperados (por exemplo `residenceId` enviado no body de criação) são rejeitados.
 
@@ -49,19 +49,19 @@ O `ValidationPipe` global em `backend/src/main.ts` usa `whitelist`, `forbidNonWh
 
 As rotas abaixo exigem JWT. Erros usuais: `400` para dados inválidos, `401` para sessão ausente/inválida, `403` para operação não autorizada e `404` para recurso inexistente ou fora da residência acessível.
 
-| Método | Rota | Uso | Resposta de sucesso |
-| --- | --- | --- | --- |
-| `GET` | `/residences` | Listar residências ativas do usuário. | `200`, lista com residência e participação. |
-| `GET` | `/residences/:residenceId/members` | Listar membros ativos para seleção de pagador. | `200`, lista de membros. |
-| `GET` | `/residences/:residenceId/pets?search=` | Listar pets por nome (busca opcional). | `200`, lista de pets. |
-| `POST` | `/residences/:residenceId/pets` | Criar pet. Body: `name`, `species`; demais campos opcionais. | `201`, pet criado. |
-| `GET` | `/residences/:residenceId/pets/:petId` | Consultar ficha e histórico. | `200`, pet com `careLogs`. |
-| `PATCH` | `/residences/:residenceId/pets/:petId` | Atualizar campos editáveis do pet. | `200`, pet atualizado. |
-| `DELETE` | `/residences/:residenceId/pets/:petId` | Excluir pet. | `200`, `{ id, deleted: true }`. |
-| `GET` | `/pets/:petId/care-logs?type=&from=&to=` | Consultar histórico; filtros são opcionais. | `200`, registros por data decrescente. |
-| `POST` | `/pets/:petId/care-logs` | Registrar cuidado/gasto. Body: `type`, `title`, `date`; outros campos opcionais. | `201`, registro criado. |
-| `PATCH` | `/pets/:petId/care-logs/:careLogId` | Atualizar cuidado. | `200`, registro atualizado. |
-| `DELETE` | `/pets/:petId/care-logs/:careLogId` | Remover cuidado. | `200`, `{ id, deleted: true }`. |
+| Método   | Rota                                     | Uso                                                                              | Resposta de sucesso                         |
+| -------- | ---------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------- |
+| `GET`    | `/residences`                            | Listar residências ativas do usuário.                                            | `200`, lista com residência e participação. |
+| `GET`    | `/residences/:residenceId/members`       | Listar membros ativos para seleção de pagador.                                   | `200`, lista de membros.                    |
+| `GET`    | `/residences/:residenceId/pets?search=`  | Listar pets por nome (busca opcional).                                           | `200`, lista de pets.                       |
+| `POST`   | `/residences/:residenceId/pets`          | Criar pet. Body: `name`, `species`; demais campos opcionais.                     | `201`, pet criado.                          |
+| `GET`    | `/residences/:residenceId/pets/:petId`   | Consultar ficha e histórico.                                                     | `200`, pet com `careLogs`.                  |
+| `PATCH`  | `/residences/:residenceId/pets/:petId`   | Atualizar campos editáveis do pet.                                               | `200`, pet atualizado.                      |
+| `DELETE` | `/residences/:residenceId/pets/:petId`   | Excluir pet.                                                                     | `200`, `{ id, deleted: true }`.             |
+| `GET`    | `/pets/:petId/care-logs?type=&from=&to=` | Consultar histórico; filtros são opcionais.                                      | `200`, registros por data decrescente.      |
+| `POST`   | `/pets/:petId/care-logs`                 | Registrar cuidado/gasto. Body: `type`, `title`, `date`; outros campos opcionais. | `201`, registro criado.                     |
+| `PATCH`  | `/pets/:petId/care-logs/:careLogId`      | Atualizar cuidado.                                                               | `200`, registro atualizado.                 |
+| `DELETE` | `/pets/:petId/care-logs/:careLogId`      | Remover cuidado.                                                                 | `200`, `{ id, deleted: true }`.             |
 
 Ao registrar ou atualizar cuidados, `paidById` precisa apontar para membro ativo na mesma casa, e `expenseId` precisa apontar para despesa disponível da casa do pet. A data inicial do filtro não pode ser posterior à final.
 

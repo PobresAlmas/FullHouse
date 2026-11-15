@@ -126,7 +126,9 @@ describe("ExpensesService subgroups", () => {
     it("updates a subgroup after validating its participant list", async () => {
         const update = { ...subgroupData, name: "Café e chá" };
 
-        await expect(service.updateSubgroup("subgroup-id", update, "creator-user")).resolves.toEqual({
+        await expect(
+            service.updateSubgroup("subgroup-id", update, "creator-user")
+        ).resolves.toEqual({
             id: "subgroup-id",
             name: "Café novo",
         });

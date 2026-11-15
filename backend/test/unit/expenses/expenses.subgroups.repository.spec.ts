@@ -1,8 +1,4 @@
-import {
-    BadRequestException,
-    ForbiddenException,
-    NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { ExpensesRepository } from "../../../src/expenses/expenses.repository.js";
 
 describe("ExpensesRepository.updateSubgroup", () => {
@@ -12,21 +8,18 @@ describe("ExpensesRepository.updateSubgroup", () => {
         memberIds: ["member-2", "member-3"],
     };
 
-    function setup(overrides?: {
-        subgroup?: unknown;
-        members?: unknown[];
-    }) {
+    function setup(overrides?: { subgroup?: unknown; members?: unknown[] }) {
         const tx = {
             subgrupo: {
                 findFirst: vi.fn().mockResolvedValue(
                     overrides && Object.hasOwn(overrides, "subgroup")
                         ? overrides.subgroup
                         : {
-                        id: "subgroup-id",
-                        casa_id: "home-id",
-                        criado_por_participacao_id: "creator-participation",
-                        participacao: { usuario_id: "creator-user" },
-                    }
+                              id: "subgroup-id",
+                              casa_id: "home-id",
+                              criado_por_participacao_id: "creator-participation",
+                              participacao: { usuario_id: "creator-user" },
+                          }
                 ),
                 update: vi.fn().mockResolvedValue({}),
             },
@@ -52,7 +45,9 @@ describe("ExpensesRepository.updateSubgroup", () => {
     it("updates the subgroup and replaces only its active participant set", async () => {
         const { repository, tx, transaction } = setup();
 
-        await expect(repository.updateSubgroup("subgroup-id", "creator-user", input)).resolves.toEqual({
+        await expect(
+            repository.updateSubgroup("subgroup-id", "creator-user", input)
+        ).resolves.toEqual({
             id: "subgroup-id",
             name: "Clube do café",
             homeId: "home-id",
@@ -104,9 +99,9 @@ describe("ExpensesRepository.updateSubgroup", () => {
     it("forbids a non-creator from editing and does not write subgroup members", async () => {
         const { repository, tx } = setup();
 
-        await expect(repository.updateSubgroup("subgroup-id", "other-user", input)).rejects.toBeInstanceOf(
-            ForbiddenException
-        );
+        await expect(
+            repository.updateSubgroup("subgroup-id", "other-user", input)
+        ).rejects.toBeInstanceOf(ForbiddenException);
         expect(tx.subgrupo.update).not.toHaveBeenCalled();
         expect(tx.membro_subgrupo.updateMany).not.toHaveBeenCalled();
         expect(tx.membro_subgrupo.upsert).not.toHaveBeenCalled();
@@ -115,9 +110,9 @@ describe("ExpensesRepository.updateSubgroup", () => {
     it("returns not found when the subgroup or active residence is unavailable", async () => {
         const { repository, tx } = setup({ subgroup: null });
 
-        await expect(repository.updateSubgroup("subgroup-id", "creator-user", input)).rejects.toBeInstanceOf(
-            NotFoundException
-        );
+        await expect(
+            repository.updateSubgroup("subgroup-id", "creator-user", input)
+        ).rejects.toBeInstanceOf(NotFoundException);
         expect(tx.participacao.findMany).not.toHaveBeenCalled();
     });
 
@@ -138,9 +133,9 @@ describe("ExpensesRepository.updateSubgroup", () => {
             members: [{ id: "member-2", usuario: { nome: "Beatriz", apelido: null } }],
         });
 
-        await expect(repository.updateSubgroup("subgroup-id", "creator-user", input)).rejects.toThrow(
-            "Selecione somente moradores ativos desta residência."
-        );
+        await expect(
+            repository.updateSubgroup("subgroup-id", "creator-user", input)
+        ).rejects.toThrow("Selecione somente moradores ativos desta residência.");
         expect(tx.subgrupo.update).not.toHaveBeenCalled();
         expect(tx.membro_subgrupo.updateMany).not.toHaveBeenCalled();
     });

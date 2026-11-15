@@ -40,40 +40,40 @@ A funcionalidade contempla os dados básicos do animal, sua vinculação à casa
 
 ### Pet
 
-| Campo | Obrigatório | Descrição |
-| --- | --- | --- |
-| `id` | Sim | Identificador UUID. |
-| `name` | Sim | Nome do animal. |
-| `species` | Sim | Espécie; exemplos: Cachorro, Gato, Pássaro ou Outro. |
-| `breed` | Não | Raça. |
-| `birthDate` | Não | Data de nascimento; idade pode ser derivada. |
-| `residenceId` | Sim | Identificador da casa (`casa` no banco). |
-| `photoUrl` | Não | URL da foto; upload de arquivo não faz parte do escopo. |
-| `createdById` | Sim | Identificador da participação que criou o registro. |
+| Campo         | Obrigatório | Descrição                                               |
+| ------------- | ----------- | ------------------------------------------------------- |
+| `id`          | Sim         | Identificador UUID.                                     |
+| `name`        | Sim         | Nome do animal.                                         |
+| `species`     | Sim         | Espécie; exemplos: Cachorro, Gato, Pássaro ou Outro.    |
+| `breed`       | Não         | Raça.                                                   |
+| `birthDate`   | Não         | Data de nascimento; idade pode ser derivada.            |
+| `residenceId` | Sim         | Identificador da casa (`casa` no banco).                |
+| `photoUrl`    | Não         | URL da foto; upload de arquivo não faz parte do escopo. |
+| `createdById` | Sim         | Identificador da participação que criou o registro.     |
 
 ### Registro de cuidado — PetCareLog
 
-| Campo | Obrigatório | Descrição |
-| --- | --- | --- |
-| `id` | Sim | Identificador UUID. |
-| `petId` | Sim | Pet relacionado. |
-| `type` | Sim | Um dos tipos de cuidado definidos acima. |
-| `title` | Sim | Título do evento. |
-| `description` | Não | Detalhes adicionais. |
-| `date` | Sim | Data do cuidado (`YYYY-MM-DD`). |
-| `cost` | Não | Valor não negativo. |
-| `paidById` | Não | Participação do morador que pagou/realizou. |
-| `expenseId` | Não | Despesa compartilhada associada. |
-| `createdById` | Sim | Participação que registrou o evento. |
+| Campo         | Obrigatório | Descrição                                   |
+| ------------- | ----------- | ------------------------------------------- |
+| `id`          | Sim         | Identificador UUID.                         |
+| `petId`       | Sim         | Pet relacionado.                            |
+| `type`        | Sim         | Um dos tipos de cuidado definidos acima.    |
+| `title`       | Sim         | Título do evento.                           |
+| `description` | Não         | Detalhes adicionais.                        |
+| `date`        | Sim         | Data do cuidado (`YYYY-MM-DD`).             |
+| `cost`        | Não         | Valor não negativo.                         |
+| `paidById`    | Não         | Participação do morador que pagou/realizou. |
+| `expenseId`   | Não         | Despesa compartilhada associada.            |
+| `createdById` | Sim         | Participação que registrou o evento.        |
 
 ## 4. Rastreabilidade
 
-| Entrega | Critério | Evidência no código |
-| --- | --- | --- |
-| Listar e cadastrar pets | RF014 / US012 | `GET` e `POST /residences/:residenceId/pets`; página Pets. |
-| Consultar e editar pet | RF014 / US012 | `GET` e `PATCH /residences/:residenceId/pets/:petId`. |
-| Remover pet | RF014 / US012 | `DELETE /residences/:residenceId/pets/:petId`; ver diferença de autorização descrita acima. |
-| Histórico compartilhado | RF014 / US012 | Rotas `/pets/:petId/care-logs`; acesso autorizado pela residência do pet. |
-| Referências a membro e despesa | RF014 / US012 | Validação no serviço/repositório e relações Prisma com `participacao` e `despesa`. |
-| Interface web | RF014 / US012 | `web/app/(private)/pets/page.tsx` e `web/features/pets/api/pets.api.ts`. |
-| Testes automatizados | Ver `testes.md` | Specs de serviço/repositório, E2E e página Pets. |
+| Entrega                        | Critério        | Evidência no código                                                                         |
+| ------------------------------ | --------------- | ------------------------------------------------------------------------------------------- |
+| Listar e cadastrar pets        | RF014 / US012   | `GET` e `POST /residences/:residenceId/pets`; página Pets.                                  |
+| Consultar e editar pet         | RF014 / US012   | `GET` e `PATCH /residences/:residenceId/pets/:petId`.                                       |
+| Remover pet                    | RF014 / US012   | `DELETE /residences/:residenceId/pets/:petId`; ver diferença de autorização descrita acima. |
+| Histórico compartilhado        | RF014 / US012   | Rotas `/pets/:petId/care-logs`; acesso autorizado pela residência do pet.                   |
+| Referências a membro e despesa | RF014 / US012   | Validação no serviço/repositório e relações Prisma com `participacao` e `despesa`.          |
+| Interface web                  | RF014 / US012   | `web/app/(private)/pets/page.tsx` e `web/features/pets/api/pets.api.ts`.                    |
+| Testes automatizados           | Ver `testes.md` | Specs de serviço/repositório, E2E e página Pets.                                            |

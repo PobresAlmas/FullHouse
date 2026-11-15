@@ -152,7 +152,10 @@ export class TasksService {
             }
         }
         const effectiveAssigneeId = mayAssignOthers ? data.assigneeId : membership.memberId;
-        if (data.visibility === TaskVisibility.PRIVADA && assignmentType === TaskAssignmentType.RODIZIO) {
+        if (
+            data.visibility === TaskVisibility.PRIVADA &&
+            assignmentType === TaskAssignmentType.RODIZIO
+        ) {
             throw new BadRequestException("Tarefas privadas precisam de um responsável fixo.");
         }
         const rotationIdsForTask = mayAssignOthers ? rotationIds : [];
