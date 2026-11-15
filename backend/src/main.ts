@@ -2,10 +2,12 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import type { NextFunction, Request, Response } from "express";
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
+    app.use(helmet());
 
     app.useGlobalPipes(
         new ValidationPipe({
@@ -16,9 +18,6 @@ async function bootstrap() {
     );
 
     app.use((_request: Request, response: Response, next: NextFunction) => {
-        response.setHeader("X-Content-Type-Options", "nosniff");
-        response.setHeader("X-Frame-Options", "DENY");
-        response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
         response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
         next();
     });

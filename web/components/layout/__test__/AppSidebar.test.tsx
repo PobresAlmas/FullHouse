@@ -7,7 +7,7 @@ describe("AppSidebar", () => {
         render(<AppSidebar activeSection="finance" />);
 
         const navigation = screen.getByRole("navigation", { name: "Navegação principal" });
-        expect(navigation.querySelectorAll("a")).toHaveLength(9);
+        expect(navigation.querySelectorAll("a")).toHaveLength(10);
         expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
         expect(screen.getByRole("link", { name: "Tarefas" })).toHaveAttribute("href", "/tasks");
         expect(screen.queryByRole("link", { name: "Configurações" })).not.toBeInTheDocument();
@@ -24,6 +24,7 @@ describe("AppSidebar", () => {
         expect(screen.getByRole("link", { name: "Chat da casa" })).toHaveAttribute("href", "/chat");
         expect(screen.getByRole("link", { name: "Regras" })).toHaveAttribute("href", "/rules");
         expect(screen.getByRole("link", { name: "Reuniões" })).toHaveAttribute("href", "/meetings");
+        expect(screen.getByRole("link", { name: "Quartos" })).toHaveAttribute("href", "/rooms");
         expect(screen.queryByText("Perfil")).not.toBeInTheDocument();
         expect(screen.getByText("Nenhuma casa associada")).toBeInTheDocument();
     });

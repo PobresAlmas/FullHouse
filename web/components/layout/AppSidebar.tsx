@@ -6,6 +6,7 @@ import {
     Package,
     PawPrint,
     ShoppingBasket,
+    BedDouble,
     Settings,
     UserRound,
     MessageCircle,
@@ -24,6 +25,7 @@ export type AppSection =
     | "profile"
     | "chat"
     | "rules"
+    | "rooms"
     | "meetings";
 
 const sections: { id: AppSection; label: string; href: string; icon: typeof House }[] = [
@@ -41,6 +43,7 @@ const sections: { id: AppSection; label: string; href: string; icon: typeof Hous
     { id: "chat", label: "Chat da casa", href: "/chat", icon: MessageCircle },
     { id: "rules", label: "Regras", href: "/rules", icon: ScrollText },
     { id: "meetings", label: "Reuniões", href: "/meetings", icon: CalendarDays },
+    { id: "rooms", label: "Quartos", href: "/rooms", icon: BedDouble },
     { id: "settings", label: "Configurações", href: "/settings", icon: Settings },
 ];
 const implementedSections: AppSection[] = [
@@ -53,6 +56,7 @@ const implementedSections: AppSection[] = [
     "chat",
     "rules",
     "meetings",
+    "rooms",
 ];
 
 export function AppSidebar({

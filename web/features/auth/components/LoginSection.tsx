@@ -6,7 +6,7 @@ export default function LoginSection() {
             <Image
                 src="/logo.png"
                 alt="Logo"
-                className="mx-auto rounded-2xl"
+                className="mx-auto h-20 w-20 rounded-2xl"
                 width={80}
                 height={80}
             />

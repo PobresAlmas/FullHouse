@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { APP_THROTTLER_GUARD_PROVIDER, APP_THROTTLER_OPTIONS } from "./common/app-throttling.js";
 import { AppController } from "./app.controller.js";
 import { AppService } from "./app.service.js";
 import { UsersModule } from "./users/users.module.js";
@@ -21,6 +23,7 @@ import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
 import { ChatModule } from "./chat/chat.module.js";
 import { HouseRulesModule } from "./house-rules/house-rules.module.js";
 import { MeetingsModule } from "./meetings/meetings.module.js";
+import { RoomsModule } from "./rooms/rooms.module.js";
 
 @Module({
     imports: [
@@ -37,6 +40,7 @@ import { MeetingsModule } from "./meetings/meetings.module.js";
                 MINIO_REGION: Joi.string().required(),
             }),
         }),
+        ThrottlerModule.forRoot(APP_THROTTLER_OPTIONS),
         UsersModule,
         PrismaModule,
         AuthModule,
@@ -54,8 +58,9 @@ import { MeetingsModule } from "./meetings/meetings.module.js";
         ChatModule,
         HouseRulesModule,
         MeetingsModule,
+        RoomsModule,
     ],
     controllers: [AppController],
-    providers: [AppService, PrismaService],
+    providers: [AppService, PrismaService, APP_THROTTLER_GUARD_PROVIDER],
 })
 export class AppModule {}

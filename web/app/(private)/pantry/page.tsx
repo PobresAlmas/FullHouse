@@ -1,20 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
-import {
-    ChevronDown,
-    House,
-    Minus,
-    Package,
-    Pencil,
-    Plus,
-    Search,
-    Tags,
-    Trash2,
-    UsersRound,
-    X,
-} from "lucide-react";
+import type { FormEvent } from "react";
+import { House, Plus, Search, Tags } from "lucide-react";
 import { getPetResidences } from "@/features/pets/api/pets.api";
 import type { PetResidence } from "@/features/pets/api/pets.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -36,103 +24,25 @@ import type {
     PantryItemInput,
     PantryMember,
     PantryMovementType,
-    PantryProperty,
-    PantryUnit,
 } from "@/features/pantry/api/pantry.api";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
-
-type TabKey = "all" | "communal" | "private" | "mine";
-type ItemFormState = {
-    name: string;
-    categoryId: string;
-    property: PantryProperty;
-    ownerMemberId: string;
-    unit: PantryUnit;
-    quantity: string;
-    minimumQuantity: string;
-    expirationDate: string;
-};
-type ItemModalState = { mode: "create" } | { mode: "edit"; item: PantryItem } | null;
-type MovementModalState = { item: PantryItem; type: PantryMovementType } | null;
-
-const initialForm: ItemFormState = {
-    name: "",
-    categoryId: "",
-    property: "COMUNITARIO",
-    ownerMemberId: "",
-    unit: "UNIDADE",
-    quantity: "",
-    minimumQuantity: "",
-    expirationDate: "",
-};
-
-const unitLabels: Record<PantryUnit, string> = {
-    UNIDADE: "un",
-    KG: "kg",
-    G: "g",
-    L: "L",
-    ML: "ml",
-    PACOTE: "pacote(s)",
-};
-
-function getErrorMessage(error: unknown) {
-    if (typeof error === "object" && error !== null && "message" in error) {
-        const responseData =
-            "response" in error &&
-            typeof error.response === "object" &&
-            error.response !== null &&
-            "data" in error.response &&
-            typeof error.response.data === "object" &&
-            error.response.data !== null
-                ? error.response.data
-                : null;
-        const responseMessage =
-            responseData && "message" in responseData ? responseData.message : undefined;
-        const message = responseMessage ?? (error as { message?: unknown }).message;
-        if (typeof message === "string") return message;
-        if (Array.isArray(message) && message.every((part) => typeof part === "string")) {
-            return message.join(" ");
-        }
-    }
-    return "Não foi possível concluir a operação. Tente novamente.";
-}
-
-function dateToString(value: string | null) {
-    if (!value) return "—";
-    return new Intl.DateTimeFormat("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        timeZone: "UTC",
-    }).format(new Date(`${value.slice(0, 10)}T00:00:00.000Z`));
-}
-
-function localDateString(date = new Date()) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-}
-
-function isExpiringSoon(value: string | null) {
-    if (!value) return false;
-    const dayNumber = (date: string) => {
-        const [year, month, day] = date.split("-").map(Number);
-        return Date.UTC(year, month - 1, day) / 86400000;
-    };
-    const days = dayNumber(value.slice(0, 10)) - dayNumber(localDateString());
-    return days >= 0 && days <= 7;
-}
-
-function formatQuantity(quantity: number, unit: PantryUnit) {
-    const amount = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(quantity);
-    return `${amount} ${unitLabels[unit]}`;
-}
-
-function itemIsLow(item: PantryItem) {
-    return item.minimumQuantity !== null && item.quantity <= item.minimumQuantity;
-}
+import { PantryItemsTable } from "@/features/pantry/components/PantryItemsTable";
+import { SelectFilter, TabButton } from "@/features/pantry/components/PantryControls";
+import { PantryCategoryModal } from "@/features/pantry/components/PantryCategoryModal";
+import { PantryItemModal } from "@/features/pantry/components/PantryItemModal";
+import { PantryMovementModal } from "@/features/pantry/components/PantryMovementModal";
+import {
+    formatQuantity,
+    getErrorMessage,
+    initialForm,
+    isExpiringSoon,
+    localDateString,
+    type ItemFormState,
+    type ItemModalState,
+    type MovementModalState,
+    type TabKey,
+} from "@/features/pantry/lib/pantry.utils";
 
 export default function PantryPage() {
     const { user } = useAuth();
@@ -491,7 +401,6 @@ export default function PantryPage() {
     return (
         <div className="min-h-screen bg-[#f8f4fa] text-[#29252d] md:flex">
             <AppSidebar activeSection="pantry" residenceName={residence?.name} />
-
             <div className="min-w-0 flex-1">
                 <AppPageHeader
                     greetingName={memberName}
@@ -666,753 +575,61 @@ export default function PantryPage() {
                                     </SelectFilter>
                                 </div>
 
-                                <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[790px] border-collapse text-left text-sm">
-                                        <thead className="bg-[#fcfaff] text-xs text-[#6e6872]">
-                                            <tr className="border-b border-[#e2dbe5]">
-                                                <th scope="col" className="px-2 py-3 font-medium">
-                                                    Item
-                                                </th>
-                                                <th scope="col" className="px-2 py-3 font-medium">
-                                                    Categoria
-                                                </th>
-                                                <th scope="col" className="px-2 py-3 font-medium">
-                                                    Tipo
-                                                </th>
-                                                <th scope="col" className="px-2 py-3 font-medium">
-                                                    Responsável
-                                                </th>
-                                                <th
-                                                    scope="col"
-                                                    className="px-2 py-3 font-semibold text-[#29252d]"
-                                                >
-                                                    Quantidade
-                                                </th>
-                                                <th scope="col" className="px-2 py-3 font-medium">
-                                                    Validade
-                                                </th>
-                                                <th scope="col" className="w-24 px-2 py-3">
-                                                    <span className="sr-only">Gerenciar</span>
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {loading ? (
-                                                <tr>
-                                                    <td
-                                                        colSpan={7}
-                                                        className="px-5 py-12 text-center text-sm text-[#77717c]"
-                                                    >
-                                                        Carregando itens da despensa…
-                                                    </td>
-                                                </tr>
-                                            ) : filteredItems.length === 0 ? (
-                                                <tr>
-                                                    <td
-                                                        colSpan={7}
-                                                        className="px-5 py-12 text-center"
-                                                    >
-                                                        <Package
-                                                            className="mx-auto mb-2 text-[#8b858e]"
-                                                            size={28}
-                                                        />
-                                                        <p className="font-medium">
-                                                            {items.length
-                                                                ? "Nenhum item corresponde aos filtros."
-                                                                : "Sua despensa ainda está vazia."}
-                                                        </p>
-                                                        {!items.length && (
-                                                            <p className="mt-1 text-sm text-[#77717c]">
-                                                                Adicione o primeiro item para
-                                                                começar a organizar o estoque.
-                                                            </p>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                filteredItems.map((item) => (
-                                                    <tr
-                                                        key={item.id}
-                                                        className="border-b border-[#e7e0e9] last:border-b-0 hover:bg-[#fdfbfe]"
-                                                    >
-                                                        <td className="px-2 py-3 font-semibold">
-                                                            {item.name}
-                                                        </td>
-                                                        <td className="px-2 py-3 text-[#6e6872]">
-                                                            {item.category}
-                                                        </td>
-                                                        <td className="px-2 py-3">
-                                                            <span
-                                                                className={`rounded-full px-2 py-1 text-[11px] ${item.property === "COMUNITARIO" ? "bg-[#e7f0e9] text-[#46754e]" : item.property === "PRIVADO" ? "bg-[#e2effb] text-[#3478ad]" : "bg-[#f3e9d5] text-[#8a6324]"}`}
-                                                            >
-                                                                {item.property === "COMUNITARIO"
-                                                                    ? "Comunitário"
-                                                                    : item.property === "PRIVADO"
-                                                                      ? "Privado"
-                                                                      : "Dono específico"}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-2 py-3 text-[#6e6872]">
-                                                            <span className="inline-flex items-center gap-2">
-                                                                {item.property === "COMUNITARIO" ? (
-                                                                    <UsersRound
-                                                                        size={17}
-                                                                        className="text-[#514c56]"
-                                                                    />
-                                                                ) : (
-                                                                    <span className="grid size-5 place-items-center rounded bg-[#86b89b] text-[10px] font-bold text-white">
-                                                                        {item.ownerName
-                                                                            .slice(0, 1)
-                                                                            .toUpperCase()}
-                                                                    </span>
-                                                                )}
-                                                                {item.ownerName}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-2 py-3">
-                                                            <span
-                                                                className={
-                                                                    itemIsLow(item)
-                                                                        ? "font-semibold text-amber-700"
-                                                                        : "text-[#6e6872]"
-                                                                }
-                                                            >
-                                                                {formatQuantity(
-                                                                    item.quantity,
-                                                                    item.unit
-                                                                )}
-                                                            </span>
-                                                            {itemIsLow(item) && (
-                                                                <span className="ml-2 rounded-full bg-amber-50 px-2 py-1 text-[10px] text-amber-700">
-                                                                    Estoque baixo
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-2 py-3 text-xs">
-                                                            <span
-                                                                className={
-                                                                    item.expirationDate &&
-                                                                    (item.expirationDate <
-                                                                        localDateString() ||
-                                                                        isExpiringSoon(
-                                                                            item.expirationDate
-                                                                        ))
-                                                                        ? "font-medium text-amber-700"
-                                                                        : "text-[#6e6872]"
-                                                                }
-                                                            >
-                                                                {dateToString(item.expirationDate)}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <div className="flex items-center justify-end gap-1">
-                                                                {item.property === "COMUNITARIO" ||
-                                                                item.isMine ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={busy}
-                                                                        onClick={() =>
-                                                                            openMovementModal(
-                                                                                item,
-                                                                                "CONSUMO"
-                                                                            )
-                                                                        }
-                                                                        aria-label={`Registrar consumo de ${item.name}`}
-                                                                        className="grid size-8 place-items-center rounded-md text-[#625c66] hover:bg-[#f1edf3] disabled:opacity-40"
-                                                                    >
-                                                                        <Minus size={15} />
-                                                                    </button>
-                                                                ) : null}
-                                                                {item.property === "COMUNITARIO" ||
-                                                                item.isMine ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={busy}
-                                                                        onClick={() =>
-                                                                            openMovementModal(
-                                                                                item,
-                                                                                "ENTRADA"
-                                                                            )
-                                                                        }
-                                                                        aria-label={`Registrar entrada para ${item.name}`}
-                                                                        className="grid size-8 place-items-center rounded-md text-[#4e812f] hover:bg-[#e7f0e9] disabled:opacity-40"
-                                                                    >
-                                                                        <Plus size={15} />
-                                                                    </button>
-                                                                ) : null}
-                                                                {item.property === "COMUNITARIO" ||
-                                                                item.isMine ||
-                                                                canManageHouse ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={busy}
-                                                                        onClick={() =>
-                                                                            openEditModal(item)
-                                                                        }
-                                                                        aria-label={`Editar ${item.name}`}
-                                                                        className="grid size-8 place-items-center rounded-md text-[#625c66] hover:bg-[#f1edf3] disabled:opacity-40"
-                                                                    >
-                                                                        <Pencil size={15} />
-                                                                    </button>
-                                                                ) : null}
-                                                                {item.property === "COMUNITARIO" ||
-                                                                item.isMine ||
-                                                                canManageHouse ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={busy}
-                                                                        onClick={() =>
-                                                                            void removeItem(item)
-                                                                        }
-                                                                        aria-label={`Excluir ${item.name}`}
-                                                                        className="grid size-8 place-items-center rounded-md text-[#9a5555] hover:bg-red-50 disabled:opacity-40"
-                                                                    >
-                                                                        <Trash2 size={15} />
-                                                                    </button>
-                                                                ) : null}
-                                                                {item.property ===
-                                                                    "DONO_ESPECIFICO" &&
-                                                                    !item.isMine &&
-                                                                    !canManageHouse && (
-                                                                        <span className="px-1 text-[10px] text-[#77717c]">
-                                                                            Somente responsável
-                                                                        </span>
-                                                                    )}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <footer className="border-t border-[#e2dbe5] px-4 py-3 text-xs text-[#77717c]">
-                                    {filteredItems.length}{" "}
-                                    {filteredItems.length === 1 ? "item" : "itens"}
-                                </footer>
+                                <PantryItemsTable
+                                    items={filteredItems}
+                                    totalItems={items.length}
+                                    loading={loading}
+                                    busy={busy}
+                                    canManageHouse={canManageHouse}
+                                    onMovement={openMovementModal}
+                                    onEdit={openEditModal}
+                                    onRemove={(item) => void removeItem(item)}
+                                />
                             </section>
                         </>
                     )}
                 </main>
             </div>
-
-            {categoryModalOpen && (
-                <div
-                    className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
-                    onMouseDown={(event) => {
-                        if (event.target === event.currentTarget && !busy)
-                            setCategoryModalOpen(false);
-                    }}
-                >
-                    <section
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="pantry-categories-title"
-                        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#e1d9e5] bg-[#fffaff] p-5 shadow-xl"
-                    >
-                        <div className="mb-5 flex items-start justify-between gap-3">
-                            <div>
-                                <h2 id="pantry-categories-title" className="text-lg font-bold">
-                                    Categorias da despensa
-                                </h2>
-                                <p className="mt-1 text-sm text-[#77717c]">
-                                    Os itens existentes acompanham as alterações de nome.
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => setCategoryModalOpen(false)}
-                                aria-label="Fechar"
-                                className="grid size-9 place-items-center rounded-lg hover:bg-[#f1edf3] disabled:opacity-50"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-                        {canManageCategories ? (
-                            <form
-                                onSubmit={(event) => void saveCategory(event)}
-                                className="mb-4 grid gap-3"
-                            >
-                                <FormField
-                                    label={
-                                        editingCategoryId ? "Renomear categoria" : "Nova categoria"
-                                    }
-                                >
-                                    <input
-                                        autoFocus
-                                        required
-                                        maxLength={80}
-                                        value={categoryDraft}
-                                        onChange={(event) => setCategoryDraft(event.target.value)}
-                                        className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                        placeholder="Ex.: Temperos"
-                                    />
-                                </FormField>
-                                {categoryError && (
-                                    <p
-                                        role="alert"
-                                        className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
-                                    >
-                                        {categoryError}
-                                    </p>
-                                )}
-                                <div className="flex justify-end gap-2">
-                                    {editingCategoryId && (
-                                        <button
-                                            type="button"
-                                            disabled={busy}
-                                            onClick={() => {
-                                                setEditingCategoryId(null);
-                                                setCategoryDraft("");
-                                                setCategoryError("");
-                                            }}
-                                            className="h-9 rounded-lg border border-[#d9d1de] px-3 text-sm"
-                                        >
-                                            Cancelar edição
-                                        </button>
-                                    )}
-                                    <button
-                                        type="submit"
-                                        disabled={busy || !categoryDraft.trim()}
-                                        className="h-9 rounded-lg bg-[#4e812f] px-4 text-sm font-medium text-white disabled:opacity-50"
-                                    >
-                                        {busy
-                                            ? "Salvando…"
-                                            : editingCategoryId
-                                              ? "Salvar nome"
-                                              : "Adicionar categoria"}
-                                    </button>
-                                </div>
-                            </form>
-                        ) : (
-                            <p className="mb-4 rounded-lg bg-[#f1edf3] p-3 text-sm text-[#625c66]">
-                                A política desta casa permite que apenas líderes e administradores
-                                alterem categorias.
-                            </p>
-                        )}
-                        <ul className="divide-y divide-[#e7e0e9] rounded-xl border border-[#e1d9e5] bg-white">
-                            {categories.map((category) => (
-                                <li
-                                    key={category.id}
-                                    className="flex items-center justify-between gap-3 px-3 py-2.5"
-                                >
-                                    <span className="text-sm">{category.name}</span>
-                                    {canManageCategories && (
-                                        <span className="flex shrink-0 gap-1">
-                                            <button
-                                                type="button"
-                                                disabled={busy}
-                                                onClick={() => editCategory(category)}
-                                                aria-label={`Renomear ${category.name}`}
-                                                className="grid size-8 place-items-center rounded-md text-[#625c66] hover:bg-[#f1edf3] disabled:opacity-40"
-                                            >
-                                                <Pencil size={15} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                disabled={busy}
-                                                onClick={() => void removeCategory(category)}
-                                                aria-label={`Excluir ${category.name}`}
-                                                className="grid size-8 place-items-center rounded-md text-[#9a5555] hover:bg-red-50 disabled:opacity-40"
-                                            >
-                                                <Trash2 size={15} />
-                                            </button>
-                                        </span>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                </div>
-            )}
-
-            {itemModal && (
-                <div
-                    className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
-                    onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) setItemModal(null);
-                    }}
-                >
-                    <section
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="pantry-item-title"
-                        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[#e1d9e5] bg-[#fffaff] p-5 shadow-xl"
-                    >
-                        <div className="mb-5 flex items-start justify-between gap-3">
-                            <div>
-                                <h2 id="pantry-item-title" className="text-lg font-bold">
-                                    {itemModal.mode === "edit" ? "Editar item" : "Adicionar item"}
-                                </h2>
-                                <p className="mt-1 text-sm text-[#77717c]">
-                                    Organize o estoque da sua casa.
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setItemModal(null)}
-                                aria-label="Fechar"
-                                className="grid size-9 place-items-center rounded-lg hover:bg-[#f1edf3]"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-                        <form onSubmit={(event) => void handleSubmit(event)} className="grid gap-4">
-                            <FormField label="Nome do item">
-                                <input
-                                    autoFocus
-                                    required
-                                    maxLength={150}
-                                    value={form.name}
-                                    onChange={(event) =>
-                                        setForm({ ...form, name: event.target.value })
-                                    }
-                                    className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                    placeholder="Ex.: Arroz"
-                                />
-                            </FormField>
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <FormField label="Categoria">
-                                    <select
-                                        required
-                                        value={form.categoryId}
-                                        onChange={(event) =>
-                                            setForm({ ...form, categoryId: event.target.value })
-                                        }
-                                        className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                    >
-                                        <option value="">Selecione uma categoria</option>
-                                        {categories.map((category) => (
-                                            <option key={category.id} value={category.id}>
-                                                {category.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </FormField>
-                                <fieldset className="grid gap-2 sm:col-span-2">
-                                    <legend className="mb-2 text-xs font-medium">
-                                        Tipo de item
-                                    </legend>
-                                    {(
-                                        [
-                                            [
-                                                "COMUNITARIO",
-                                                "Comunitário",
-                                                "Disponível para todos os moradores da casa",
-                                            ],
-                                            [
-                                                "PRIVADO",
-                                                "Privado",
-                                                "Apenas você pode ver e utilizar",
-                                            ],
-                                            [
-                                                "DONO_ESPECIFICO",
-                                                "Dono específico",
-                                                "Pertence a um morador da casa",
-                                            ],
-                                        ] as const
-                                    ).map(([value, label, description]) => (
-                                        <label
-                                            key={value}
-                                            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${form.property === value ? "border-[#4e812f] bg-[#edf5e9]" : "border-[#e1d9e5] bg-white"}`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="property"
-                                                value={value}
-                                                checked={form.property === value}
-                                                onChange={() =>
-                                                    setForm({ ...form, property: value })
-                                                }
-                                                className="mt-0.5 accent-[#4e812f]"
-                                            />
-                                            <span>
-                                                <span className="block text-sm font-semibold">
-                                                    {label}
-                                                </span>
-                                                <span className="block text-xs text-[#77717c]">
-                                                    {description}
-                                                </span>
-                                            </span>
-                                        </label>
-                                    ))}
-                                </fieldset>
-                            </div>
-                            {form.property === "DONO_ESPECIFICO" && (
-                                <FormField label="Responsável">
-                                    <select
-                                        required
-                                        value={form.ownerMemberId}
-                                        onChange={(event) =>
-                                            setForm({ ...form, ownerMemberId: event.target.value })
-                                        }
-                                        className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                    >
-                                        {members.map((member) => (
-                                            <option key={member.id} value={member.id}>
-                                                {member.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </FormField>
-                            )}
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <FormField
-                                    label={
-                                        itemModal.mode === "edit"
-                                            ? "Quantidade atual"
-                                            : "Quantidade inicial"
-                                    }
-                                >
-                                    <div className="flex gap-2">
-                                        <input
-                                            required={itemModal.mode === "create"}
-                                            disabled={itemModal.mode === "edit"}
-                                            inputMode="decimal"
-                                            value={
-                                                itemModal.mode === "edit"
-                                                    ? formatQuantity(
-                                                          Number(form.quantity),
-                                                          form.unit
-                                                      )
-                                                    : form.quantity
-                                            }
-                                            onChange={(event) =>
-                                                setForm({ ...form, quantity: event.target.value })
-                                            }
-                                            className="h-10 min-w-0 flex-1 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f] disabled:bg-[#f5f2f6]"
-                                            placeholder="0"
-                                        />
-                                        <select
-                                            value={form.unit}
-                                            onChange={(event) =>
-                                                setForm({
-                                                    ...form,
-                                                    unit: event.target.value as PantryUnit,
-                                                })
-                                            }
-                                            className="h-10 rounded-lg border border-[#d9d1de] bg-white px-2 text-sm outline-none focus:border-[#4e812f]"
-                                        >
-                                            {Object.entries(unitLabels).map(([value, label]) => (
-                                                <option key={value} value={value}>
-                                                    {label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </FormField>
-                                <FormField label="Quantidade mínima (opcional)">
-                                    <input
-                                        inputMode="decimal"
-                                        value={form.minimumQuantity}
-                                        onChange={(event) =>
-                                            setForm({
-                                                ...form,
-                                                minimumQuantity: event.target.value,
-                                            })
-                                        }
-                                        className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                        placeholder="Sem alerta"
-                                    />
-                                </FormField>
-                            </div>
-                            <FormField label="Validade (opcional)">
-                                <input
-                                    type="date"
-                                    value={form.expirationDate}
-                                    onChange={(event) =>
-                                        setForm({ ...form, expirationDate: event.target.value })
-                                    }
-                                    className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                />
-                            </FormField>
-                            {formError && (
-                                <p
-                                    role="alert"
-                                    className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
-                                >
-                                    {formError}
-                                </p>
-                            )}
-                            <div className="mt-1 flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setItemModal(null)}
-                                    className="h-10 rounded-lg border border-[#d9d1de] px-4 text-sm hover:bg-[#f6f2f7]"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={busy}
-                                    className="h-10 rounded-lg bg-[#4e812f] px-5 text-sm font-medium text-white hover:bg-[#3f6c26] disabled:opacity-60"
-                                >
-                                    {busy ? "Salvando…" : "Salvar"}
-                                </button>
-                            </div>
-                        </form>
-                    </section>
-                </div>
-            )}
-            {movementModal && (
-                <div
-                    className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
-                    onMouseDown={(event) => {
-                        if (event.target === event.currentTarget && !busy) setMovementModal(null);
-                    }}
-                >
-                    <section
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="pantry-movement-title"
-                        className="w-full max-w-md rounded-2xl border border-[#e1d9e5] bg-[#fffaff] p-5 shadow-xl"
-                    >
-                        <div className="mb-5 flex items-start justify-between gap-3">
-                            <div>
-                                <h2 id="pantry-movement-title" className="text-lg font-bold">
-                                    {movementModal.type === "ENTRADA"
-                                        ? "Adicionar ao estoque"
-                                        : "Registrar consumo"}
-                                </h2>
-                                <p className="mt-1 text-sm text-[#77717c]">
-                                    {movementModal.item.name} · estoque atual:{" "}
-                                    {formatQuantity(
-                                        movementModal.item.quantity,
-                                        movementModal.item.unit
-                                    )}
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => setMovementModal(null)}
-                                aria-label="Fechar"
-                                className="grid size-9 place-items-center rounded-lg hover:bg-[#f1edf3] disabled:opacity-50"
-                            >
-                                <X size={18} />
-                            </button>
-                        </div>
-                        <form
-                            onSubmit={(event) => void handleMovementSubmit(event)}
-                            className="grid gap-4"
-                        >
-                            <FormField
-                                label={`Quantidade (${unitLabels[movementModal.item.unit]})`}
-                            >
-                                <input
-                                    autoFocus
-                                    required
-                                    inputMode="decimal"
-                                    maxLength={12}
-                                    value={movementQuantity}
-                                    onChange={(event) => {
-                                        setMovementQuantity(event.target.value);
-                                        setMovementError("");
-                                    }}
-                                    aria-describedby="pantry-movement-help"
-                                    className="h-10 w-full rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                    placeholder="Ex.: 0,5"
-                                />
-                                <span
-                                    id="pantry-movement-help"
-                                    className="mt-1 block text-xs text-[#77717c]"
-                                >
-                                    Use até duas casas decimais.
-                                </span>
-                            </FormField>
-                            {movementError && (
-                                <p
-                                    role="alert"
-                                    className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
-                                >
-                                    {movementError}
-                                </p>
-                            )}
-                            <div className="mt-1 flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    disabled={busy}
-                                    onClick={() => setMovementModal(null)}
-                                    className="h-10 rounded-lg border border-[#d9d1de] px-4 text-sm hover:bg-[#f6f2f7] disabled:opacity-50"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={busy}
-                                    className="h-10 rounded-lg bg-[#4e812f] px-5 text-sm font-medium text-white hover:bg-[#3f6c26] disabled:opacity-60"
-                                >
-                                    {busy ? "Salvando…" : "Confirmar"}
-                                </button>
-                            </div>
-                        </form>
-                    </section>
-                </div>
-            )}
-        </div>
-    );
-}
-
-function TabButton({
-    label,
-    count,
-    active,
-    onClick,
-}: {
-    label: string;
-    count: number;
-    active: boolean;
-    onClick: () => void;
-}) {
-    return (
-        <button
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={onClick}
-            className={`rounded-lg px-4 py-2 text-xs transition ${active ? "bg-white font-semibold text-[#356c43] shadow-[inset_0_-2px_0_#4e812f]" : "text-[#716b76] hover:bg-white/70"}`}
-        >
-            {label}
-            <span className="ml-1 text-[10px] opacity-70">{count}</span>
-        </button>
-    );
-}
-
-function SelectFilter({
-    label,
-    value,
-    onChange,
-    children,
-}: {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    children: ReactNode;
-}) {
-    return (
-        <label className="relative">
-            <span className="sr-only">{label}</span>
-            <select
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-                className="h-10 w-full appearance-none rounded-lg border border-[#d9d1de] bg-[#fffaff] px-3 pr-8 text-sm text-[#625c66] outline-none focus:border-[#4e812f]"
-            >
-                {children}
-            </select>
-            <ChevronDown
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#77717c]"
-                size={15}
+            <PantryCategoryModal
+                categoryModalOpen={categoryModalOpen}
+                categories={categories}
+                canManageCategories={canManageCategories}
+                busy={busy}
+                categoryDraft={categoryDraft}
+                setCategoryDraft={setCategoryDraft}
+                editingCategoryId={editingCategoryId}
+                categoryError={categoryError}
+                onClose={() => setCategoryModalOpen(false)}
+                onSave={(event) => void saveCategory(event)}
+                onEdit={editCategory}
+                onRemove={(category) => void removeCategory(category)}
+                onCancelEdit={() => {
+                    setEditingCategoryId(null);
+                    setCategoryDraft("");
+                    setCategoryError("");
+                }}
+            />{" "}
+            <PantryItemModal
+                itemModal={itemModal}
+                form={form}
+                setForm={setForm}
+                categories={categories}
+                members={members}
+                busy={busy}
+                formError={formError}
+                onClose={() => setItemModal(null)}
+                onSubmit={(event) => void handleSubmit(event)}
+            />{" "}
+            <PantryMovementModal
+                movementModal={movementModal}
+                busy={busy}
+                movementQuantity={movementQuantity}
+                setMovementQuantity={setMovementQuantity}
+                movementError={movementError}
+                setMovementError={setMovementError}
+                onClose={() => setMovementModal(null)}
+                onSubmit={(event) => void handleMovementSubmit(event)}
             />
-        </label>
-    );
-}
-
-function FormField({ label, children }: { label: string; children: ReactNode }) {
-    return (
-        <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
-            {label}
-            {children}
-        </label>
+        </div>
     );
 }

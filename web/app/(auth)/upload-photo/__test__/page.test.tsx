@@ -57,7 +57,7 @@ describe("UploadPhotoPage", () => {
             expect(post).toHaveBeenCalledWith("/users/me/avatar", expect.any(FormData))
         );
         expect(refreshUser).toHaveBeenCalledOnce();
-        expect(push).toHaveBeenCalledWith("/test-private");
+        expect(push).toHaveBeenCalledWith("/");
     });
 
     it("does not upload when no photo is selected", async () => {
@@ -74,7 +74,7 @@ describe("UploadPhotoPage", () => {
         const user = userEvent.setup();
         render(<UploadPhotoPage />);
         await user.click(screen.getByRole("button", { name: "Pular por enquanto" }));
-        expect(push).toHaveBeenCalledWith("/test-private");
+        expect(push).toHaveBeenCalledWith("/");
         expect(post).not.toHaveBeenCalled();
     });
 });

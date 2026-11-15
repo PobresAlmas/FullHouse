@@ -28,7 +28,7 @@ export default function UploadPhotoPage() {
 
         await refreshUser();
 
-        router.push("/test-private");
+        router.push("/");
     }
 
     return (
@@ -41,7 +41,7 @@ export default function UploadPhotoPage() {
             <SubmitButton text="Continuar" />
             <button
                 type="button"
-                onClick={() => router.push("/test-private")}
+                onClick={() => router.push("/")}
                 className="text-secondary font-bold text-sm hover:underline"
             >
                 Pular por enquanto

@@ -173,7 +173,7 @@ describe("Expenses HTTP API (e2e)", () => {
             .set("Cookie", cookie)
             .expect(200)
             .expect([expense]);
-        expect(expensesService.findAll).toHaveBeenCalledWith(USER_ID, "PENDING");
+        expect(expensesService.findAll).toHaveBeenCalledWith(USER_ID, "PENDING", "HOME");
 
         await request(app.getHttpServer())
             .get("/expenses?paymentStatus=INVALID")
