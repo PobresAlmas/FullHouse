@@ -728,27 +728,29 @@ model subgrupo {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model usuario {
-  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  codigo_pessoal        String              @unique @db.Char(6)
-  nome                  String              @db.VarChar(150)
-  apelido               String?             @db.VarChar(100)
-  email                 String              @unique @db.Citext
-  senha_hash            String              @db.VarChar(255)
-  foto_url              String?             @db.VarChar(500)
-  status_moradia        status_moradia_enum @default(PROCURANDO)
-  anonimizado_em        DateTime?           @db.Timestamptz(6)
-  excluido_em           DateTime?           @db.Timestamptz(6)
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo_pessoal        String                  @unique @db.Char(6)
+  nome                  String                  @db.VarChar(150)
+  apelido               String?                 @db.VarChar(100)
+  email                 String                  @unique @db.Citext
+  senha_hash            String                  @db.VarChar(255)
+  falhas_login          Int                     @default(0)
+  login_bloqueado_ate   DateTime?               @db.Timestamptz(6)
+  foto_url              String?                 @db.VarChar(500)
+  status_moradia        status_moradia_enum     @default(PROCURANDO)
+  anonimizado_em        DateTime?               @db.Timestamptz(6)
+  excluido_em           DateTime?               @db.Timestamptz(6)
   casa                  casa[]
   convite_casa          convite_casa[]
   comprovante_pagamento comprovante_pagamento[]
-  definicao_tarefa  definicao_tarefa[]
-  despesa           despesa[]
-  instancia_tarefa  instancia_tarefa[]
-  interesse_anuncio interesse_anuncio[]
-  lembrete          lembrete[]
-  notificacao       notificacao[]
-  participacao      participacao[]
-  password_reset    password_reset[]
+  definicao_tarefa      definicao_tarefa[]
+  despesa               despesa[]
+  instancia_tarefa      instancia_tarefa[]
+  interesse_anuncio     interesse_anuncio[]
+  lembrete              lembrete[]
+  notificacao           notificacao[]
+  participacao          participacao[]
+  password_reset        password_reset[]
 }
 
 model password_reset {

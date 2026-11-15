@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { APP_THROTTLER_GUARD_PROVIDER, APP_THROTTLER_OPTIONS } from "./common/app-throttling.js";
 import { AppController } from "./app.controller.js";
 import { AppService } from "./app.service.js";
 import { UsersModule } from "./users/users.module.js";
@@ -35,7 +37,7 @@ import { RoomsModule } from "./rooms/rooms.module.js";
                 MINIO_REGION: Joi.string().required(),
             }),
         }),
-        ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+        ThrottlerModule.forRoot(APP_THROTTLER_OPTIONS),
         UsersModule,
         PrismaModule,
         AuthModule,
@@ -53,6 +55,6 @@ import { RoomsModule } from "./rooms/rooms.module.js";
         RoomsModule,
     ],
     controllers: [AppController],
-    providers: [AppService, PrismaService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+    providers: [AppService, PrismaService, APP_THROTTLER_GUARD_PROVIDER],
 })
 export class AppModule {}

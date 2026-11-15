@@ -124,7 +124,7 @@ export function TaskModal({
                             </label>
                         </div>
                     )}
-                    {form.assignmentType === "FIXA" ? (
+                    {hasResidence && form.assignmentType === "FIXA" ? (
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Responsável
                             <select
@@ -140,7 +140,7 @@ export function TaskModal({
                                 ))}
                             </select>
                         </label>
-                    ) : (
+                    ) : hasResidence ? (
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Ordem do rodízio (selecione ao menos dois moradores)
                             <select
@@ -164,7 +164,7 @@ export function TaskModal({
                                 ))}
                             </select>
                         </label>
-                    )}
+                    ) : null}
                     <div className="grid gap-3 sm:grid-cols-2">
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Data e horário
