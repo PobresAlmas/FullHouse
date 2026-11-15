@@ -28,7 +28,6 @@ A classe AnuncioQuarto permite publicar informações sobre quartos disponíveis
 
 **Justificativa da estrutura:** PerfilConvivenciaCasa reúne preferências da casa, como aceitar animais e permitir visitas, enquanto AnuncioQuarto contém informações de uma oferta, como valor mensal, descrição e situação de atividade. Essa separação distingue as características da casa dos dados de cada anúncio. Os campos exibirEndereco e exibirContato registram opções de divulgação do anúncio, sem que o diagrama detalhe como essas opções são aplicadas na interface.
 
-
 ## Convivência
 
 A classe Pet representa os animais cadastrados na casa.

@@ -2,60 +2,60 @@
 
 ## Purpose
 
-Provide a residence chat so active residents can exchange household messages in the application and receive new messages while connected to the conversation.
+Disponibilizar um chat da residência para que os moradores ativos troquem mensagens sobre a casa na aplicação e recebam novas mensagens enquanto estiverem conectados à conversa.
 
 ## ADDED Requirements
 
-### Requirement: Chat access is limited to active residence members
+### Requirement: O acesso ao chat é restrito aos membros ativos da residência
 
-The system MUST allow only users with an active participation in a residence to retrieve that residence's conversation and its messages or to join its live message stream.
+O sistema MUST permitir que somente usuários com participação ativa em uma residência obtenham a conversa e as mensagens daquela residência ou se conectem ao seu fluxo de mensagens em tempo real.
 
-#### Scenario: Active member opens the residence conversation
+#### Scenario: Membro ativo abre a conversa da residência
 
-- **WHEN** an authenticated active member requests the conversation for a residence
-- **THEN** the system returns the conversation and its message history for that residence
+- **WHEN** um membro ativo e autenticado solicita a conversa de uma residência
+- **THEN** o sistema retorna a conversa e seu histórico de mensagens daquela residência
 
-#### Scenario: User without active membership requests chat data
+#### Scenario: Usuário sem participação ativa solicita dados do chat
 
-- **WHEN** an authenticated user without active participation requests the conversation, its messages, or its live stream
-- **THEN** the system denies access and returns no conversation content
+- **WHEN** um usuário autenticado sem participação ativa solicita a conversa, suas mensagens ou seu fluxo em tempo real
+- **THEN** o sistema nega o acesso e não retorna o conteúdo da conversa
 
-#### Scenario: Access ends while a live stream is connected
+#### Scenario: O acesso termina enquanto um fluxo em tempo real está conectado
 
-- **WHEN** a member's active participation ends while their live stream is open
-- **THEN** the system closes the stream and sends no subsequent messages to that user
+- **WHEN** a participação ativa de um membro termina enquanto seu fluxo em tempo real está aberto
+- **THEN** o sistema encerra o fluxo e não envia mensagens posteriores àquele usuário
 
-### Requirement: Members can send and read attributed messages
+### Requirement: Membros podem enviar e ler mensagens com autoria identificada
 
-The system MUST let an active residence member send a non-empty message and MUST show each message's author and sending date and time to authorized members.
+O sistema MUST permitir que um membro ativo da residência envie uma mensagem não vazia e MUST mostrar o autor e a data e o horário de envio de cada mensagem aos membros autorizados.
 
-#### Scenario: Member sends a message
+#### Scenario: Membro envia uma mensagem
 
-- **WHEN** an active member submits a message containing non-whitespace text to their residence conversation
-- **THEN** the system stores the message with the authenticated member as author and a server-generated sending timestamp
-- **AND** the message appears in the conversation history with that author, date, and time
+- **WHEN** um membro ativo envia à conversa de sua residência uma mensagem contendo texto que não seja composto apenas por espaços em branco
+- **THEN** o sistema armazena a mensagem com o membro autenticado como autor e com data e horário de envio gerados pelo servidor
+- **AND** a mensagem aparece no histórico da conversa com esse autor, data e horário
 
-#### Scenario: Member submits an empty message
+#### Scenario: Membro envia uma mensagem vazia
 
-- **WHEN** an active member submits a message containing only whitespace
-- **THEN** the system rejects the message without storing it
+- **WHEN** um membro ativo envia uma mensagem composta apenas por espaços em branco
+- **THEN** o sistema rejeita a mensagem sem armazená-la
 
-#### Scenario: Member reads conversation history
+#### Scenario: Membro consulta o histórico da conversa
 
-- **WHEN** an active member requests messages for their residence conversation
-- **THEN** the system returns messages in chronological order with author and timestamp
+- **WHEN** um membro ativo solicita as mensagens da conversa de sua residência
+- **THEN** o sistema retorna as mensagens em ordem cronológica, com autor, data e horário
 
-### Requirement: Connected members receive new messages without reloading
+### Requirement: Membros conectados recebem novas mensagens sem recarregar a página
 
-The system MUST deliver a persisted new message to other active members currently connected to the same residence conversation without requiring a page reload.
+O sistema MUST entregar uma nova mensagem persistida aos demais membros ativos conectados à mesma conversa da residência, sem exigir o recarregamento da página.
 
-#### Scenario: New message arrives while members are connected
+#### Scenario: Uma nova mensagem chega enquanto os membros estão conectados
 
-- **WHEN** an active member sends a message while another active member is connected to the same conversation
-- **THEN** the sender receives the persisted message through the normal send response
-- **AND** the other connected member receives that message through the live channel without reloading
+- **WHEN** um membro ativo envia uma mensagem enquanto outro membro ativo está conectado à mesma conversa
+- **THEN** o remetente recebe a mensagem persistida na resposta normal do envio
+- **AND** o outro membro conectado recebe essa mensagem pelo canal em tempo real, sem recarregar a página
 
-#### Scenario: Message belongs to a different residence
+#### Scenario: A mensagem pertence a outra residência
 
-- **WHEN** a message is sent in one residence conversation
-- **THEN** connected members of other residences do not receive it
+- **WHEN** uma mensagem é enviada na conversa de uma residência
+- **THEN** os membros conectados a outras residências não a recebem

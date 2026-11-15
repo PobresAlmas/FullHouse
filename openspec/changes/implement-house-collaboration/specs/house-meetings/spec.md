@@ -2,73 +2,73 @@
 
 ## Purpose
 
-Help residents coordinate household decisions by scheduling meetings, inviting all current members, collecting attendance responses, and preserving organizer control over schedule changes.
+Ajudar os moradores a coordenar decisões da casa por meio do agendamento de reuniões, do convite a todos os membros atuais, do registro de respostas de presença e da manutenção do controle do organizador sobre alterações no agendamento.
 
 ## ADDED Requirements
 
-### Requirement: Active members can schedule residence meetings
+### Requirement: Membros ativos podem agendar reuniões da residência
 
-The system MUST allow an active residence member to schedule a meeting with a date, time, and non-empty agenda, and MUST invite all active members of that residence.
+O sistema MUST permitir que um membro ativo da residência agende uma reunião com data, horário e pauta não vazia e MUST convidar todos os membros ativos daquela residência.
 
-#### Scenario: Member schedules a meeting
+#### Scenario: Membro agenda uma reunião
 
-- **WHEN** an active member submits a future date and time and a non-empty agenda for their residence
-- **THEN** the system stores the meeting under that residence with the authenticated member as organizer
-- **AND** creates a pending invitation for every active member of that residence, including the organizer
+- **WHEN** um membro ativo informa data e horário futuros e uma pauta não vazia para sua residência
+- **THEN** o sistema armazena a reunião naquela residência com o membro autenticado como organizador
+- **AND** cria um convite pendente para cada membro ativo daquela residência, incluindo o organizador
 
-#### Scenario: Member submits an invalid meeting
+#### Scenario: Membro envia uma reunião inválida
 
-- **WHEN** an active member submits a meeting without a date, time, or agenda, or with a date and time in the past
-- **THEN** the system rejects the request and creates no meeting or invitations
+- **WHEN** um membro ativo envia uma reunião sem data, horário ou pauta, ou com data e horário no passado
+- **THEN** o sistema rejeita a solicitação e não cria reunião nem convites
 
-#### Scenario: User outside the residence attempts to schedule a meeting
+#### Scenario: Usuário de fora da residência tenta agendar uma reunião
 
-- **WHEN** a user without active participation submits a meeting for that residence
-- **THEN** the system denies the request and creates no meeting
+- **WHEN** um usuário sem participação ativa envia uma reunião para aquela residência
+- **THEN** o sistema nega a solicitação e não cria a reunião
 
-### Requirement: Invitees can respond to meeting invitations
+### Requirement: Convidados podem responder aos convites de reunião
 
-The system MUST let an active invited member confirm or decline attendance and MUST show the response status to active members of the residence.
+O sistema MUST permitir que um membro ativo convidado confirme ou recuse a presença e MUST mostrar a situação da resposta aos membros ativos da residência.
 
-#### Scenario: Invitee confirms attendance
+#### Scenario: Convidado confirma presença
 
-- **WHEN** an active invitee confirms their invitation
-- **THEN** the system records the response as confirmed with its response time
-- **AND** active members can see the updated response
+- **WHEN** um convidado ativo confirma seu convite
+- **THEN** o sistema registra a resposta como confirmada, com o horário da resposta
+- **AND** os membros ativos podem consultar a resposta atualizada
 
-#### Scenario: Invitee declines attendance
+#### Scenario: Convidado recusa presença
 
-- **WHEN** an active invitee declines their invitation
-- **THEN** the system records the response as declined with its response time
-- **AND** active members can see the updated response
+- **WHEN** um convidado ativo recusa seu convite
+- **THEN** o sistema registra a resposta como recusada, com o horário da resposta
+- **AND** os membros ativos podem consultar a resposta atualizada
 
-#### Scenario: Non-invitee or non-member responds
+#### Scenario: Usuário sem convite ou sem participação responde
 
-- **WHEN** a user without an active invitation and active residence participation tries to respond
-- **THEN** the system denies the operation and leaves all responses unchanged
+- **WHEN** um usuário que não possui simultaneamente convite ativo e participação ativa na residência tenta responder
+- **THEN** o sistema nega a operação e mantém todas as respostas inalteradas
 
-### Requirement: Meeting organizer can reschedule or cancel a meeting
+### Requirement: O organizador pode reagendar ou cancelar uma reunião
 
-The system MUST allow only the meeting organizer to reschedule or cancel a scheduled meeting in their residence.
+O sistema MUST permitir que somente o organizador da reunião reagende ou cancele uma reunião agendada em sua residência.
 
-#### Scenario: Organizer reschedules a meeting
+#### Scenario: Organizador reagenda uma reunião
 
-- **WHEN** the organizer submits a valid future date and time and agenda for a scheduled meeting
-- **THEN** the original meeting is marked as rescheduled and retained in the residence history
-- **AND** a replacement meeting is created and linked to the original
-- **AND** all active residence members receive a new pending invitation for the replacement meeting
+- **WHEN** o organizador informa data e horário futuros válidos e uma pauta para uma reunião agendada
+- **THEN** a reunião original é marcada como reagendada e mantida no histórico da residência
+- **AND** uma reunião substituta é criada e vinculada à original
+- **AND** todos os membros ativos da residência recebem um novo convite pendente para a reunião substituta
 
-#### Scenario: Organizer cancels a meeting
+#### Scenario: Organizador cancela uma reunião
 
-- **WHEN** the organizer cancels a scheduled meeting
-- **THEN** the meeting is marked as canceled and remains visible in the residence history
+- **WHEN** o organizador cancela uma reunião agendada
+- **THEN** a reunião é marcada como cancelada e permanece visível no histórico da residência
 
-#### Scenario: Another member attempts to reschedule or cancel
+#### Scenario: Outro membro tenta reagendar ou cancelar
 
-- **WHEN** a member other than the organizer attempts to reschedule or cancel the meeting
-- **THEN** the system denies the operation and leaves the meeting unchanged
+- **WHEN** um membro diferente do organizador tenta reagendar ou cancelar a reunião
+- **THEN** o sistema nega a operação e mantém a reunião inalterada
 
-#### Scenario: User without active residence participation accesses a meeting
+#### Scenario: Usuário sem participação ativa na residência acessa uma reunião
 
-- **WHEN** a user without active participation requests or attempts to modify a residence meeting
-- **THEN** the system denies access and returns no meeting details
+- **WHEN** um usuário sem participação ativa solicita ou tenta modificar uma reunião da residência
+- **THEN** o sistema nega o acesso e não retorna os detalhes da reunião

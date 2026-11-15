@@ -2,14 +2,14 @@
 
 ## 1. Chat da residência — backend e persistência
 
-- [x] 1.1 Criar a migration para unicidade de uma conversa `CASA` por residência; incluir verificação de duplicatas existentes e teste de migration que confirme falha segura sem apagar mensagens.
+- [x] 1.1 Criar a migração para unicidade de uma conversa `CASA` por residência; incluir verificação de duplicatas existentes e teste de migração que confirme falha segura sem apagar mensagens.
 - [x] 1.2 Implementar módulo, DTOs e rotas REST do chat para obter histórico e enviar mensagens; validar participação ativa, conteúdo não vazio, autoria autenticada e ordenação cronológica, com testes unitários para autorização, isolamento entre casas e validações.
-- [x] 1.3 Implementar o stream SSE autenticado para novas mensagens, com associação ao canal da conversa, limpeza no disconnect e interrupção após perda de participação; cobrir conexão autorizada/negada, entrega sem cruzamento de casas e revogação em testes.
-- [x] 1.4 Adicionar testes HTTP das rotas REST e do stream para respostas `401`, `403`, `404` e payloads inválidos; executar a suíte E2E do chat.
+- [x] 1.3 Implementar o fluxo SSE autenticado para novas mensagens, com associação ao canal da conversa, limpeza na desconexão e interrupção após perda de participação; cobrir conexão autorizada/negada, entrega sem cruzamento de casas e revogação em testes.
+- [x] 1.4 Adicionar testes HTTP das rotas REST e do fluxo para respostas `401`, `403`, `404` e corpos de requisição inválidos; executar a suíte E2E do chat.
 
 ## 2. Chat da residência — frontend
 
-- [x] 2.1 Criar cliente HTTP e página privada do chat com histórico, autor, data/hora, envio e reconexão do stream com recuperação das mensagens após o último ID; testar a API cliente.
+- [x] 2.1 Criar cliente HTTP e página privada do chat com histórico, autor, data/hora, envio e reconexão do fluxo com recuperação das mensagens após o último ID; testar a API cliente.
 - [x] 2.2 Integrar o chat à navegação e à seleção de residência, exibindo mensagens novas sem recarregar e estado de conexão/desconexão; testar envio, recebimento ao vivo, reconexão e isolamento do contexto da casa.
 
 ## 3. Mural de regras
@@ -21,7 +21,7 @@
 
 ## 4. Reuniões da residência
 
-- [x] 4.1 Implementar rotas, DTOs, serviço e repositório para criar reunião e convites pendentes para todos os membros ativos em uma transação; validar data/hora futura e pauta; testar organizador, convites completos, validações e rollback em erro.
+- [x] 4.1 Implementar rotas, DTOs, serviço e repositório para criar reunião e convites pendentes para todos os membros ativos em uma transação; validar data/hora futura e pauta; testar organizador, convites completos, validações e reversão em caso de erro.
 - [x] 4.2 Implementar respostas confirmar/recusar e consulta de participantes, permitindo resposta somente ao membro ativo convidado; testar status, data de resposta e bloqueio de não convidados/não membros.
 - [x] 4.3 Implementar reagendamento com histórico e novos convites pendentes e cancelamento pelo organizador; testar vínculo da reunião substituta, preservação do evento anterior e bloqueio de ações por outros membros.
 - [x] 4.4 Adicionar testes HTTP para criação, consulta, resposta, reagendamento e cancelamento, cobrindo autenticação e códigos `400`, `401`, `403` e `404`; executar a suíte E2E de reuniões.

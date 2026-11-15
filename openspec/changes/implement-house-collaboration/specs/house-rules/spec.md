@@ -2,55 +2,55 @@
 
 ## Purpose
 
-Let residents keep a shared, current record of household rules with clear authorship so members can understand the expectations that apply in their residence.
+Permitir que os moradores mantenham um registro compartilhado e atualizado das regras da casa, com autoria identificada, para que os membros compreendam as expectativas aplicáveis à sua residência.
 
 ## ADDED Requirements
 
-### Requirement: Active members can consult their residence rules
+### Requirement: Membros ativos podem consultar as regras de sua residência
 
-The system MUST allow every active member of a residence to consult its current rules and MUST NOT expose rules from a residence to non-members.
+O sistema MUST permitir que todo membro ativo de uma residência consulte suas regras vigentes e MUST NOT expor as regras de uma residência a quem não é membro.
 
-#### Scenario: Member views the residence rule board
+#### Scenario: Membro consulta o mural de regras da residência
 
-- **WHEN** an authenticated active member requests the rules for their residence
-- **THEN** the system returns the rules belonging to that residence with each rule's title, description, and registration date
+- **WHEN** um membro ativo e autenticado solicita as regras de sua residência
+- **THEN** o sistema retorna as regras pertencentes àquela residência com título, descrição e data de cadastro de cada regra
 
-#### Scenario: Non-member requests the rule board
+#### Scenario: Usuário que não é membro solicita o mural de regras
 
-- **WHEN** an authenticated user without active participation requests rules for a residence
-- **THEN** the system denies access and returns no rule content
+- **WHEN** um usuário autenticado sem participação ativa solicita as regras de uma residência
+- **THEN** o sistema nega o acesso e não retorna o conteúdo de nenhuma regra
 
-#### Scenario: Rules from separate residences are isolated
+#### Scenario: As regras de residências diferentes permanecem isoladas
 
-- **WHEN** a member requests the rule board for a residence they belong to
-- **THEN** the returned rules contain no rules belonging to another residence
+- **WHEN** um membro solicita o mural de regras de uma residência da qual participa
+- **THEN** as regras retornadas não incluem regras pertencentes a outra residência
 
-### Requirement: Active members can register residence rules
+### Requirement: Membros ativos podem cadastrar regras da residência
 
-The system MUST allow an active residence member to register a rule with a non-empty title and description and MUST record the registration date and the member who created it.
+O sistema MUST permitir que um membro ativo da residência cadastre uma regra com título e descrição não vazios e MUST registrar a data de cadastro e o membro que a criou.
 
-#### Scenario: Member registers a valid rule
+#### Scenario: Membro cadastra uma regra válida
 
-- **WHEN** an active member submits a title and description containing non-whitespace text
-- **THEN** the system stores the rule under that member's residence with a server-generated registration date and creator attribution
-- **AND** the rule appears on that residence's rule board
+- **WHEN** um membro ativo envia título e descrição contendo texto que não seja composto apenas por espaços em branco
+- **THEN** o sistema armazena a regra na residência desse membro, com data de cadastro gerada pelo servidor e identificação do criador
+- **AND** a regra aparece no mural de regras daquela residência
 
-#### Scenario: Member submits an incomplete rule
+#### Scenario: Membro envia uma regra incompleta
 
-- **WHEN** an active member submits a rule with an empty title or description
-- **THEN** the system rejects the rule and stores no record
+- **WHEN** um membro ativo envia uma regra com título ou descrição vazios
+- **THEN** o sistema rejeita a regra e não armazena nenhum registro
 
-### Requirement: Rule edits preserve last-editor attribution
+### Requirement: Edições de regras preservam a identificação do último editor
 
-The system MUST allow an active member of the rule's residence to edit a rule and MUST identify the member who most recently created or edited it on the rule board.
+O sistema MUST permitir que um membro ativo da residência à qual a regra pertence edite essa regra e MUST identificar no mural o membro que a criou ou editou mais recentemente.
 
-#### Scenario: Member edits a rule
+#### Scenario: Membro edita uma regra
 
-- **WHEN** an active member updates a rule in their residence
-- **THEN** the system stores the updated title and description
-- **AND** the rule board identifies that member as the most recent editor
+- **WHEN** um membro ativo atualiza uma regra de sua residência
+- **THEN** o sistema armazena o título e a descrição atualizados
+- **AND** o mural de regras identifica esse membro como o editor mais recente
 
-#### Scenario: User outside the residence attempts to edit a rule
+#### Scenario: Usuário de fora da residência tenta editar uma regra
 
-- **WHEN** a user without active participation in the rule's residence attempts to edit it
-- **THEN** the system denies the operation and leaves the rule unchanged
+- **WHEN** um usuário sem participação ativa na residência à qual a regra pertence tenta editá-la
+- **THEN** o sistema nega a operação e mantém a regra inalterada
