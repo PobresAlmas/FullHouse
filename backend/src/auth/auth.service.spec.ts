@@ -11,6 +11,8 @@ describe("AuthService", () => {
         foto_url: string | null;
         status_moradia: string;
         senha_hash: string;
+        falhas_login: number;
+        login_bloqueado_ate: Date | null;
     };
 
     const user: MockUser = {
@@ -22,10 +24,15 @@ describe("AuthService", () => {
         foto_url: null,
         status_moradia: "PROCURANDO",
         senha_hash: "hashed",
+        falhas_login: 0,
+        login_bloqueado_ate: null,
     };
     let users: {
         create: ReturnType<typeof vi.fn>;
         findByEmail: ReturnType<typeof vi.fn>;
+        recordFailedLogin: ReturnType<typeof vi.fn>;
+        clearLoginFailures: ReturnType<typeof vi.fn>;
+        clearExpiredLoginLock: ReturnType<typeof vi.fn>;
     };
     let passwords: { compare: ReturnType<typeof vi.fn>; hash: ReturnType<typeof vi.fn> };
     let resets: {
@@ -40,7 +47,12 @@ describe("AuthService", () => {
         users = {
             create: vi.fn().mockResolvedValue(user),
             findByEmail: vi.fn().mockResolvedValue(user),
+            recordFailedLogin: vi.fn().mockResolvedValue(undefined),
+            clearLoginFailures: vi.fn().mockResolvedValue(undefined),
+            clearExpiredLoginLock: vi.fn().mockResolvedValue({ count: 1 }),
         };
+        user.falhas_login = 0;
+        user.login_bloqueado_ate = null;
         passwords = {
             compare: vi.fn().mockResolvedValue(true),
             hash: vi.fn().mockResolvedValue("new-hash"),
@@ -91,6 +103,7 @@ describe("AuthService", () => {
             )
         ).resolves.toMatchObject({ access_token: "token", user: { id: "u1" } });
         expect(passwords.compare).toHaveBeenCalledWith("secret", "hashed");
+        expect(users.clearLoginFailures).toHaveBeenCalledWith(user.id);
     });
 
     it.each([
@@ -106,6 +119,59 @@ describe("AuthService", () => {
             )
         ).rejects.toBeInstanceOf(UnauthorizedException);
         if (!found) expect(passwords.compare).not.toHaveBeenCalled();
+        if (!found) expect(users.recordFailedLogin).not.toHaveBeenCalled();
+        if (found) {
+            expect(users.recordFailedLogin).toHaveBeenCalledWith(user.id, 5, 15 * 60 * 1000);
+            expect(users.clearLoginFailures).not.toHaveBeenCalled();
+        }
+    });
+
+    it("rejects a locked account without checking the supplied password", async () => {
+        user.login_bloqueado_ate = new Date(Date.now() + 60_000);
+
+        await expect(
+            service.login(
+                { email: user.email, password: "secret" } as Parameters<AuthService["login"]>[0],
+                {} as Parameters<AuthService["login"]>[1]
+            )
+        ).rejects.toThrow("E-mail ou senha inválidos.");
+
+        expect(passwords.compare).not.toHaveBeenCalled();
+        expect(users.recordFailedLogin).not.toHaveBeenCalled();
+    });
+
+    it("allows login after the account lock has expired and clears the failure counter", async () => {
+        user.falhas_login = 5;
+        user.login_bloqueado_ate = new Date(Date.now() - 1);
+
+        await expect(
+            service.login(
+                { email: user.email, password: "secret" } as Parameters<AuthService["login"]>[0],
+                {} as Parameters<AuthService["login"]>[1]
+            )
+        ).resolves.toMatchObject({ access_token: "token" });
+
+        expect(passwords.compare).toHaveBeenCalledOnce();
+        expect(users.clearExpiredLoginLock).toHaveBeenCalledWith(user.id, expect.any(Date));
+        expect(users.clearLoginFailures).toHaveBeenCalledWith(user.id);
+    });
+
+    it("starts a fresh attempt window after an expired lock before counting another failure", async () => {
+        user.falhas_login = 5;
+        user.login_bloqueado_ate = new Date(Date.now() - 60_000);
+        passwords.compare.mockResolvedValue(false);
+
+        await expect(
+            service.login(
+                { email: user.email, password: "wrong-again" } as Parameters<
+                    AuthService["login"]
+                >[0],
+                {} as Parameters<AuthService["login"]>[1]
+            )
+        ).rejects.toBeInstanceOf(UnauthorizedException);
+
+        expect(users.clearExpiredLoginLock).toHaveBeenCalledWith(user.id, expect.any(Date));
+        expect(users.recordFailedLogin).toHaveBeenCalledWith(user.id, 5, 15 * 60 * 1000);
     });
 
     it("keeps forgot-password response identical for an unknown email", async () => {
