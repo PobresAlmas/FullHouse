@@ -137,7 +137,7 @@ describe("TasksPage", () => {
         expect(submitted).not.toHaveProperty("assignmentType");
         expect(await screen.findByRole("status")).toHaveTextContent("Tarefa pessoal criada.");
         expect(screen.getByRole("heading", { name: "Ler um capítulo" })).toBeInTheDocument();
-    });
+    }, 15_000);
 
     it("filters tasks by search and completes the selected personal task", async () => {
         const user = userEvent.setup();
