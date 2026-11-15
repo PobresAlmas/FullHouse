@@ -30,16 +30,16 @@ A funcionalidade integra descoberta pública de anúncios com publicação e ges
 
 ## 2. Privacidade e autorização
 
-| Campo/ação | Regra |
-| --- | --- |
-| `enderecoCompleto` em respostas públicas | Retorna `null` se `exibeEnderecoCompleto` for `false`. |
-| `contato` em respostas públicas | Retorna `null` se `exibeContato` for `false`. |
-| Flags de privacidade | Independentes: habilitar uma não revela o outro campo. |
-| Gestão própria (`/rooms/listings/mine`) | Anunciante autenticado recebe os próprios valores para poder editar; a exceção não se aplica à busca ou detalhe público. |
-| Criar anúncio | Exige JWT e participação ativa na casa indicada. |
-| Editar, fechar, reabrir ou remover | Exige JWT e ownership pela participação anunciante; terceiros recebem `403` (recurso inexistente pode retornar `404`). |
-| Buscar e consultar detalhe | Público; somente anúncios em estado público/disponível aparecem na busca padrão. |
-| Manifestar interesse | Exige JWT e anúncio aberto; interesse não contorna as flags de privacidade. |
+| Campo/ação                               | Regra                                                                                                                    |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `enderecoCompleto` em respostas públicas | Retorna `null` se `exibeEnderecoCompleto` for `false`.                                                                   |
+| `contato` em respostas públicas          | Retorna `null` se `exibeContato` for `false`.                                                                            |
+| Flags de privacidade                     | Independentes: habilitar uma não revela o outro campo.                                                                   |
+| Gestão própria (`/rooms/listings/mine`)  | Anunciante autenticado recebe os próprios valores para poder editar; a exceção não se aplica à busca ou detalhe público. |
+| Criar anúncio                            | Exige JWT e participação ativa na casa indicada.                                                                         |
+| Editar, fechar, reabrir ou remover       | Exige JWT e ownership pela participação anunciante; terceiros recebem `403` (recurso inexistente pode retornar `404`).   |
+| Buscar e consultar detalhe               | Público; somente anúncios em estado público/disponível aparecem na busca padrão.                                         |
+| Manifestar interesse                     | Exige JWT e anúncio aberto; interesse não contorna as flags de privacidade.                                              |
 
 ## 3. Modelo de domínio
 
@@ -47,24 +47,24 @@ O modelo conceitual é `QuartoAnuncio`; o projeto já possuía `anuncio_quarto`,
 
 ### Anúncio de quarto (`anuncio_quarto`)
 
-| Campo/atributo | Regra e finalidade |
-| --- | --- |
-| `id` | UUID do anúncio. |
-| `titulo` | Obrigatório, até 150 caracteres. |
-| `descricao` | Texto descritivo, opcional. |
-| `preco` / `valor_mensal` | Valor mensal positivo, decimal (10,2). |
-| `cidade`, `bairro` | Localização aproximada; cidade obrigatória e bairro opcional. |
-| `enderecoCompleto` | Endereço exato opcional, separado da referência legada. |
-| `exibeEnderecoCompleto` | Controla exclusivamente a divulgação do endereço exato; default `false`. |
-| `contato` | Contato do anunciante, obrigatório para novo cadastro; anúncios legados podem permanecer sem valor até atualização. |
-| `exibeContato` | Controla exclusivamente a divulgação do contato; default `false`. |
-| `perfilConvivencia` | Texto com regras/perfil da convivência. |
-| `tipoMoradia` | Enum: `QUARTO_INDIVIDUAL`, `VAGA_COMPARTILHADA`, `REPUBLICA`. |
-| `aceitaPets` | Boolean estruturado; default `false`. |
-| `fotos` | Lista de URLs; máximo de oito imagens aceitas pelo fluxo. |
-| `status` | Enum existente `ABERTO` / `FECHADO`; novos anúncios iniciam `ABERTO`. |
-| `casaId`, `criadoPorParticipacaoId` | Relações existentes com casa e participação anunciante, mantidas. |
-| `criadoEm`, `atualizadoEm` | Timestamps de criação e atualização. |
+| Campo/atributo                      | Regra e finalidade                                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `id`                                | UUID do anúncio.                                                                                                    |
+| `titulo`                            | Obrigatório, até 150 caracteres.                                                                                    |
+| `descricao`                         | Texto descritivo, opcional.                                                                                         |
+| `preco` / `valor_mensal`            | Valor mensal positivo, decimal (10,2).                                                                              |
+| `cidade`, `bairro`                  | Localização aproximada; cidade obrigatória e bairro opcional.                                                       |
+| `enderecoCompleto`                  | Endereço exato opcional, separado da referência legada.                                                             |
+| `exibeEnderecoCompleto`             | Controla exclusivamente a divulgação do endereço exato; default `false`.                                            |
+| `contato`                           | Contato do anunciante, obrigatório para novo cadastro; anúncios legados podem permanecer sem valor até atualização. |
+| `exibeContato`                      | Controla exclusivamente a divulgação do contato; default `false`.                                                   |
+| `perfilConvivencia`                 | Texto com regras/perfil da convivência.                                                                             |
+| `tipoMoradia`                       | Enum: `QUARTO_INDIVIDUAL`, `VAGA_COMPARTILHADA`, `REPUBLICA`.                                                       |
+| `aceitaPets`                        | Boolean estruturado; default `false`.                                                                               |
+| `fotos`                             | Lista de URLs; máximo de oito imagens aceitas pelo fluxo.                                                           |
+| `status`                            | Enum existente `ABERTO` / `FECHADO`; novos anúncios iniciam `ABERTO`.                                               |
+| `casaId`, `criadoPorParticipacaoId` | Relações existentes com casa e participação anunciante, mantidas.                                                   |
+| `criadoEm`, `atualizadoEm`          | Timestamps de criação e atualização.                                                                                |
 
 ### Interesse em anúncio (`interesse_anuncio`)
 
@@ -72,12 +72,12 @@ Mantém o registro ligado ao anúncio e ao usuário interessado, incluindo mensa
 
 ## 4. Rastreabilidade
 
-| Entrega | Critério | Evidência no repositório |
-| --- | --- | --- |
-| Busca pública, filtros e paginação | RF015 / US013 | `GET /rooms/listings`, DTO de consulta, service e repository do módulo `backend/src/rooms`. |
-| Cadastro, edição e remoção | RF015 / US013 | `POST`, `PATCH` e `DELETE /rooms/listings`; JWT e validação de participação/ownership. |
-| Privacidade por campo | RF015 / US013 | Mapper de anúncios e testes unitários das combinações das flags. |
-| Interesse | RF015 / US013 | Rotas `/rooms/listings/:id/interests` e integração ao model existente. |
-| Persistência/migração | RF015 / US013 | `backend/prisma/schema.prisma` e migration incremental de campos do anúncio. |
-| Interface web | RF015 / US013 | `web/app/rooms/page.tsx`, `web/features/rooms/` e navegação compartilhada. |
-| Testes e limitações observadas | Ver `testes.md` | Vitest backend/frontend, E2E, integração PostgreSQL e roteiro manual. |
+| Entrega                            | Critério        | Evidência no repositório                                                                    |
+| ---------------------------------- | --------------- | ------------------------------------------------------------------------------------------- |
+| Busca pública, filtros e paginação | RF015 / US013   | `GET /rooms/listings`, DTO de consulta, service e repository do módulo `backend/src/rooms`. |
+| Cadastro, edição e remoção         | RF015 / US013   | `POST`, `PATCH` e `DELETE /rooms/listings`; JWT e validação de participação/ownership.      |
+| Privacidade por campo              | RF015 / US013   | Mapper de anúncios e testes unitários das combinações das flags.                            |
+| Interesse                          | RF015 / US013   | Rotas `/rooms/listings/:id/interests` e integração ao model existente.                      |
+| Persistência/migração              | RF015 / US013   | `backend/prisma/schema.prisma` e migration incremental de campos do anúncio.                |
+| Interface web                      | RF015 / US013   | `web/app/rooms/page.tsx`, `web/features/rooms/` e navegação compartilhada.                  |
+| Testes e limitações observadas     | Ver `testes.md` | Vitest backend/frontend, E2E, integração PostgreSQL e roteiro manual.                       |

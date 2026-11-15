@@ -12,15 +12,15 @@ A interface segue o shell existente do FullHouse e a referência visual `openspe
 
 ## 2. Frontend
 
-| Arquivo | Responsabilidade |
-| --- | --- |
-| `web/app/rooms/page.tsx` | Rota de Quartos integrada ao app. |
-| `web/features/rooms/components/RoomsPage.tsx` | Busca, filtros, cards, detalhe, publicação/edição, status, interesses e estados de interface. |
-| `web/features/rooms/api/rooms.api.ts` | Tipos e chamadas HTTP para busca, detalhe, CRUD, fotos e interesses, usando autenticação da aplicação. |
-| `web/components/layout/AppSidebar.tsx` | Acesso “Quartos” na navegação autenticada. |
-| `web/features/auth/components/LoginForm.tsx` | Suporte a `returnTo` para retomar o destino após autenticação. |
-| `web/features/rooms/**/__test__/` | Testes da API e dos fluxos/componentes de Quartos. |
-| `web/components/layout/__test__/AppSidebar.test.tsx` | Teste da navegação atualizada. |
+| Arquivo                                              | Responsabilidade                                                                                       |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `web/app/rooms/page.tsx`                             | Rota de Quartos integrada ao app.                                                                      |
+| `web/features/rooms/components/RoomsPage.tsx`        | Busca, filtros, cards, detalhe, publicação/edição, status, interesses e estados de interface.          |
+| `web/features/rooms/api/rooms.api.ts`                | Tipos e chamadas HTTP para busca, detalhe, CRUD, fotos e interesses, usando autenticação da aplicação. |
+| `web/components/layout/AppSidebar.tsx`               | Acesso “Quartos” na navegação autenticada.                                                             |
+| `web/features/auth/components/LoginForm.tsx`         | Suporte a `returnTo` para retomar o destino após autenticação.                                         |
+| `web/features/rooms/**/__test__/`                    | Testes da API e dos fluxos/componentes de Quartos.                                                     |
+| `web/components/layout/__test__/AppSidebar.test.tsx` | Teste da navegação atualizada.                                                                         |
 
 ### Fluxos de interface
 
@@ -33,35 +33,35 @@ A interface segue o shell existente do FullHouse e a referência visual `openspe
 
 ## 3. Backend e API
 
-| Arquivo/camada | Responsabilidade |
-| --- | --- |
-| `backend/src/rooms/rooms.module.ts` | Registro e composição do módulo. |
-| `backend/src/rooms/rooms.controller.ts` | Rotas REST, JWT nas mutações e extração do usuário autenticado. |
-| `backend/src/rooms/rooms.service.ts` | Regras de busca, participação ativa, ownership, transições de status e interesses. |
-| `backend/src/rooms/rooms.repository.ts` | Persistência e consultas Prisma, incluindo filtros/paginação. |
-| `backend/src/rooms/rooms.mapper.ts` | Conversão para respostas e mascaramento independente de endereço/contato. |
-| `backend/src/rooms/dto/` | DTOs de criação, atualização, filtros, resposta e interesse. |
-| `backend/src/app.module.ts` | Registro do `RoomsModule`. |
-| `backend/src/rooms/README.md` | Referência de contratos, payloads e respostas da API. |
-| `backend/test/rooms.e2e-spec.ts` | Cobertura E2E do contrato HTTP e autorização. |
-| `backend/test/integration/room-listings-migration.integration.test.ts` | Verificação da migration em schema isolado com registros legados. |
+| Arquivo/camada                                                         | Responsabilidade                                                                   |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `backend/src/rooms/rooms.module.ts`                                    | Registro e composição do módulo.                                                   |
+| `backend/src/rooms/rooms.controller.ts`                                | Rotas REST, JWT nas mutações e extração do usuário autenticado.                    |
+| `backend/src/rooms/rooms.service.ts`                                   | Regras de busca, participação ativa, ownership, transições de status e interesses. |
+| `backend/src/rooms/rooms.repository.ts`                                | Persistência e consultas Prisma, incluindo filtros/paginação.                      |
+| `backend/src/rooms/rooms.mapper.ts`                                    | Conversão para respostas e mascaramento independente de endereço/contato.          |
+| `backend/src/rooms/dto/`                                               | DTOs de criação, atualização, filtros, resposta e interesse.                       |
+| `backend/src/app.module.ts`                                            | Registro do `RoomsModule`.                                                         |
+| `backend/src/rooms/README.md`                                          | Referência de contratos, payloads e respostas da API.                              |
+| `backend/test/rooms.e2e-spec.ts`                                       | Cobertura E2E do contrato HTTP e autorização.                                      |
+| `backend/test/integration/room-listings-migration.integration.test.ts` | Verificação da migration em schema isolado com registros legados.                  |
 
 ### Endpoints principais
 
 As rotas de busca e detalhe são públicas. Mutação e interesse exigem JWT; operações de gestão validam a participação anunciante. Erros incluem `400` para validação, `401` para sessão ausente/inválida, `403` para falta de ownership/participação e `404` para recurso inexistente. Conflito de interesse duplicado/fechado é tratado sem duplicar registros.
 
-| Método | Rota | Acesso e finalidade |
-| --- | --- | --- |
-| `GET` | `/rooms/listings` | Público; filtros de localização, preço, status, tipo e aceita pets, com paginação. |
-| `GET` | `/rooms/listings/:id` | Público; detalhe com privacidade aplicada. |
-| `POST` | `/rooms/listings` | JWT e participação ativa; cria anúncio. |
-| `PATCH` | `/rooms/listings/:id` | JWT e ownership; atualiza campos ou status. |
-| `DELETE` | `/rooms/listings/:id` | JWT e ownership; fecha/remove sem apagar interesses históricos. |
-| `GET` | `/rooms/listings/mine` | JWT; lista gestão do próprio anunciante com seus valores completos para edição. |
-| `POST` | `/rooms/listings/photos` | JWT; envia imagem ao storage existente. |
-| `POST` | `/rooms/listings/:id/interests` | JWT; manifesta interesse em anúncio aberto. |
-| `GET` | `/rooms/listings/:id/interests` | JWT e anunciante; consulta interesses recebidos. |
-| `PATCH` | `/rooms/listings/:id/interests/:interestId` | JWT e anunciante; responde ao interesse. |
+| Método   | Rota                                        | Acesso e finalidade                                                                |
+| -------- | ------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `GET`    | `/rooms/listings`                           | Público; filtros de localização, preço, status, tipo e aceita pets, com paginação. |
+| `GET`    | `/rooms/listings/:id`                       | Público; detalhe com privacidade aplicada.                                         |
+| `POST`   | `/rooms/listings`                           | JWT e participação ativa; cria anúncio.                                            |
+| `PATCH`  | `/rooms/listings/:id`                       | JWT e ownership; atualiza campos ou status.                                        |
+| `DELETE` | `/rooms/listings/:id`                       | JWT e ownership; fecha/remove sem apagar interesses históricos.                    |
+| `GET`    | `/rooms/listings/mine`                      | JWT; lista gestão do próprio anunciante com seus valores completos para edição.    |
+| `POST`   | `/rooms/listings/photos`                    | JWT; envia imagem ao storage existente.                                            |
+| `POST`   | `/rooms/listings/:id/interests`             | JWT; manifesta interesse em anúncio aberto.                                        |
+| `GET`    | `/rooms/listings/:id/interests`             | JWT e anunciante; consulta interesses recebidos.                                   |
+| `PATCH`  | `/rooms/listings/:id/interests/:interestId` | JWT e anunciante; responde ao interesse.                                           |
 
 ### Privacidade
 

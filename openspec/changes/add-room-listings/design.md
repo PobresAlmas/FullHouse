@@ -84,21 +84,23 @@ Remove logicamente/fecha o anúncio, preservando relações de interesse; `204` 
 
 ```json
 {
-  "data": [{
-    "id": "uuid",
-    "titulo": "Quarto individual perto da UFC",
-    "descricao": "Quarto mobiliado com escrivaninha e ventilador.",
-    "preco": 450.00,
-    "cidade": "Quixadá",
-    "bairro": "Campo Novo",
-    "enderecoCompleto": null,
-    "exibeEnderecoCompleto": false,
-    "contato": "(88) 99999-9999",
-    "exibeContato": true,
-    "perfilConvivencia": "Ambiente tranquilo, focado em estudos.",
-    "status": "ABERTO",
-    "criadoEm": "2026-11-08T20:00:00.000Z"
-  }],
+  "data": [
+    {
+      "id": "uuid",
+      "titulo": "Quarto individual perto da UFC",
+      "descricao": "Quarto mobiliado com escrivaninha e ventilador.",
+      "preco": 450.0,
+      "cidade": "Quixadá",
+      "bairro": "Campo Novo",
+      "enderecoCompleto": null,
+      "exibeEnderecoCompleto": false,
+      "contato": "(88) 99999-9999",
+      "exibeContato": true,
+      "perfilConvivencia": "Ambiente tranquilo, focado em estudos.",
+      "status": "ABERTO",
+      "criadoEm": "2026-11-08T20:00:00.000Z"
+    }
+  ],
   "meta": { "total": 1, "page": 1, "limit": 10, "totalPages": 1 }
 }
 ```

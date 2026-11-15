@@ -18,24 +18,24 @@ O cliente HTTP está em `web/features/expenses/api/expenses.api.ts`. Os testes w
 
 O módulo está em `backend/src/expenses/`. O controller define as rotas autenticadas; serviço e repositório aplicam autorização, validam participantes e persistem os dados com Prisma.
 
-| Arquivo | Responsabilidade |
-| --- | --- |
-| `backend/src/expenses/dto/create-expense-subgroup.dto.ts` | Valida nome e lista de participantes no cadastro do subgrupo. |
-| `backend/src/expenses/expenses.service.ts` | Verifica acesso à residência, lista moradores e subgrupos, cria subgrupos e restringe edição ao criador. |
-| `backend/src/expenses/expenses.repository.ts` | Persiste subgrupos e integrantes; cria parcelas igualitárias ou personalizadas por despesa. |
-| `backend/prisma/schema.prisma` | Define as relações entre residência, subgrupo, despesas, rateios e comprovantes. |
+| Arquivo                                                   | Responsabilidade                                                                                         |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `backend/src/expenses/dto/create-expense-subgroup.dto.ts` | Valida nome e lista de participantes no cadastro do subgrupo.                                            |
+| `backend/src/expenses/expenses.service.ts`                | Verifica acesso à residência, lista moradores e subgrupos, cria subgrupos e restringe edição ao criador. |
+| `backend/src/expenses/expenses.repository.ts`             | Persiste subgrupos e integrantes; cria parcelas igualitárias ou personalizadas por despesa.              |
+| `backend/prisma/schema.prisma`                            | Define as relações entre residência, subgrupo, despesas, rateios e comprovantes.                         |
 
 ### 3.1. Endpoints
 
 Todas as rotas exigem autenticação JWT.
 
-| Método | Rota | Função |
-| --- | --- | --- |
-| `GET` | `/expenses/homes/:homeId/members` | Lista moradores disponíveis da residência. |
-| `GET` | `/expenses/subgroups` | Lista subgrupos disponíveis para despesas. |
-| `GET` | `/expenses/subgroups/all` | Lista subgrupos visíveis ao usuário. |
-| `POST` | `/expenses/subgroups` | Cria subgrupo com nome e participantes. |
-| `PUT` | `/expenses/subgroups/:id` | Atualiza nome e participantes, somente pelo criador. |
+| Método | Rota                              | Função                                               |
+| ------ | --------------------------------- | ---------------------------------------------------- |
+| `GET`  | `/expenses/homes/:homeId/members` | Lista moradores disponíveis da residência.           |
+| `GET`  | `/expenses/subgroups`             | Lista subgrupos disponíveis para despesas.           |
+| `GET`  | `/expenses/subgroups/all`         | Lista subgrupos visíveis ao usuário.                 |
+| `POST` | `/expenses/subgroups`             | Cria subgrupo com nome e participantes.              |
+| `PUT`  | `/expenses/subgroups/:id`         | Atualiza nome e participantes, somente pelo criador. |
 
 Despesas seguem as rotas do CRUD descritas na implementação da Sprint 01; o payload de criação/edição inclui o subgrupo opcional e as parcelas personalizadas da conta.
 
@@ -49,12 +49,12 @@ Despesas seguem as rotas do CRUD descritas na implementação da Sprint 01; o pa
 
 ## 5. Rastreabilidade
 
-| Entrega | Evidência |
-| --- | --- |
-| Criar/listar subgrupos e selecionar moradores | Controller, serviço, DTO e testes unitários de subgrupo. |
-| Editar somente como criador | Verificação no serviço/repositório e testes de autorização. |
-| Manter várias contas em um subgrupo | Despesas gravadas individualmente e cenário de serviço. |
-| Rateio igual ou personalizado por conta | Tabela `rateio_despesa`, validações do repositório e controles do formulário. |
-| Comprovante independente por conta | Relação do comprovante com a despesa e interface de upload na conta. |
+| Entrega                                       | Evidência                                                                     |
+| --------------------------------------------- | ----------------------------------------------------------------------------- |
+| Criar/listar subgrupos e selecionar moradores | Controller, serviço, DTO e testes unitários de subgrupo.                      |
+| Editar somente como criador                   | Verificação no serviço/repositório e testes de autorização.                   |
+| Manter várias contas em um subgrupo           | Despesas gravadas individualmente e cenário de serviço.                       |
+| Rateio igual ou personalizado por conta       | Tabela `rateio_despesa`, validações do repositório e controles do formulário. |
+| Comprovante independente por conta            | Relação do comprovante com a despesa e interface de upload na conta.          |
 
 Os cenários executados e comandos estão em `docs/sprints/sprint02/Iago/subgrupos/testes.md`.

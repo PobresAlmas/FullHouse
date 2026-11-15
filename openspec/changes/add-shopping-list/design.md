@@ -6,20 +6,20 @@ Uma lista por residência, formada por itens associados diretamente à casa. Nã
 
 ## Modelo conceitual
 
-| Campo | Regra |
-| --- | --- |
-| `id` | Identificador estável. |
-| `residenceId` | Obrigatório e imutável; residência proprietária do item. |
-| `name` | Obrigatório; 1 a 100 caracteres após trim; sequências de espaços internos viram um espaço. |
-| `quantity` | Opcional; se preenchida, maior que zero, até 3 casas decimais, `Decimal(12,3)`. |
-| `unit` | Obrigatória quando há quantidade; vazia quando não há quantidade. |
-| `notes` | Opcional; até 500 caracteres após trim. |
-| `status` | `PENDENTE` ou `COMPRADO`; o servidor sempre inicia em `PENDENTE`. |
-| `createdByMembershipId` | Participação criadora, atribuída pelo servidor; nula se a referência histórica for removida. |
-| `createdAt` / `updatedAt` | Datas definidas pelo servidor. |
-| `purchasedByMembershipId` | Participação que realizou a conclusão atual; nula enquanto pendente. |
-| `purchasedAt` | Horário da conclusão atual; nulo enquanto pendente. |
-| `version` | Inteiro crescente para rejeitar edição, conclusão ou remoção baseada em versão desatualizada. |
+| Campo                     | Regra                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------- |
+| `id`                      | Identificador estável.                                                                        |
+| `residenceId`             | Obrigatório e imutável; residência proprietária do item.                                      |
+| `name`                    | Obrigatório; 1 a 100 caracteres após trim; sequências de espaços internos viram um espaço.    |
+| `quantity`                | Opcional; se preenchida, maior que zero, até 3 casas decimais, `Decimal(12,3)`.               |
+| `unit`                    | Obrigatória quando há quantidade; vazia quando não há quantidade.                             |
+| `notes`                   | Opcional; até 500 caracteres após trim.                                                       |
+| `status`                  | `PENDENTE` ou `COMPRADO`; o servidor sempre inicia em `PENDENTE`.                             |
+| `createdByMembershipId`   | Participação criadora, atribuída pelo servidor; nula se a referência histórica for removida.  |
+| `createdAt` / `updatedAt` | Datas definidas pelo servidor.                                                                |
+| `purchasedByMembershipId` | Participação que realizou a conclusão atual; nula enquanto pendente.                          |
+| `purchasedAt`             | Horário da conclusão atual; nulo enquanto pendente.                                           |
+| `version`                 | Inteiro crescente para rejeitar edição, conclusão ou remoção baseada em versão desatualizada. |
 
 O limite representável em `Decimal(12,3)` é 999.999.999,999. A interface pt-BR aceita vírgula decimal; a API recebe número decimal normalizado. Rejeitar zero, valores negativos, não numéricos, fora do intervalo ou com mais de três casas decimais.
 

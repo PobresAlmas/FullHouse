@@ -131,7 +131,8 @@ export class RoomsRepository {
                 WHERE "id" = ${anuncioId}::uuid AND "status" = 'ABERTO'
                 FOR UPDATE
             `;
-            if (!openListing.length) throw new NotFoundException("Anúncio não encontrado ou fechado.");
+            if (!openListing.length)
+                throw new NotFoundException("Anúncio não encontrado ou fechado.");
             const existing = await transaction.interesse_anuncio.findFirst({
                 where: { anuncio_id: anuncioId, usuario_id: userId, status: "PENDENTE" },
             });

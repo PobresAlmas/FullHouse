@@ -1,10 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ExpensesRepository } from "./expenses.repository.js";
-import {
-    CreateExpenseDto,
-    ExpensePaymentStatus,
-    ExpenseScope,
-} from "./dto/create-expense.dto.js";
+import { CreateExpenseDto, ExpensePaymentStatus, ExpenseScope } from "./dto/create-expense.dto.js";
 import { UpdateExpenseDto } from "./dto/update-expense.dto.js";
 import { ResidenceAccessService } from "../residences/residence-access.service.js";
 import { CreateExpenseSubgroupDto } from "./dto/create-expense-subgroup.dto.js";
@@ -96,17 +92,23 @@ export class ExpensesService {
 
     async create(data: CreateExpenseDto, userId: string) {
         if (data.paymentDate && data.paymentStatus !== ExpensePaymentStatus.PAID) {
-            throw new BadRequestException("A data de pagamento só pode ser informada para despesas pagas.");
+            throw new BadRequestException(
+                "A data de pagamento só pode ser informada para despesas pagas."
+            );
         }
         if (data.scope === ExpenseScope.PERSONAL) {
             if (data.subgroupId || data.allocations) {
-                throw new BadRequestException("Despesas pessoais não podem ser vinculadas a subgrupos.");
+                throw new BadRequestException(
+                    "Despesas pessoais não podem ser vinculadas a subgrupos."
+                );
             }
             return this.mapExpense(await this.repository.createPersonal(data, userId));
         }
 
         if (data.allocations && !data.subgroupId) {
-            throw new BadRequestException("A divisão personalizada só está disponível em subgrupos.");
+            throw new BadRequestException(
+                "A divisão personalizada só está disponível em subgrupos."
+            );
         }
 
         const subgroup = data.subgroupId
@@ -164,23 +166,35 @@ export class ExpensesService {
         }
 
         if (data.paymentDate && data.paymentStatus !== ExpensePaymentStatus.PAID) {
-            throw new BadRequestException("A data de pagamento só pode ser informada para despesas pagas.");
+            throw new BadRequestException(
+                "A data de pagamento só pode ser informada para despesas pagas."
+            );
         }
 
         if (existing.escopo === "INDIVIDUAL") {
-            if (data.scope === ExpenseScope.HOME || data.subgroupId || data.homeId || data.allocations) {
-                throw new BadRequestException("Despesas pessoais não podem ser movidas para a casa.");
+            if (
+                data.scope === ExpenseScope.HOME ||
+                data.subgroupId ||
+                data.homeId ||
+                data.allocations
+            ) {
+                throw new BadRequestException(
+                    "Despesas pessoais não podem ser movidas para a casa."
+                );
             }
-            const paidAt = data.paymentStatus !== ExpensePaymentStatus.PAID
-                ? null
-                : data.paymentDate
-                  ? new Date(`${data.paymentDate}T00:00:00.000Z`)
-                  : existing.quitada_em ?? new Date();
+            const paidAt =
+                data.paymentStatus !== ExpensePaymentStatus.PAID
+                    ? null
+                    : data.paymentDate
+                      ? new Date(`${data.paymentDate}T00:00:00.000Z`)
+                      : (existing.quitada_em ?? new Date());
             return this.mapExpense(await this.repository.updatePersonal(id, data, paidAt));
         }
 
         if (data.allocations && !data.subgroupId) {
-            throw new BadRequestException("A divisão personalizada só está disponível em subgrupos.");
+            throw new BadRequestException(
+                "A divisão personalizada só está disponível em subgrupos."
+            );
         }
 
         const subgroup = data.subgroupId
@@ -212,8 +226,8 @@ export class ExpensesService {
             : data.paymentDate
               ? new Date(`${data.paymentDate}T00:00:00.000Z`)
               : existing.status === "QUITADA"
-              ? (existing.quitada_em ?? new Date())
-              : new Date();
+                ? (existing.quitada_em ?? new Date())
+                : new Date();
 
         const updated = await this.repository.update(
             id,
@@ -350,8 +364,7 @@ export class ExpensesService {
             allocations: (expense.rateio_despesa ?? []).map((allocation) => ({
                 participationId: allocation.participacao_id,
                 memberName:
-                    allocation.participacao.usuario.apelido ||
-                    allocation.participacao.usuario.nome,
+                    allocation.participacao.usuario.apelido || allocation.participacao.usuario.nome,
                 amount: allocation.valor_devido.toFixed(2),
             })),
             paymentStatus:

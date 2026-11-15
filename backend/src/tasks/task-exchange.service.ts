@@ -130,8 +130,16 @@ export class TaskExchangeService {
                         where: {
                             status: "PENDENTE",
                             OR: [
-                                { instancia_tarefa_id: { in: [task.id, ...(suggestedTask ? [suggestedTask.id] : [])] } },
-                                { alvo_instancia_tarefa_id: { in: [task.id, ...(suggestedTask ? [suggestedTask.id] : [])] } },
+                                {
+                                    instancia_tarefa_id: {
+                                        in: [task.id, ...(suggestedTask ? [suggestedTask.id] : [])],
+                                    },
+                                },
+                                {
+                                    alvo_instancia_tarefa_id: {
+                                        in: [task.id, ...(suggestedTask ? [suggestedTask.id] : [])],
+                                    },
+                                },
                             ],
                         },
                     });
@@ -216,13 +224,23 @@ export class TaskExchangeService {
                             status: "PENDENTE",
                             id: { not: request.id },
                             OR: [
-                                { instancia_tarefa_id: { in: [request.instancia_tarefa_id, targetTask.id] } },
-                                { alvo_instancia_tarefa_id: { in: [request.instancia_tarefa_id, targetTask.id] } },
+                                {
+                                    instancia_tarefa_id: {
+                                        in: [request.instancia_tarefa_id, targetTask.id],
+                                    },
+                                },
+                                {
+                                    alvo_instancia_tarefa_id: {
+                                        in: [request.instancia_tarefa_id, targetTask.id],
+                                    },
+                                },
                             ],
                         },
                     });
                     if (pending) {
-                        throw new BadRequestException("Uma das tarefas já possui outra solicitação pendente.");
+                        throw new BadRequestException(
+                            "Uma das tarefas já possui outra solicitação pendente."
+                        );
                     }
                     const updatedTask = await transaction.instancia_tarefa.updateMany({
                         where: {
@@ -250,7 +268,9 @@ export class TaskExchangeService {
                         },
                     });
                     if (updatedTargetTask.count !== 1) {
-                        throw new BadRequestException("A tarefa oferecida não está mais disponível.");
+                        throw new BadRequestException(
+                            "A tarefa oferecida não está mais disponível."
+                        );
                     }
                 }
                 const updatedRequest = await transaction.solicitacao_troca_tarefa.updateMany({
