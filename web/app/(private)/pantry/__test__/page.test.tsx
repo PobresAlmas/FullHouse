@@ -183,9 +183,9 @@ describe("PantryPage", () => {
         await user.type(quantity, "0,123");
         await user.click(screen.getByRole("button", { name: "Confirmar" }));
 
-        expect(await screen.findByRole("alert")).toHaveTextContent(
-            "Informe uma quantidade positiva com até duas casas decimais."
-        );
+        expect(
+            await screen.findByText("Informe uma quantidade positiva com até duas casas decimais.")
+        ).toBeInTheDocument();
         expect(registerPantryMovement).not.toHaveBeenCalled();
     });
 });

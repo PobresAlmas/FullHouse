@@ -25,6 +25,10 @@ vi.mock("@/features/expenses/api/expenses.api", () => ({
     updateExpense: vi.fn(),
 }));
 
+vi.mock("@/features/auth/hooks/useAuth", () => ({
+    useAuth: () => ({ user: null, loading: false }),
+}));
+
 const subgroup = {
     id: "subgroup-id",
     name: "Casa",

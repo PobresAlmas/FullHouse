@@ -1,7 +1,14 @@
 import { api } from "@/services/api";
 
+export const RESIDENCE_MEMBERSHIP_CHANGED_EVENT = "fullhouse:residence-membership-changed";
 export type ResidenceRole = "LIDER" | "ADMINISTRADOR" | "MORADOR";
 export type CreationEditPolicy = "TODOS" | "LIDERES";
+
+export function announceResidenceMembershipChanged() {
+    if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(RESIDENCE_MEMBERSHIP_CHANGED_EVENT));
+    }
+}
 
 export interface Residence {
     id: string;

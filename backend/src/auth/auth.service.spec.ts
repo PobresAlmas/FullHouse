@@ -30,6 +30,7 @@ describe("AuthService", () => {
     let users: {
         create: ReturnType<typeof vi.fn>;
         findByEmail: ReturnType<typeof vi.fn>;
+        findById: ReturnType<typeof vi.fn>;
         recordFailedLogin: ReturnType<typeof vi.fn>;
         clearLoginFailures: ReturnType<typeof vi.fn>;
         clearExpiredLoginLock: ReturnType<typeof vi.fn>;
@@ -47,6 +48,7 @@ describe("AuthService", () => {
         users = {
             create: vi.fn().mockResolvedValue(user),
             findByEmail: vi.fn().mockResolvedValue(user),
+            findById: vi.fn().mockResolvedValue(user),
             recordFailedLogin: vi.fn().mockResolvedValue(undefined),
             clearLoginFailures: vi.fn().mockResolvedValue(undefined),
             clearExpiredLoginLock: vi.fn().mockResolvedValue({ count: 1 }),
@@ -104,6 +106,15 @@ describe("AuthService", () => {
         ).resolves.toMatchObject({ access_token: "token", user: { id: "u1" } });
         expect(passwords.compare).toHaveBeenCalledWith("secret", "hashed");
         expect(users.clearLoginFailures).toHaveBeenCalledWith(user.id);
+    });
+
+    it("returns current profile details from the user record", async () => {
+        await expect(service.getCurrentUser("u1")).resolves.toMatchObject({
+            id: "u1",
+            name: "Ana",
+            email: user.email,
+        });
+        expect(users.findById).toHaveBeenCalledWith("u1");
     });
 
     it.each([

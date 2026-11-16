@@ -24,6 +24,7 @@ import { ChatModule } from "./chat/chat.module.js";
 import { HouseRulesModule } from "./house-rules/house-rules.module.js";
 import { MeetingsModule } from "./meetings/meetings.module.js";
 import { RoomsModule } from "./rooms/rooms.module.js";
+import { NotificationsModule } from "./notifications/notifications.module.js";
 
 @Module({
     imports: [
@@ -59,6 +60,7 @@ import { RoomsModule } from "./rooms/rooms.module.js";
         HouseRulesModule,
         MeetingsModule,
         RoomsModule,
+        NotificationsModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService, APP_THROTTLER_GUARD_PROVIDER],

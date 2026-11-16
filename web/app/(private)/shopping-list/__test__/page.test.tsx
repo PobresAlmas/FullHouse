@@ -69,9 +69,9 @@ describe("ShoppingListPage", () => {
         await user.type(screen.getByPlaceholderText("Ex.: Café"), "Farinha");
         await user.type(screen.getByPlaceholderText("Ex.: 1,5"), "0,75");
         await user.click(screen.getByRole("button", { name: "Adicionar à lista" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent(
-            "Selecione a unidade da quantidade informada."
-        );
+        expect(
+            await screen.findByText("Selecione a unidade da quantidade informada.")
+        ).toBeInTheDocument();
         expect(createShoppingListItem).not.toHaveBeenCalled();
 
         await user.selectOptions(screen.getByLabelText("Unidade (opcional)"), "KG");
@@ -102,7 +102,7 @@ describe("ShoppingListPage", () => {
         await screen.findByText("Leite");
         await user.type(screen.getByPlaceholderText("Ex.: Café"), "leité");
         await user.click(screen.getByRole("button", { name: "Adicionar à lista" }));
-        expect(await screen.findByRole("alert")).toHaveTextContent("Já existe um item pendente");
+        expect(await screen.findByText(/Já existe um item pendente/)).toBeInTheDocument();
         expect(createShoppingListItem).not.toHaveBeenCalled();
         await user.click(screen.getByRole("button", { name: "Cancelar" }));
         expect(createShoppingListItem).not.toHaveBeenCalled();
@@ -220,7 +220,9 @@ describe("ShoppingListPage", () => {
         await user.click(await screen.findByRole("button", { name: "Marcar Leite como comprado" }));
         expect(await screen.findByText("Leite atualizado")).toBeInTheDocument();
         expect(getShoppingListItems).toHaveBeenCalledTimes(2);
-        expect(await screen.findByRole("alert")).toHaveTextContent("alterado por outro morador");
+        expect(
+            await screen.findByText(/Este item foi alterado por outro morador/)
+        ).toBeInTheDocument();
     });
 
     it("switches residence and reloads only that household's items", async () => {

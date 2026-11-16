@@ -16,6 +16,10 @@ export class UserRepository {
         });
     }
 
+    findById(id: string) {
+        return this.prisma.usuario.findUnique({ where: { id } });
+    }
+
     create(data: {
         nome: string;
         apelido?: string;

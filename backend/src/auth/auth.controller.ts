@@ -23,7 +23,7 @@ export class AuthController {
             id: string;
         }
     ) {
-        return user;
+        return this.service.getCurrentUser(user.id);
     }
 
     @Post("register")
