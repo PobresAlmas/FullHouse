@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { AppController } from "./app.controller.js";
 import { AppService } from "./app.service.js";
 import { UsersModule } from "./users/users.module.js";
@@ -19,6 +21,7 @@ import { ResidencesModule } from "./residences/residences.module.js";
 import { HomeModule } from "./home/home.module.js";
 import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
 import { RoomsModule } from "./rooms/rooms.module.js";
+import { NotificationsModule } from "./notifications/notifications.module.js";
 
 @Module({
     imports: [
@@ -51,6 +54,7 @@ import { RoomsModule } from "./rooms/rooms.module.js";
         HomeModule,
         ShoppingListModule,
         RoomsModule,
+        NotificationsModule,
     ],
     controllers: [AppController],
     providers: [AppService, PrismaService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

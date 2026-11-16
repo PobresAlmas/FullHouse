@@ -56,7 +56,9 @@ export class CreateExpenseDto {
 
     @IsOptional()
     @IsDateString({ strict: true }, { message: "Informe uma data de pagamento válida." })
-    @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "Informe a data de pagamento no formato AAAA-MM-DD." })
+    @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+        message: "Informe a data de pagamento no formato AAAA-MM-DD.",
+    })
     paymentDate?: string | null;
 
     @IsOptional()

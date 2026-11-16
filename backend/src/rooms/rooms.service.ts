@@ -11,6 +11,7 @@ import { StorageService } from "../storage/storage.service.js";
 import { CreateRoomInterestDto } from "./dto/create-room-interest.dto.js";
 import { CreateRoomListingDto } from "./dto/create-room-listing.dto.js";
 import { RoomListingQueryDto } from "./dto/room-listing-query.dto.js";
+import type { RoomNegotiationMessagesQueryDto } from "./dto/room-negotiation-messages-query.dto.js";
 import { UpdateRoomInterestDto } from "./dto/update-room-interest.dto.js";
 import { UpdateRoomListingDto } from "./dto/update-room-listing.dto.js";
 import { toRoomListingResponse } from "./rooms.mapper.js";
@@ -27,7 +28,7 @@ export class RoomsService {
     async create(data: CreateRoomListingDto, userId: string) {
         let membership;
         try {
-            membership = await this.residenceAccess.requireMembership(data.casaId, userId);
+            membership = await this.residenceAccess.requireManager(data.casaId, userId);
         } catch (error: unknown) {
             if (error instanceof NotFoundException) {
                 throw new ForbiddenException("Você não possui participação ativa nesta casa.");
@@ -38,7 +39,7 @@ export class RoomsService {
         return toRoomListingResponse(listing);
     }
 
-    async findMany(query: RoomListingQueryDto) {
+    async findMany(query: RoomListingQueryDto, userId?: string) {
         if (
             query.precoMin !== undefined &&
             query.precoMax !== undefined &&
@@ -46,6 +47,10 @@ export class RoomsService {
         ) {
             throw new BadRequestException("precoMin não pode ser maior que precoMax.");
         }
+        await this.requireNoActiveResidence(
+            userId,
+            "A busca de quartos está disponível apenas para pessoas sem residência ativa."
+        );
         const result = await this.repository.findMany(query);
         return {
             data: result.data.map((listing) => toRoomListingResponse(listing)),
@@ -58,7 +63,11 @@ export class RoomsService {
         };
     }
 
-    async findById(id: string) {
+    async findById(id: string, userId?: string) {
+        await this.requireNoActiveResidence(
+            userId,
+            "A visualização de anúncios públicos está disponível apenas para pessoas sem residência ativa."
+        );
         const listing = await this.repository.findById(id);
         if (!listing || listing.status !== status_anuncio_enum.ABERTO) {
             throw new NotFoundException("Anúncio não encontrado.");
@@ -86,7 +95,7 @@ export class RoomsService {
 
     async uploadPhoto(casaId: string, file: Express.Multer.File | undefined, userId: string) {
         if (!file) throw new ConflictException("Selecione uma imagem.");
-        await this.residenceAccess.requireMembership(casaId, userId);
+        await this.residenceAccess.requireManager(casaId, userId);
         if (!["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
             throw new ConflictException("Use uma imagem JPEG, PNG ou WebP.");
         }
@@ -94,6 +103,10 @@ export class RoomsService {
     }
 
     async createInterest(id: string, data: CreateRoomInterestDto, userId: string) {
+        await this.requireNoActiveResidence(
+            userId,
+            "A demonstração de interesse está disponível apenas para pessoas sem residência ativa."
+        );
         const listing = await this.repository.findById(id);
         if (!listing || listing.status !== status_anuncio_enum.ABERTO) {
             throw new NotFoundException("Anúncio não encontrado ou fechado.");
@@ -119,7 +132,16 @@ export class RoomsService {
 
     async listInterests(id: string, userId: string) {
         await this.requireOwner(id, userId);
-        return this.repository.listInterests(id);
+        const interests = await this.repository.listInterests(id);
+        return interests.map((interest) => ({
+            id: interest.id,
+            anuncio_id: interest.anuncio_id,
+            usuario_id: interest.usuario_id,
+            mensagem: interest.mensagem,
+            status: interest.status,
+            negotiationId: interest.negociacao_anuncio?.id ?? null,
+            usuario: interest.usuario,
+        }));
     }
 
     async updateInterest(
@@ -135,9 +157,156 @@ export class RoomsService {
         ) {
             throw new ConflictException("O interesse deve ser aceito ou recusado.");
         }
-        const result = await this.repository.updateInterest(id, interestId, data.status);
-        if (!result.count) throw new NotFoundException("Interesse pendente não encontrado.");
-        return { id: interestId, anuncioId: id, status: data.status };
+        const result = await this.repository.decideInterest(id, interestId, data.status);
+        return {
+            id: interestId,
+            anuncioId: id,
+            status: result.status,
+            negotiationId: result.negotiationId,
+        };
+    }
+
+    async listMyInterests(userId: string) {
+        const interests = await this.repository.listMyInterests(userId);
+        return Promise.all(
+            interests.map(async (interest) => {
+                let negotiationId = interest.negociacao_anuncio?.id ?? null;
+                if (interest.status === status_interesse_anuncio_enum.ACEITO && !negotiationId) {
+                    negotiationId = (await this.repository.ensureNegotiation(interest.id)).id;
+                }
+                return {
+                    id: interest.id,
+                    status: interest.status,
+                    mensagem: interest.mensagem,
+                    negotiationId,
+                    anuncio: toRoomListingResponse(interest.anuncio_quarto),
+                };
+            })
+        );
+    }
+
+    async getNegotiationMessages(
+        negotiationId: string,
+        userId: string,
+        query: RoomNegotiationMessagesQueryDto
+    ) {
+        const negotiation = await this.requireNegotiationParticipant(negotiationId, userId);
+        const listing = negotiation.interesse_anuncio.anuncio_quarto;
+        const advertiserId = listing.participacao.usuario_id;
+        const page = await this.repository.listNegotiationMessages(
+            negotiationId,
+            query.before,
+            query.limit
+        );
+        let canInvite = false;
+        if (advertiserId === userId) {
+            try {
+                await this.residenceAccess.requireManager(listing.casa_id, userId);
+                canInvite = true;
+            } catch (error: unknown) {
+                if (!(error instanceof ForbiddenException || error instanceof NotFoundException)) {
+                    throw error;
+                }
+            }
+        }
+        return {
+            id: negotiation.id,
+            interestId: negotiation.interesse_id,
+            status: negotiation.interesse_anuncio.status,
+            casaId: listing.casa_id,
+            podeConvidar: canInvite,
+            anuncio: toRoomListingResponse(listing, advertiserId === userId),
+            mensagens: page.data.map((message) => ({
+                id: message.id,
+                autorId: message.usuario.id,
+                autorNome: message.usuario.nome,
+                autorFotoUrl: message.usuario.foto_url,
+                conteudo: message.conteudo,
+                enviadaEm: message.enviada_em.toISOString(),
+            })),
+            hasMore: page.hasMore,
+            nextCursor: page.nextCursor,
+        };
+    }
+
+    async sendNegotiationMessage(negotiationId: string, content: string, userId: string) {
+        const normalizedContent = content.trim();
+        if (!normalizedContent) throw new BadRequestException("A mensagem não pode estar vazia.");
+        if (normalizedContent.length > 2000) {
+            throw new BadRequestException("A mensagem deve ter no máximo 2000 caracteres.");
+        }
+        const negotiation = await this.requireNegotiationParticipant(negotiationId, userId);
+        const interest = negotiation.interesse_anuncio;
+        const recipientUserId =
+            interest.usuario.id === userId
+                ? interest.anuncio_quarto.participacao.usuario_id
+                : interest.usuario.id;
+        const message = await this.repository.createNegotiationMessage(
+            negotiationId,
+            userId,
+            recipientUserId,
+            interest.anuncio_quarto.casa_id,
+            normalizedContent
+        );
+        return {
+            id: message.id,
+            autorId: message.usuario.id,
+            autorNome: message.usuario.nome,
+            autorFotoUrl: message.usuario.foto_url,
+            conteudo: message.conteudo,
+            enviadaEm: message.enviada_em.toISOString(),
+        };
+    }
+
+    async sendNegotiationInvitation(negotiationId: string, userId: string) {
+        const negotiation = await this.requireNegotiationParticipant(negotiationId, userId);
+        const interest = negotiation.interesse_anuncio;
+        if (interest.usuario.id === userId) {
+            throw new ForbiddenException("Somente o anunciante pode enviar o convite.");
+        }
+        const manager = await this.residenceAccess.requireManager(
+            interest.anuncio_quarto.casa_id,
+            userId
+        );
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const invitation = await this.repository.createNegotiationInvitation(
+            negotiationId,
+            interest.usuario.id,
+            manager.memberId,
+            expiresAt
+        );
+        return {
+            id: invitation.id,
+            status: invitation.status,
+            expiraEm: invitation.expira_em.toISOString(),
+        };
+    }
+
+    async respondToNegotiationInvitation(
+        invitationId: string,
+        decision: "ACEITO" | "RECUSADO",
+        userId: string
+    ) {
+        const result = await this.repository.respondToNegotiationInvitation(
+            invitationId,
+            userId,
+            decision
+        );
+        if (result.status === "EXPIRADO") {
+            throw new ConflictException("Este convite expirou.");
+        }
+        return result;
+    }
+
+    private async requireNegotiationParticipant(negotiationId: string, userId: string) {
+        const negotiation = await this.repository.findNegotiationForAccess(negotiationId);
+        if (!negotiation) throw new NotFoundException("Negociação não encontrada.");
+        const interest = negotiation.interesse_anuncio;
+        const advertiserId = interest.anuncio_quarto.participacao.usuario_id;
+        if (interest.usuario.id !== userId && advertiserId !== userId) {
+            throw new NotFoundException("Negociação não encontrada.");
+        }
+        return negotiation;
     }
 
     private async requireOwner(id: string, userId: string) {
@@ -150,5 +319,11 @@ export class RoomsService {
             throw new ForbiddenException("A participação do anunciante não está ativa.");
         }
         return listing;
+    }
+
+    private async requireNoActiveResidence(userId: string | undefined, message: string) {
+        if (userId && (await this.residenceAccess.listForUser(userId)).length > 0) {
+            throw new ForbiddenException(message);
+        }
     }
 }

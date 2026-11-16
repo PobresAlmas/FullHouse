@@ -24,6 +24,7 @@ vi.mock("@/features/auth/hooks/useAuth", () => ({
 vi.mock("@/features/residences/api/residences.api", () => ({
     createResidence: vi.fn(),
     getResidences: vi.fn(),
+    RESIDENCE_MEMBERSHIP_CHANGED_EVENT: "fullhouse:residence-membership-changed",
 }));
 vi.mock("@/features/tasks/api/tasks.api", () => ({
     getTasks: vi.fn(),
@@ -61,6 +62,22 @@ describe("HomePage", () => {
         ).toHaveTextContent("P");
         expect(screen.queryByText("Casa da Família")).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
+    });
+
+    it("loads the residence dashboard after an accepted invitation", async () => {
+        vi.mocked(getResidences).mockResolvedValueOnce([]).mockResolvedValueOnce([residence]);
+        render(<HomePage />);
+
+        expect(await screen.findByRole("heading", { name: "Crie sua casa" })).toBeInTheDocument();
+        window.dispatchEvent(new Event("fullhouse:residence-membership-changed"));
+
+        expect(await screen.findByRole("button", { name: residence.name })).toHaveAttribute(
+            "aria-pressed",
+            "true"
+        );
+        await waitFor(() => expect(getTasks).toHaveBeenCalledWith(residence.id));
+        expect(screen.getByText("Membros da casa")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Financeiro" })).toBeInTheDocument();
     });
 
     it("opens the account menu and logs out from the menu action", async () => {

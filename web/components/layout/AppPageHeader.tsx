@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Bell, House, Settings } from "lucide-react";
+import { House, Settings } from "lucide-react";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 
 export function AppPageHeader({
     greetingName,
@@ -34,12 +35,7 @@ export function AppPageHeader({
             </div>
             {residenceControl}
             <div className="flex items-center gap-3 text-[#514c56]">
-                <span
-                    aria-label="Notificações"
-                    className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
-                >
-                    <Bell size={19} />
-                </span>
+                <NotificationBell />
                 {settingsHref ? (
                     <Link
                         href={settingsHref}

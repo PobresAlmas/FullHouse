@@ -26,6 +26,7 @@ describe("AuthService", () => {
     let users: {
         create: ReturnType<typeof vi.fn>;
         findByEmail: ReturnType<typeof vi.fn>;
+        findById: ReturnType<typeof vi.fn>;
     };
     let passwords: { compare: ReturnType<typeof vi.fn>; hash: ReturnType<typeof vi.fn> };
     let resets: {
@@ -40,6 +41,7 @@ describe("AuthService", () => {
         users = {
             create: vi.fn().mockResolvedValue(user),
             findByEmail: vi.fn().mockResolvedValue(user),
+            findById: vi.fn().mockResolvedValue(user),
         };
         passwords = {
             compare: vi.fn().mockResolvedValue(true),
@@ -91,6 +93,15 @@ describe("AuthService", () => {
             )
         ).resolves.toMatchObject({ access_token: "token", user: { id: "u1" } });
         expect(passwords.compare).toHaveBeenCalledWith("secret", "hashed");
+    });
+
+    it("returns current profile details from the user record", async () => {
+        await expect(service.getCurrentUser("u1")).resolves.toMatchObject({
+            id: "u1",
+            name: "Ana",
+            email: user.email,
+        });
+        expect(users.findById).toHaveBeenCalledWith("u1");
     });
 
     it.each([

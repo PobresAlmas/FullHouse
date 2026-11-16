@@ -1,7 +1,9 @@
 import {
     Controller,
     Get,
+    Patch,
     Post,
+    Body,
     UseGuards,
     UseInterceptors,
     UploadedFile,
@@ -14,6 +16,8 @@ import { UsersService } from "./users.service.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth-guard.js";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
+import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
+import { UpdateProfileDto } from "./dto/update-profile.dto.js";
 
 @Controller("users")
 export class UsersController {
@@ -23,6 +27,18 @@ export class UsersController {
     @UseGuards(JwtAuthGuard)
     findAll() {
         return this.userService.findAll();
+    }
+
+    @Get("me")
+    @UseGuards(JwtAuthGuard)
+    getProfile(@CurrentUser() user: { id: string }) {
+        return this.userService.getProfile(user.id);
+    }
+
+    @Patch("me")
+    @UseGuards(JwtAuthGuard)
+    updateProfile(@CurrentUser() user: { id: string }, @Body() data: UpdateProfileDto) {
+        return this.userService.updateProfile(user.id, data);
     }
 
     @Post("me/avatar")

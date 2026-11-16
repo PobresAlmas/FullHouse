@@ -63,7 +63,42 @@ export interface RoomInterest {
     usuario_id: string;
     mensagem: string | null;
     status: "PENDENTE" | "ACEITO" | "RECUSADO";
+    negotiationId: string | null;
     usuario: { id: string; nome: string; email: string; foto_url: string | null };
+}
+
+export interface MyRoomInterest {
+    id: string;
+    status: RoomInterest["status"];
+    mensagem: string | null;
+    negotiationId: string | null;
+    anuncio: RoomListing;
+}
+
+export interface RoomNegotiationMessage {
+    id: string;
+    autorId: string;
+    autorNome: string;
+    autorFotoUrl: string | null;
+    conteudo: string;
+    enviadaEm: string;
+}
+
+export interface RoomNegotiationMessagesQuery {
+    before?: string;
+    limit?: number;
+}
+
+export interface RoomNegotiation {
+    id: string;
+    interestId: string;
+    status: RoomInterest["status"];
+    casaId: string;
+    podeConvidar: boolean;
+    anuncio: RoomListing;
+    mensagens: RoomNegotiationMessage[];
+    hasMore: boolean;
+    nextCursor: string | null;
 }
 
 export async function searchRoomListings(filters: RoomListingFilters = {}) {
@@ -111,10 +146,11 @@ export async function uploadRoomPhoto(casaId: string, file: File) {
 }
 
 export async function expressRoomInterest(id: string, mensagem?: string) {
-    const response = await api.post<{ id: string; anuncioId: string; status: string }>(
-        `/rooms/listings/${id}/interests`,
-        { mensagem }
-    );
+    const response = await api.post<{
+        id: string;
+        anuncioId: string;
+        status: RoomInterest["status"];
+    }>(`/rooms/listings/${id}/interests`, { mensagem });
     return response.data;
 }
 
@@ -128,6 +164,51 @@ export async function updateRoomInterest(
     interestId: string,
     status: "ACEITO" | "RECUSADO"
 ) {
-    const response = await api.patch(`/rooms/listings/${id}/interests/${interestId}`, { status });
+    const response = await api.patch<{
+        id: string;
+        anuncioId: string;
+        status: RoomInterest["status"];
+        negotiationId: string | null;
+    }>(`/rooms/listings/${id}/interests/${interestId}`, { status });
+    return response.data;
+}
+
+export async function getMyRoomInterests() {
+    const response = await api.get<MyRoomInterest[]>("/rooms/negotiations/interests/mine");
+    return response.data;
+}
+
+export async function getRoomNegotiation(id: string, query: RoomNegotiationMessagesQuery = {}) {
+    const response = await api.get<RoomNegotiation>(`/rooms/negotiations/${id}/messages`, {
+        params: {
+            limit: query.limit ?? 30,
+            ...(query.before ? { before: query.before } : {}),
+        },
+    });
+    return response.data;
+}
+
+export async function sendRoomNegotiationMessage(id: string, conteudo: string) {
+    const response = await api.post<RoomNegotiationMessage>(`/rooms/negotiations/${id}/messages`, {
+        conteudo,
+    });
+    return response.data;
+}
+
+export async function sendRoomInvitation(id: string) {
+    const response = await api.post<{
+        id: string;
+        status: "PENDENTE" | "ACEITO" | "RECUSADO" | "EXPIRADO" | "CANCELADO";
+        expiraEm: string;
+    }>(`/rooms/negotiations/${id}/invitations`);
+    return response.data;
+}
+
+export async function respondToRoomInvitation(id: string, status: "ACEITO" | "RECUSADO") {
+    const response = await api.patch<{
+        id: string;
+        status: "ACEITO" | "RECUSADO" | "EXPIRADO";
+        membershipId: string | null;
+    }>(`/rooms/negotiations/invitations/${id}`, { status });
     return response.data;
 }

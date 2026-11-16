@@ -1,4 +1,10 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+} from "@nestjs/common";
 import type { Prisma } from "../generated/prisma/client.js";
 import type { status_interesse_anuncio_enum } from "../generated/prisma/enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -120,7 +126,11 @@ export class RoomsRepository {
 
     findInterest(anuncioId: string, userId: string) {
         return this.prisma.interesse_anuncio.findFirst({
-            where: { anuncio_id: anuncioId, usuario_id: userId, status: "PENDENTE" },
+            where: {
+                anuncio_id: anuncioId,
+                usuario_id: userId,
+                status: { in: ["PENDENTE", "ACEITO"] },
+            },
         });
     }
 
@@ -131,12 +141,26 @@ export class RoomsRepository {
                 WHERE "id" = ${anuncioId}::uuid AND "status" = 'ABERTO'
                 FOR UPDATE
             `;
-            if (!openListing.length) throw new NotFoundException("Anúncio não encontrado ou fechado.");
+            if (!openListing.length)
+                throw new NotFoundException("Anúncio não encontrado ou fechado.");
             const existing = await transaction.interesse_anuncio.findFirst({
-                where: { anuncio_id: anuncioId, usuario_id: userId, status: "PENDENTE" },
+                where: {
+                    anuncio_id: anuncioId,
+                    usuario_id: userId,
+                    status: { in: ["PENDENTE", "ACEITO"] },
+                },
             });
             if (existing)
                 throw new ConflictException("Você já demonstrou interesse neste anúncio.");
+            const declined = await transaction.interesse_anuncio.findFirst({
+                where: { anuncio_id: anuncioId, usuario_id: userId, status: "RECUSADO" },
+            });
+            if (declined) {
+                return transaction.interesse_anuncio.update({
+                    where: { id: declined.id },
+                    data: { status: "PENDENTE", mensagem: message?.trim() || null },
+                });
+            }
             return transaction.interesse_anuncio.create({
                 data: {
                     anuncio_id: anuncioId,
@@ -150,15 +174,318 @@ export class RoomsRepository {
     listInterests(anuncioId: string) {
         return this.prisma.interesse_anuncio.findMany({
             where: { anuncio_id: anuncioId },
-            include: { usuario: { select: { id: true, nome: true, email: true, foto_url: true } } },
+            include: {
+                usuario: { select: { id: true, nome: true, email: true, foto_url: true } },
+                negociacao_anuncio: { select: { id: true } },
+            },
             orderBy: { id: "desc" },
         });
     }
 
-    updateInterest(anuncioId: string, interestId: string, status: status_interesse_anuncio_enum) {
-        return this.prisma.interesse_anuncio.updateMany({
-            where: { id: interestId, anuncio_id: anuncioId, status: "PENDENTE" },
-            data: { status },
+    listMyInterests(userId: string) {
+        return this.prisma.interesse_anuncio.findMany({
+            where: { usuario_id: userId },
+            include: {
+                anuncio_quarto: true,
+                negociacao_anuncio: { select: { id: true } },
+            },
+            orderBy: { id: "desc" },
+        });
+    }
+
+    ensureNegotiation(interestId: string) {
+        return this.prisma.negociacao_anuncio.upsert({
+            where: { interesse_id: interestId },
+            update: {},
+            create: { interesse_id: interestId },
+            select: { id: true },
+        });
+    }
+
+    findNegotiationForAccess(id: string) {
+        return this.prisma.negociacao_anuncio.findUnique({
+            where: { id },
+            include: {
+                interesse_anuncio: {
+                    include: {
+                        usuario: { select: { id: true } },
+                        anuncio_quarto: {
+                            include: {
+                                participacao: { select: { usuario_id: true } },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    async listNegotiationMessages(
+        negotiationId: string,
+        before: string | undefined,
+        limit: number
+    ) {
+        if (before) {
+            const cursor = await this.prisma.mensagem_negociacao_anuncio.findFirst({
+                where: { id: before, negociacao_id: negotiationId },
+                select: { id: true },
+            });
+            if (!cursor) throw new BadRequestException("Cursor de mensagem inválido.");
+        }
+
+        const messages = await this.prisma.mensagem_negociacao_anuncio.findMany({
+            where: { negociacao_id: negotiationId },
+            include: { usuario: { select: { id: true, nome: true, foto_url: true } } },
+            orderBy: [{ enviada_em: "desc" }, { id: "desc" }],
+            take: limit + 1,
+            ...(before ? { cursor: { id: before }, skip: 1 } : {}),
+        });
+        const hasMore = messages.length > limit;
+        const page = messages.slice(0, limit);
+        const nextCursor = hasMore ? (page.at(-1)?.id ?? null) : null;
+        return {
+            data: page.reverse(),
+            hasMore,
+            nextCursor,
+        };
+    }
+
+    createNegotiationMessage(
+        negotiationId: string,
+        userId: string,
+        recipientUserId: string,
+        casaId: string,
+        content: string
+    ) {
+        return this.prisma.$transaction(async (transaction) => {
+            const message = await transaction.mensagem_negociacao_anuncio.create({
+                data: {
+                    negociacao_id: negotiationId,
+                    autor_usuario_id: userId,
+                    conteudo: content,
+                },
+                include: { usuario: { select: { id: true, nome: true, foto_url: true } } },
+            });
+            await transaction.notificacao.create({
+                data: {
+                    usuario_id: recipientUserId,
+                    casa_id: casaId,
+                    tipo: "SISTEMA",
+                    titulo: "Nova mensagem sobre um quarto",
+                    mensagem: "Você recebeu uma mensagem na negociação do anúncio.",
+                    entidade_tipo: "NEGOCIACAO_QUARTO",
+                    entidade_id: negotiationId,
+                },
+            });
+            return message;
+        });
+    }
+
+    decideInterest(anuncioId: string, interestId: string, status: status_interesse_anuncio_enum) {
+        return this.prisma.$transaction(async (transaction) => {
+            const pending = await transaction.$queryRaw<{ id: string }[]>`
+                SELECT "id" FROM "interesse_anuncio"
+                WHERE "id" = ${interestId}::uuid
+                  AND "anuncio_id" = ${anuncioId}::uuid
+                  AND "status" = 'PENDENTE'
+                FOR UPDATE
+            `;
+            if (!pending.length) throw new NotFoundException("Interesse pendente não encontrado.");
+
+            const interest = await transaction.interesse_anuncio.findUniqueOrThrow({
+                where: { id: interestId },
+                select: {
+                    id: true,
+                    usuario_id: true,
+                    anuncio_quarto: { select: { casa_id: true } },
+                },
+            });
+            await transaction.interesse_anuncio.update({
+                where: { id: interestId },
+                data: { status },
+            });
+
+            if (status !== "ACEITO") return { status, negotiationId: null };
+
+            const negotiation = await transaction.negociacao_anuncio.upsert({
+                where: { interesse_id: interestId },
+                update: {},
+                create: { interesse_id: interestId },
+                select: { id: true },
+            });
+            await transaction.notificacao.create({
+                data: {
+                    usuario_id: interest.usuario_id,
+                    casa_id: interest.anuncio_quarto.casa_id,
+                    tipo: "SISTEMA",
+                    titulo: "Seu interesse foi aceito",
+                    mensagem: "O anunciante aceitou conversar sobre o quarto.",
+                    entidade_tipo: "NEGOCIACAO_QUARTO",
+                    entidade_id: negotiation.id,
+                },
+            });
+            return { status, negotiationId: negotiation.id };
+        });
+    }
+
+    createNegotiationInvitation(
+        negotiationId: string,
+        invitedUserId: string,
+        managerParticipationId: string,
+        expiresAt: Date
+    ) {
+        return this.prisma.$transaction(async (transaction) => {
+            const negotiation = await transaction.$queryRaw<{ casa_id: string }[]>`
+                SELECT a."casa_id"
+                FROM "negociacao_anuncio" n
+                JOIN "interesse_anuncio" i ON i."id" = n."interesse_id"
+                JOIN "anuncio_quarto" a ON a."id" = i."anuncio_id"
+                JOIN "participacao" p ON p."id" = ${managerParticipationId}::uuid
+                    AND p."casa_id" = a."casa_id"
+                    AND p."data_saida" IS NULL
+                    AND p."papel" IN ('LIDER', 'ADMINISTRADOR')
+                WHERE n."id" = ${negotiationId}::uuid
+                  AND i."usuario_id" = ${invitedUserId}::uuid
+                  AND i."status" = 'ACEITO'
+                FOR UPDATE OF n, p
+            `;
+            if (!negotiation.length) {
+                throw new NotFoundException(
+                    "Negociação não encontrada ou indisponível para convite."
+                );
+            }
+
+            const existing = await transaction.convite_casa.findFirst({
+                where: {
+                    negociacao_anuncio_id: negotiationId,
+                    status: "PENDENTE",
+                    expira_em: { gt: new Date() },
+                },
+                select: { id: true, status: true, expira_em: true },
+            });
+            if (existing) return existing;
+
+            await transaction.convite_casa.updateMany({
+                where: {
+                    negociacao_anuncio_id: negotiationId,
+                    status: "PENDENTE",
+                    expira_em: { lte: new Date() },
+                },
+                data: { status: "EXPIRADO" },
+            });
+            const invitation = await transaction.convite_casa.create({
+                data: {
+                    casa_id: negotiation[0].casa_id,
+                    negociacao_anuncio_id: negotiationId,
+                    usuario_convidado_id: invitedUserId,
+                    convidado_por_participacao_id: managerParticipationId,
+                    expira_em: expiresAt,
+                },
+                select: { id: true, status: true, expira_em: true },
+            });
+            await transaction.notificacao.create({
+                data: {
+                    usuario_id: invitedUserId,
+                    casa_id: negotiation[0].casa_id,
+                    tipo: "SISTEMA",
+                    titulo: "Você recebeu um convite para uma casa",
+                    mensagem: "Acesse a negociação do quarto para aceitar ou recusar o convite.",
+                    entidade_tipo: "CONVITE_CASA",
+                    entidade_id: invitation.id,
+                },
+            });
+            return invitation;
+        });
+    }
+
+    respondToNegotiationInvitation(
+        invitationId: string,
+        userId: string,
+        decision: "ACEITO" | "RECUSADO"
+    ) {
+        return this.prisma.$transaction(async (transaction) => {
+            const invitation = await transaction.convite_casa.findUnique({
+                where: { id: invitationId },
+                select: {
+                    id: true,
+                    casa_id: true,
+                    negociacao_anuncio_id: true,
+                    usuario_convidado_id: true,
+                    convidado_por_participacao_id: true,
+                    status: true,
+                    expira_em: true,
+                },
+            });
+            if (!invitation) throw new NotFoundException("Convite não encontrado.");
+            if (invitation.usuario_convidado_id !== userId) {
+                throw new ForbiddenException("Somente a pessoa convidada pode responder.");
+            }
+            if (invitation.status !== "PENDENTE") {
+                throw new ConflictException("Este convite já foi respondido.");
+            }
+
+            const pending = await transaction.$queryRaw<{ id: string }[]>`
+                SELECT "id" FROM "convite_casa"
+                WHERE "id" = ${invitationId}::uuid AND "status" = 'PENDENTE'
+                FOR UPDATE
+            `;
+            if (!pending.length) throw new ConflictException("Este convite já foi respondido.");
+            if (invitation.expira_em <= new Date()) {
+                await transaction.convite_casa.update({
+                    where: { id: invitationId },
+                    data: { status: "EXPIRADO" },
+                });
+                return { id: invitationId, status: "EXPIRADO", membershipId: null };
+            }
+
+            let membershipId: string | null = null;
+            if (decision === "ACEITO") {
+                const activeMembership = await transaction.participacao.findFirst({
+                    where: {
+                        casa_id: invitation.casa_id,
+                        usuario_id: userId,
+                        data_saida: null,
+                    },
+                    select: { id: true },
+                });
+                const membership =
+                    activeMembership ??
+                    (await transaction.participacao.create({
+                        data: {
+                            casa_id: invitation.casa_id,
+                            usuario_id: userId,
+                            papel: "MORADOR",
+                            convite_id: invitationId,
+                        },
+                        select: { id: true },
+                    }));
+                membershipId = membership.id;
+            }
+
+            await transaction.convite_casa.update({
+                where: { id: invitationId },
+                data: { status: decision },
+            });
+
+            const inviter = await transaction.participacao.findUniqueOrThrow({
+                where: { id: invitation.convidado_por_participacao_id },
+                select: { usuario_id: true },
+            });
+            await transaction.notificacao.create({
+                data: {
+                    usuario_id: inviter.usuario_id,
+                    casa_id: invitation.casa_id,
+                    tipo: "SISTEMA",
+                    titulo: decision === "ACEITO" ? "Convite aceito" : "Convite recusado",
+                    mensagem:
+                        decision === "ACEITO"
+                            ? "A pessoa convidada agora faz parte da casa."
+                            : "A pessoa convidada recusou o convite.",
+                    entidade_tipo: "CONVITE_CASA",
+                    entidade_id: invitationId,
+                },
+            });
+            return { id: invitationId, status: decision, membershipId };
         });
     }
 }

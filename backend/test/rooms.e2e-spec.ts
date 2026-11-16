@@ -4,6 +4,7 @@ import type { App } from "supertest/types.js";
 import { RoomsController } from "../src/rooms/rooms.controller.js";
 import type { anuncio_quarto } from "../src/generated/prisma/client.js";
 import { toRoomListingResponse } from "../src/rooms/rooms.mapper.js";
+import { RoomNegotiationsController } from "../src/rooms/room-negotiations.controller.js";
 import { RoomsService } from "../src/rooms/rooms.service.js";
 import { createAuthenticatedTestApp } from "./utils/authenticated-test-app.js";
 
@@ -24,6 +25,11 @@ describe("Room listings HTTP API (e2e)", () => {
         createInterest: vi.fn(),
         listInterests: vi.fn(),
         updateInterest: vi.fn(),
+        listMyInterests: vi.fn(),
+        getNegotiationMessages: vi.fn(),
+        sendNegotiationMessage: vi.fn(),
+        sendNegotiationInvitation: vi.fn(),
+        respondToNegotiationInvitation: vi.fn(),
     };
     const listing = {
         id: LISTING_ID,
@@ -62,13 +68,41 @@ describe("Room listings HTTP API (e2e)", () => {
             status: "PENDENTE",
         });
         service.listInterests.mockResolvedValue([]);
+        service.listMyInterests.mockResolvedValue([]);
+        service.getNegotiationMessages.mockResolvedValue({
+            id: "negotiation-1",
+            interestId: "interest-1",
+            status: "ACEITO",
+            anuncio: listing,
+            mensagens: [],
+            hasMore: false,
+            nextCursor: null,
+        });
+        service.sendNegotiationMessage.mockResolvedValue({
+            id: "message-1",
+            autorId: USER_ID,
+            autorNome: "Seeker",
+            autorFotoUrl: null,
+            conteudo: "Olá",
+            enviadaEm: "2026-11-09T12:00:00.000Z",
+        });
+        service.sendNegotiationInvitation.mockResolvedValue({
+            id: "invitation-1",
+            status: "PENDENTE",
+            expiraEm: "2026-11-16T12:00:00.000Z",
+        });
+        service.respondToNegotiationInvitation.mockResolvedValue({
+            id: "invitation-1",
+            status: "ACEITO",
+            membershipId: "membership-1",
+        });
         service.updateInterest.mockResolvedValue({
             id: "interest-1",
             anuncioId: LISTING_ID,
             status: "ACEITO",
         });
         const testApp = await createAuthenticatedTestApp({
-            controllers: [RoomsController],
+            controllers: [RoomsController, RoomNegotiationsController],
             providers: [{ provide: RoomsService, useValue: service }],
         });
         app = testApp.app;
@@ -82,8 +116,27 @@ describe("Room listings HTTP API (e2e)", () => {
             .expect(200)
             .expect({ data: [listing], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } });
         expect(service.findMany).toHaveBeenCalledWith(
-            expect.objectContaining({ cidade: "Quixada", page: 2, limit: 5, aceitaPets: true })
+            expect.objectContaining({ cidade: "Quixada", page: 2, limit: 5, aceitaPets: true }),
+            undefined
         );
+    });
+
+    it("passes the authenticated identity to the public search policy", async () => {
+        await request(app.getHttpServer())
+            .get("/rooms/listings")
+            .set("Cookie", await authenticatedCookie())
+            .expect(200);
+
+        expect(service.findMany).toHaveBeenCalledWith(expect.anything(), USER_ID);
+    });
+
+    it("rejects an invalid session cookie on the public search route", async () => {
+        await request(app.getHttpServer())
+            .get("/rooms/listings")
+            .set("Cookie", "access_token=invalid")
+            .expect(401);
+
+        expect(service.findMany).not.toHaveBeenCalled();
     });
 
     it("keeps hidden address and contact null in the public HTTP response", async () => {
@@ -120,6 +173,21 @@ describe("Room listings HTTP API (e2e)", () => {
                 expect(body.data[0].enderecoCompleto).toBeNull();
                 expect(body.data[0].contato).toBeNull();
             });
+    });
+
+    it("passes optional authentication to listing detail", async () => {
+        await request(app.getHttpServer())
+            .get(`/rooms/listings/${LISTING_ID}`)
+            .expect(200)
+            .expect(listing);
+        expect(service.findById).toHaveBeenCalledWith(LISTING_ID, undefined);
+
+        await request(app.getHttpServer())
+            .get(`/rooms/listings/${LISTING_ID}`)
+            .set("Cookie", await authenticatedCookie())
+            .expect(200)
+            .expect(listing);
+        expect(service.findById).toHaveBeenLastCalledWith(LISTING_ID, USER_ID);
     });
 
     it("requires JWT for listing mutations and creates with the session identity", async () => {
@@ -192,5 +260,110 @@ describe("Room listings HTTP API (e2e)", () => {
             .set("Cookie", await authenticatedCookie())
             .send({ mensagem: "Tenho interesse" })
             .expect(201);
+    });
+
+    it("lists only the authenticated user's interest inbox", async () => {
+        service.listMyInterests.mockResolvedValue([
+            {
+                id: "interest-1",
+                status: "ACEITO",
+                negotiationId: "negotiation-1",
+                anuncio: listing,
+            },
+        ]);
+        await request(app.getHttpServer()).get("/rooms/negotiations/interests/mine").expect(401);
+        await request(app.getHttpServer())
+            .get("/rooms/negotiations/interests/mine")
+            .set("Cookie", await authenticatedCookie())
+            .expect(200)
+            .expect([
+                {
+                    id: "interest-1",
+                    status: "ACEITO",
+                    negotiationId: "negotiation-1",
+                    anuncio: listing,
+                },
+            ]);
+        expect(service.listMyInterests).toHaveBeenCalledWith(USER_ID);
+    });
+
+    it("requires a valid authenticated message body and sends as the session user", async () => {
+        const negotiationId = "d8957f13-2e5e-45c1-8c22-194b4f610f43";
+        const cookie = await authenticatedCookie();
+        await request(app.getHttpServer())
+            .get(`/rooms/negotiations/${negotiationId}/messages`)
+            .set("Cookie", cookie)
+            .expect(200)
+            .expect(({ body }) => {
+                expect(body).toMatchObject({
+                    mensagens: [],
+                    hasMore: false,
+                    nextCursor: null,
+                });
+            });
+        await request(app.getHttpServer())
+            .get(`/rooms/negotiations/${negotiationId}/messages?limit=51`)
+            .set("Cookie", cookie)
+            .expect(400);
+        await request(app.getHttpServer())
+            .get(`/rooms/negotiations/${negotiationId}/messages?before=invalid`)
+            .set("Cookie", cookie)
+            .expect(400);
+        await request(app.getHttpServer())
+            .post(`/rooms/negotiations/${negotiationId}/messages`)
+            .set("Cookie", cookie)
+            .send({ conteudo: "a".repeat(2001) })
+            .expect(400);
+        await request(app.getHttpServer())
+            .post(`/rooms/negotiations/${negotiationId}/messages`)
+            .set("Cookie", cookie)
+            .send({ conteudo: "Olá" })
+            .expect(201)
+            .expect({
+                id: "message-1",
+                autorId: USER_ID,
+                autorNome: "Seeker",
+                autorFotoUrl: null,
+                conteudo: "Olá",
+                enviadaEm: "2026-11-09T12:00:00.000Z",
+            });
+        expect(service.getNegotiationMessages).toHaveBeenCalledWith(
+            negotiationId,
+            USER_ID,
+            expect.objectContaining({ limit: 30 })
+        );
+        expect(service.getNegotiationMessages).toHaveBeenCalledTimes(1);
+        expect(service.sendNegotiationMessage).toHaveBeenCalledWith(negotiationId, "Olá", USER_ID);
+    });
+
+    it("sends and answers invitations through authenticated actions", async () => {
+        const negotiationId = "d8957f13-2e5e-45c1-8c22-194b4f610f43";
+        const invitationId = "aa62190a-9340-46b4-9a9c-9e09d321c0c5";
+        const cookie = await authenticatedCookie();
+        await request(app.getHttpServer())
+            .post(`/rooms/negotiations/${negotiationId}/invitations`)
+            .set("Cookie", cookie)
+            .expect(201)
+            .expect({
+                id: "invitation-1",
+                status: "PENDENTE",
+                expiraEm: "2026-11-16T12:00:00.000Z",
+            });
+        await request(app.getHttpServer())
+            .patch(`/rooms/negotiations/invitations/${invitationId}`)
+            .set("Cookie", cookie)
+            .send({ status: "INVALIDO" })
+            .expect(400);
+        await request(app.getHttpServer())
+            .patch(`/rooms/negotiations/invitations/${invitationId}`)
+            .set("Cookie", cookie)
+            .send({ status: "ACEITO" })
+            .expect(200);
+        expect(service.sendNegotiationInvitation).toHaveBeenCalledWith(negotiationId, USER_ID);
+        expect(service.respondToNegotiationInvitation).toHaveBeenCalledWith(
+            invitationId,
+            "ACEITO",
+            USER_ID
+        );
     });
 });

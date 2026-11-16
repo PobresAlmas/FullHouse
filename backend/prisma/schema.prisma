@@ -133,17 +133,20 @@ model conversa {
 model convite_casa {
   id                                                                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   casa_id                                                               String              @db.Uuid
+  negociacao_anuncio_id                                                 String?             @db.Uuid
   codigo_pessoal_convidado                                              String?             @db.Char(6)
   usuario_convidado_id                                                  String?             @db.Uuid
   convidado_por_participacao_id                                         String              @db.Uuid
   status                                                                status_convite_enum @default(PENDENTE)
   expira_em                                                             DateTime            @db.Timestamptz(6)
   casa                                                                  casa                @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  negociacao_anuncio                                                    negociacao_anuncio? @relation(fields: [negociacao_anuncio_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   participacao_convite_casa_convidado_por_participacao_idToparticipacao participacao        @relation("convite_casa_convidado_por_participacao_idToparticipacao", fields: [convidado_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   usuario                                                               usuario?            @relation(fields: [usuario_convidado_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   participacao_participacao_convite_idToconvite_casa                    participacao[]      @relation("participacao_convite_idToconvite_casa")
 
   @@index([casa_id], map: "idx_convite_casa_casa")
+  @@index([negociacao_anuncio_id], map: "idx_convite_casa_negociacao_anuncio")
 }
 
 model cuidado_pet {
@@ -274,13 +277,36 @@ model instancia_tarefa {
 }
 
 model interesse_anuncio {
-  id             String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  anuncio_id     String                        @db.Uuid
-  usuario_id     String                        @db.Uuid
-  mensagem       String?
-  status         status_interesse_anuncio_enum @default(PENDENTE)
-  anuncio_quarto anuncio_quarto                @relation(fields: [anuncio_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  usuario        usuario                       @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                 String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  anuncio_id         String                        @db.Uuid
+  usuario_id         String                        @db.Uuid
+  mensagem           String?
+  status             status_interesse_anuncio_enum @default(PENDENTE)
+  anuncio_quarto     anuncio_quarto                @relation(fields: [anuncio_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuario            usuario                       @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  negociacao_anuncio negociacao_anuncio?
+}
+
+model negociacao_anuncio {
+  id                  String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  interesse_id        String                        @unique(map: "uq_negociacao_anuncio_interesse") @db.Uuid
+  criada_em           DateTime                      @default(now()) @db.Timestamptz(6)
+  interesse_anuncio   interesse_anuncio             @relation(fields: [interesse_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mensagem_negociacao mensagem_negociacao_anuncio[]
+  convite_casa        convite_casa[]
+}
+
+model mensagem_negociacao_anuncio {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  negociacao_id      String             @db.Uuid
+  autor_usuario_id   String             @db.Uuid
+  conteudo           String             @db.VarChar(2000)
+  enviada_em         DateTime           @default(now()) @db.Timestamptz(6)
+  negociacao_anuncio negociacao_anuncio @relation(fields: [negociacao_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuario            usuario            @relation(fields: [autor_usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([negociacao_id, enviada_em], map: "idx_mensagem_negociacao_anuncio_data")
+  @@index([autor_usuario_id], map: "idx_mensagem_negociacao_anuncio_autor")
 }
 
 model item_despensa {
@@ -728,27 +754,28 @@ model subgrupo {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model usuario {
-  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  codigo_pessoal        String              @unique @db.Char(6)
-  nome                  String              @db.VarChar(150)
-  apelido               String?             @db.VarChar(100)
-  email                 String              @unique @db.Citext
-  senha_hash            String              @db.VarChar(255)
-  foto_url              String?             @db.VarChar(500)
-  status_moradia        status_moradia_enum @default(PROCURANDO)
-  anonimizado_em        DateTime?           @db.Timestamptz(6)
-  excluido_em           DateTime?           @db.Timestamptz(6)
-  casa                  casa[]
-  convite_casa          convite_casa[]
-  comprovante_pagamento comprovante_pagamento[]
-  definicao_tarefa  definicao_tarefa[]
-  despesa           despesa[]
-  instancia_tarefa  instancia_tarefa[]
-  interesse_anuncio interesse_anuncio[]
-  lembrete          lembrete[]
-  notificacao       notificacao[]
-  participacao      participacao[]
-  password_reset    password_reset[]
+  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo_pessoal              String                        @unique @db.Char(6)
+  nome                        String                        @db.VarChar(150)
+  apelido                     String?                       @db.VarChar(100)
+  email                       String                        @unique @db.Citext
+  senha_hash                  String                        @db.VarChar(255)
+  foto_url                    String?                       @db.VarChar(500)
+  status_moradia              status_moradia_enum           @default(PROCURANDO)
+  anonimizado_em              DateTime?                     @db.Timestamptz(6)
+  excluido_em                 DateTime?                     @db.Timestamptz(6)
+  casa                        casa[]
+  convite_casa                convite_casa[]
+  comprovante_pagamento       comprovante_pagamento[]
+  definicao_tarefa            definicao_tarefa[]
+  despesa                     despesa[]
+  instancia_tarefa            instancia_tarefa[]
+  interesse_anuncio           interesse_anuncio[]
+  lembrete                    lembrete[]
+  mensagem_negociacao_anuncio mensagem_negociacao_anuncio[]
+  notificacao                 notificacao[]
+  participacao                participacao[]
+  password_reset              password_reset[]
 }
 
 model password_reset {

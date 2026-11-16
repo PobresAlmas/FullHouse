@@ -16,8 +16,8 @@ A funcionalidade integra descoberta pública de anúncios com publicação e ges
 
 **Confirmação — critérios de aceitação**
 
-- Qualquer visitante pode buscar e consultar anúncios públicos disponíveis, com filtros de cidade, bairro, preço, tipo de moradia e aceita pets quando aplicável, e paginação.
-- Uma pessoa autenticada com participação ativa na casa pode publicar anúncio. O sistema identifica o anunciante pela sessão e participação, não por ID fornecido pelo cliente.
+- Visitantes e usuários autenticados sem residência ativa podem buscar anúncios disponíveis, com filtros de cidade, bairro, preço, tipo de moradia e aceita pets quando aplicável, e paginação. Usuários com participação ativa em uma residência não usam a busca, mas podem gerir seus próprios anúncios.
+- Uma pessoa autenticada que seja líder ou administradora de uma casa ativa pode publicar anúncio para essa casa. Pessoas sem casa usam a busca; moradores sem papel de gestão não publicam. O sistema identifica o anunciante pela sessão e participação, não por ID fornecido pelo cliente.
 - O anúncio novo começa aberto; somente o anunciante pode editá-lo, fechar/reabrir ou removê-lo.
 - A busca usa filtros cumulativos, correspondência parcial sem distinção entre maiúsculas/minúsculas para cidade/bairro, faixa de preço inclusiva e ordenação determinística por data mais recente.
 - A API mascara `enderecoCompleto` para `null` sempre que `exibeEnderecoCompleto=false` e mascara `contato` para `null` sempre que `exibeContato=false`. As flags são independentes e a regra vale em listas, detalhes e respostas públicas relacionadas a interesse.
@@ -36,9 +36,10 @@ A funcionalidade integra descoberta pública de anúncios com publicação e ges
 | `contato` em respostas públicas | Retorna `null` se `exibeContato` for `false`. |
 | Flags de privacidade | Independentes: habilitar uma não revela o outro campo. |
 | Gestão própria (`/rooms/listings/mine`) | Anunciante autenticado recebe os próprios valores para poder editar; a exceção não se aplica à busca ou detalhe público. |
-| Criar anúncio | Exige JWT e participação ativa na casa indicada. |
+| Criar anúncio | Exige JWT e papel de líder/administrador na casa ativa indicada. |
 | Editar, fechar, reabrir ou remover | Exige JWT e ownership pela participação anunciante; terceiros recebem `403` (recurso inexistente pode retornar `404`). |
-| Buscar e consultar detalhe | Público; somente anúncios em estado público/disponível aparecem na busca padrão. |
+| Buscar anúncios | Público para visitantes e usuários sem residência ativa; usuários autenticados com participação ativa recebem `403`. |
+| Consultar detalhe | Público; somente anúncios disponíveis podem ser consultados. |
 | Manifestar interesse | Exige JWT e anúncio aberto; interesse não contorna as flags de privacidade. |
 
 ## 3. Modelo de domínio

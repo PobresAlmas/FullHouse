@@ -13,6 +13,8 @@ interface LoginResponse {
         id: string;
         email: string;
         name: string;
+        nickname?: string;
+        photo?: string;
     };
 }
 

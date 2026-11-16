@@ -6,10 +6,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { Prisma } from "../generated/prisma/client.js";
-import {
-    CreateExpenseDto,
-    ExpensePaymentStatus,
-} from "./dto/create-expense.dto.js";
+import { CreateExpenseDto, ExpensePaymentStatus } from "./dto/create-expense.dto.js";
 import { UpdateExpenseDto } from "./dto/update-expense.dto.js";
 import { CreateExpenseSubgroupDto } from "./dto/create-expense-subgroup.dto.js";
 
@@ -57,7 +54,9 @@ function resolveSplits(
         0n
     );
     if (allocatedCents !== totalCents) {
-        throw new BadRequestException("A soma das partes deve ser igual ao valor total da despesa.");
+        throw new BadRequestException(
+            "A soma das partes deve ser igual ao valor total da despesa."
+        );
     }
     return customAllocations.map(({ participationId, amount }) => {
         const cents = toCents(amount);
@@ -204,7 +203,9 @@ export class ExpensesRepository {
                 throw new ForbiddenException("Somente quem criou o subgrupo pode editá-lo.");
             }
             if (subgroup.casa_id !== data.homeId) {
-                throw new BadRequestException("O subgrupo não pode ser transferido para outra residência.");
+                throw new BadRequestException(
+                    "O subgrupo não pode ser transferido para outra residência."
+                );
             }
             if (new Set(data.memberIds).size !== data.memberIds.length) {
                 throw new BadRequestException("Não repita participantes no subgrupo.");
@@ -218,7 +219,9 @@ export class ExpensesRepository {
                 select: { id: true, usuario: { select: { nome: true, apelido: true } } },
             });
             if (members.length !== data.memberIds.length) {
-                throw new BadRequestException("Selecione somente moradores ativos desta residência.");
+                throw new BadRequestException(
+                    "Selecione somente moradores ativos desta residência."
+                );
             }
 
             await transaction.subgrupo.update({
@@ -423,7 +426,9 @@ export class ExpensesRepository {
                 select: {
                     participacao_id: true,
                     valor_devido: true,
-                    participacao: { select: { usuario: { select: { nome: true, apelido: true } } } },
+                    participacao: {
+                        select: { usuario: { select: { nome: true, apelido: true } } },
+                    },
                 },
             },
             comprovante_pagamento: {
@@ -458,7 +463,9 @@ export class ExpensesRepository {
             }
 
             if (data.allocations && !subgroupId) {
-                throw new BadRequestException("A divisão personalizada só está disponível em subgrupos.");
+                throw new BadRequestException(
+                    "A divisão personalizada só está disponível em subgrupos."
+                );
             }
             const expense = await transaction.despesa.create({ data: expenseData });
             const splits = resolveSplits(data.amount, participationIds, data.allocations);
@@ -653,7 +660,7 @@ export class ExpensesRepository {
             if (!activeMembership) throw new NotFoundException("A despesa não está disponível.");
 
             const participantIds = expense.subgrupo_id
-                ? (
+                ? ((
                       await transaction.subgrupo.findFirst({
                           where: { id: expense.subgrupo_id, casa_id: expense.casa_id },
                           select: {
@@ -663,7 +670,7 @@ export class ExpensesRepository {
                               },
                           },
                       })
-                  )?.membro_subgrupo.map((member) => member.participacao_id) ?? []
+                  )?.membro_subgrupo.map((member) => member.participacao_id) ?? [])
                 : (
                       await transaction.participacao.findMany({
                           where: { casa_id: expense.casa_id, data_saida: null },
@@ -675,10 +682,7 @@ export class ExpensesRepository {
                 throw new NotFoundException("A despesa não está disponível.");
             }
 
-            const allocations = splitAmountInCents(
-                expense.valor_total.toString(),
-                participantIds
-            );
+            const allocations = splitAmountInCents(expense.valor_total.toString(), participantIds);
             await transaction.rateio_despesa.createMany({
                 data: allocations.map(({ participationId, value }) => ({
                     despesa_id: id,
@@ -806,7 +810,9 @@ export class ExpensesRepository {
             }
 
             if (data.allocations && !subgroupId) {
-                throw new BadRequestException("A divisão personalizada só está disponível em subgrupos.");
+                throw new BadRequestException(
+                    "A divisão personalizada só está disponível em subgrupos."
+                );
             }
 
             await transaction.despesa.update({
@@ -871,7 +877,9 @@ export class ExpensesRepository {
                     throw new NotFoundException("O subgrupo não está disponível nesta residência.");
                 }
                 if (participationIds.length === 0) {
-                    throw new BadRequestException("Não há moradores ativos para dividir a despesa.");
+                    throw new BadRequestException(
+                        "Não há moradores ativos para dividir a despesa."
+                    );
                 }
                 const splits = resolveSplits(data.amount, participationIds, data.allocations);
                 await transaction.rateio_despesa.createMany({
@@ -1067,36 +1075,39 @@ export class ExpensesRepository {
 
         return expenses.flatMap<PersonalExpenseView>((expense) => {
             if (expense.escopo === "INDIVIDUAL") {
-                return [{
-                    id: expense.id,
-                    description: expense.descricao,
-                    amount: expense.valor_total.toFixed(2),
-                    totalAmount: expense.valor_total.toFixed(2),
-                    date: expense.data_vencimento?.toISOString().slice(0, 10) ?? null,
-                    homeId: null,
-                    homeName: null,
-                    subgroup: null,
-                    sourceLabel: "Individual",
-                    canEdit: true,
-                    scope: "PERSONAL",
-                    paidBy: null,
-                    paidAt: expense.quitada_em?.toISOString() ?? null,
-                    paymentStatus: expense.status === "QUITADA" ? "PAID" : "PENDING",
-                    proofs: expense.comprovante_pagamento.map((proof) => ({
-                        id: proof.id,
-                        url: proof.arquivo_url,
-                        type: proof.tipo_arquivo,
-                    })),
-                    reminder: expense.lembrete[0]
-                        ? {
-                              id: expense.lembrete[0].id,
-                              message: expense.lembrete[0].titulo === expense.descricao
-                                  ? ""
-                                  : expense.lembrete[0].titulo,
-                              remindAt: expense.lembrete[0].lembrar_em.toISOString(),
-                          }
-                        : null,
-                }];
+                return [
+                    {
+                        id: expense.id,
+                        description: expense.descricao,
+                        amount: expense.valor_total.toFixed(2),
+                        totalAmount: expense.valor_total.toFixed(2),
+                        date: expense.data_vencimento?.toISOString().slice(0, 10) ?? null,
+                        homeId: null,
+                        homeName: null,
+                        subgroup: null,
+                        sourceLabel: "Individual",
+                        canEdit: true,
+                        scope: "PERSONAL",
+                        paidBy: null,
+                        paidAt: expense.quitada_em?.toISOString() ?? null,
+                        paymentStatus: expense.status === "QUITADA" ? "PAID" : "PENDING",
+                        proofs: expense.comprovante_pagamento.map((proof) => ({
+                            id: proof.id,
+                            url: proof.arquivo_url,
+                            type: proof.tipo_arquivo,
+                        })),
+                        reminder: expense.lembrete[0]
+                            ? {
+                                  id: expense.lembrete[0].id,
+                                  message:
+                                      expense.lembrete[0].titulo === expense.descricao
+                                          ? ""
+                                          : expense.lembrete[0].titulo,
+                                  remindAt: expense.lembrete[0].lembrar_em.toISOString(),
+                              }
+                            : null,
+                    },
+                ];
             }
 
             const participationIds = expense.subgrupo
@@ -1120,36 +1131,41 @@ export class ExpensesRepository {
                   )?.value;
             if (!amount) return [];
 
-            return [{
-                id: expense.id,
-                description: expense.descricao,
-                amount,
-                totalAmount: expense.valor_total.toFixed(2),
-                date: expense.data_vencimento?.toISOString().slice(0, 10) ?? null,
-                homeId: expense.casa_id,
-                homeName: expense.casa?.nome,
-                subgroup: expense.subgrupo ? { id: expense.subgrupo.id, nome: expense.subgrupo.nome } : null,
-                sourceLabel: expense.subgrupo?.nome ?? "Casa",
-                canEdit: false,
-                scope: "HOME",
-                paidBy: null,
-                paidAt: currentParticipation?.pago_em?.toISOString() ?? null,
-                paymentStatus: currentParticipation?.pago ? "PAID" : "PENDING",
-                proofs: expense.comprovante_pagamento.map((proof) => ({
-                    id: proof.id,
-                    url: proof.arquivo_url,
-                    type: proof.tipo_arquivo,
-                })),
-                reminder: expense.lembrete[0]
-                    ? {
-                          id: expense.lembrete[0].id,
-                          message: expense.lembrete[0].titulo === expense.descricao
-                              ? ""
-                              : expense.lembrete[0].titulo,
-                          remindAt: expense.lembrete[0].lembrar_em.toISOString(),
-                      }
-                    : null,
-            }];
+            return [
+                {
+                    id: expense.id,
+                    description: expense.descricao,
+                    amount,
+                    totalAmount: expense.valor_total.toFixed(2),
+                    date: expense.data_vencimento?.toISOString().slice(0, 10) ?? null,
+                    homeId: expense.casa_id,
+                    homeName: expense.casa?.nome,
+                    subgroup: expense.subgrupo
+                        ? { id: expense.subgrupo.id, nome: expense.subgrupo.nome }
+                        : null,
+                    sourceLabel: expense.subgrupo?.nome ?? "Casa",
+                    canEdit: false,
+                    scope: "HOME",
+                    paidBy: null,
+                    paidAt: currentParticipation?.pago_em?.toISOString() ?? null,
+                    paymentStatus: currentParticipation?.pago ? "PAID" : "PENDING",
+                    proofs: expense.comprovante_pagamento.map((proof) => ({
+                        id: proof.id,
+                        url: proof.arquivo_url,
+                        type: proof.tipo_arquivo,
+                    })),
+                    reminder: expense.lembrete[0]
+                        ? {
+                              id: expense.lembrete[0].id,
+                              message:
+                                  expense.lembrete[0].titulo === expense.descricao
+                                      ? ""
+                                      : expense.lembrete[0].titulo,
+                              remindAt: expense.lembrete[0].lembrar_em.toISOString(),
+                          }
+                        : null,
+                },
+            ];
         });
     }
 }
