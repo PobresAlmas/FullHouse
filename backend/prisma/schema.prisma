@@ -760,6 +760,8 @@ model usuario {
   apelido                     String?                       @db.VarChar(100)
   email                       String                        @unique @db.Citext
   senha_hash                  String                        @db.VarChar(255)
+  falhas_login                Int                           @default(0)
+  login_bloqueado_ate         DateTime?                     @db.Timestamptz(6)
   foto_url                    String?                       @db.VarChar(500)
   status_moradia              status_moradia_enum           @default(PROCURANDO)
   anonimizado_em              DateTime?                     @db.Timestamptz(6)
