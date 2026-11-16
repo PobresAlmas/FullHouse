@@ -81,3 +81,8 @@ Os dados de demonstração são opcionais. Leia [backend/README.md](backend/READ
 - `web/`: interface Next.js e funcionalidades por domínio
 - `docker-compose.yml`: API, interface, PostgreSQL e armazenamento S3 local
 - `docs/` e `openspec/`: decisões, planejamento e especificações
+
+## Protótipo
+
+- Figma: <a href="https://www.figma.com/design/cUDP98MCK6t4HV2pfHeeqP/Prot%C3%B3tipo-FullHouse?node-id=0-1&t=tsUGkTi8K2ujTOzq-1">
+Link protótipo </a>
