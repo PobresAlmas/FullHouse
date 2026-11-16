@@ -12,15 +12,15 @@ A interface segue o shell existente do FullHouse e a referência visual `openspe
 
 ## 2. Frontend
 
-| Arquivo | Responsabilidade |
-| --- | --- |
-| `web/app/rooms/page.tsx` | Rota de Quartos integrada ao app. |
-| `web/features/rooms/components/RoomsPage.tsx` | Busca, filtros, cards, detalhe, publicação/edição, status, interesses e estados de interface. |
-| `web/features/rooms/api/rooms.api.ts` | Tipos e chamadas HTTP para busca, detalhe, CRUD, fotos e interesses, usando autenticação da aplicação. |
-| `web/components/layout/AppSidebar.tsx` | Acesso “Quartos” na navegação autenticada. |
-| `web/features/auth/components/LoginForm.tsx` | Suporte a `returnTo` para retomar o destino após autenticação. |
-| `web/features/rooms/**/__test__/` | Testes da API e dos fluxos/componentes de Quartos. |
-| `web/components/layout/__test__/AppSidebar.test.tsx` | Teste da navegação atualizada. |
+| Arquivo                                              | Responsabilidade                                                                                       |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `web/app/rooms/page.tsx`                             | Rota de Quartos integrada ao app.                                                                      |
+| `web/features/rooms/components/RoomsPage.tsx`        | Busca, filtros, cards, detalhe, publicação/edição, status, interesses e estados de interface.          |
+| `web/features/rooms/api/rooms.api.ts`                | Tipos e chamadas HTTP para busca, detalhe, CRUD, fotos e interesses, usando autenticação da aplicação. |
+| `web/components/layout/AppSidebar.tsx`               | Acesso “Quartos” na navegação autenticada.                                                             |
+| `web/features/auth/components/LoginForm.tsx`         | Suporte a `returnTo` para retomar o destino após autenticação.                                         |
+| `web/features/rooms/**/__test__/`                    | Testes da API e dos fluxos/componentes de Quartos.                                                     |
+| `web/components/layout/__test__/AppSidebar.test.tsx` | Teste da navegação atualizada.                                                                         |
 
 ### Fluxos de interface
 
@@ -33,18 +33,18 @@ A interface segue o shell existente do FullHouse e a referência visual `openspe
 
 ## 3. Backend e API
 
-| Arquivo/camada | Responsabilidade |
-| --- | --- |
-| `backend/src/rooms/rooms.module.ts` | Registro e composição do módulo. |
-| `backend/src/rooms/rooms.controller.ts` | Rotas REST, JWT nas mutações e extração do usuário autenticado. |
-| `backend/src/rooms/rooms.service.ts` | Regras de busca, participação ativa, ownership, transições de status e interesses. |
-| `backend/src/rooms/rooms.repository.ts` | Persistência e consultas Prisma, incluindo filtros/paginação. |
-| `backend/src/rooms/rooms.mapper.ts` | Conversão para respostas e mascaramento independente de endereço/contato. |
-| `backend/src/rooms/dto/` | DTOs de criação, atualização, filtros, resposta e interesse. |
-| `backend/src/app.module.ts` | Registro do `RoomsModule`. |
-| `backend/src/rooms/README.md` | Referência de contratos, payloads e respostas da API. |
-| `backend/test/rooms.e2e-spec.ts` | Cobertura E2E do contrato HTTP e autorização. |
-| `backend/test/integration/room-listings-migration.integration.test.ts` | Verificação da migration em schema isolado com registros legados. |
+| Arquivo/camada                                                         | Responsabilidade                                                                   |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `backend/src/rooms/rooms.module.ts`                                    | Registro e composição do módulo.                                                   |
+| `backend/src/rooms/rooms.controller.ts`                                | Rotas REST, JWT nas mutações e extração do usuário autenticado.                    |
+| `backend/src/rooms/rooms.service.ts`                                   | Regras de busca, participação ativa, ownership, transições de status e interesses. |
+| `backend/src/rooms/rooms.repository.ts`                                | Persistência e consultas Prisma, incluindo filtros/paginação.                      |
+| `backend/src/rooms/rooms.mapper.ts`                                    | Conversão para respostas e mascaramento independente de endereço/contato.          |
+| `backend/src/rooms/dto/`                                               | DTOs de criação, atualização, filtros, resposta e interesse.                       |
+| `backend/src/app.module.ts`                                            | Registro do `RoomsModule`.                                                         |
+| `backend/src/rooms/README.md`                                          | Referência de contratos, payloads e respostas da API.                              |
+| `backend/test/rooms.e2e-spec.ts`                                       | Cobertura E2E do contrato HTTP e autorização.                                      |
+| `backend/test/integration/room-listings-migration.integration.test.ts` | Verificação da migration em schema isolado com registros legados.                  |
 
 ### Endpoints principais
 

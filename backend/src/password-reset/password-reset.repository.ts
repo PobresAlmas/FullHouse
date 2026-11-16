@@ -53,7 +53,11 @@ export class PasswordResetRepository {
 
             await tx.usuario.update({
                 where: { id: userId },
-                data: { senha_hash: passwordHash },
+                data: {
+                    senha_hash: passwordHash,
+                    falhas_login: 0,
+                    login_bloqueado_ate: null,
+                },
             });
         });
     }

@@ -12,12 +12,12 @@ O código e as suítes automatizadas estão implementados. **A migração criada
 
 ## 2. Frontend
 
-| Recurso | Arquivo principal | Papel |
-| --- | --- | --- |
-| Página da despensa | `web/app/(private)/pantry/page.tsx` | Carrega categorias da residência, usa categoria persistida nos formulários e filtros e apresenta o modal de gerenciamento. |
-| Cliente HTTP e tipos | `web/features/pantry/api/pantry.api.ts` | Consulta, cria, renomeia e remove categorias. |
-| Testes da tela | `web/app/(private)/pantry/__test__/page.test.tsx` | Verifica seleção de residência e o ciclo de criação, renomeação e remoção com confirmação. |
-| Testes do cliente | `web/features/pantry/api/__test__/pantry.api.test.ts` | Verifica rotas e payloads de categoria. |
+| Recurso              | Arquivo principal                                     | Papel                                                                                                                      |
+| -------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Página da despensa   | `web/app/(private)/pantry/page.tsx`                   | Carrega categorias da residência, usa categoria persistida nos formulários e filtros e apresenta o modal de gerenciamento. |
+| Cliente HTTP e tipos | `web/features/pantry/api/pantry.api.ts`               | Consulta, cria, renomeia e remove categorias.                                                                              |
+| Testes da tela       | `web/app/(private)/pantry/__test__/page.test.tsx`     | Verifica seleção de residência e o ciclo de criação, renomeação e remoção com confirmação.                                 |
+| Testes do cliente    | `web/features/pantry/api/__test__/pantry.api.test.ts` | Verifica rotas e payloads de categoria.                                                                                    |
 
 O modal “Gerenciar categorias” permite adicionar, renomear e pedir exclusão com confirmação. A tela considera a política de edição da residência ao habilitar o gerenciamento. O formulário de item usa as categorias recebidas pela API, não uma lista local como fonte definitiva.
 
@@ -25,23 +25,23 @@ O modal “Gerenciar categorias” permite adicionar, renomear e pedir exclusão
 
 A funcionalidade reutiliza o módulo existente `backend/src/pantry/`:
 
-| Arquivo | Responsabilidade |
-| --- | --- |
-| `pantry.controller.ts` | Endpoints autenticados de consulta e CRUD das categorias. |
-| `pantry.service.ts` | Validação de vínculo e permissão, normalização, duplicatas e bloqueio de exclusão em uso. |
-| `pantry.repository.ts` | Consultas e alterações persistidas, incluindo atualização do rótulo legado de itens ao renomear. |
-| `pantry-categories.ts` | Oito categorias padrão e normalização compartilhada. |
-| `dto/create-pantry-category.dto.ts` e `dto/update-pantry-category.dto.ts` | Validação e limpeza do nome. |
+| Arquivo                                                                   | Responsabilidade                                                                                 |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `pantry.controller.ts`                                                    | Endpoints autenticados de consulta e CRUD das categorias.                                        |
+| `pantry.service.ts`                                                       | Validação de vínculo e permissão, normalização, duplicatas e bloqueio de exclusão em uso.        |
+| `pantry.repository.ts`                                                    | Consultas e alterações persistidas, incluindo atualização do rótulo legado de itens ao renomear. |
+| `pantry-categories.ts`                                                    | Oito categorias padrão e normalização compartilhada.                                             |
+| `dto/create-pantry-category.dto.ts` e `dto/update-pantry-category.dto.ts` | Validação e limpeza do nome.                                                                     |
 
 ### 3.1. Endpoints identificados
 
 Todas as rotas ficam sob `/residences/:residenceId/pantry`, exigem autenticação JWT e validam UUIDs.
 
-| Método | Rota | Função |
-| --- | --- | --- |
-| `GET` | `/categories` | Listar categorias da residência. |
-| `POST` | `/categories` | Criar categoria. |
-| `PATCH` | `/categories/:categoryId` | Renomear categoria. |
+| Método   | Rota                      | Função                                  |
+| -------- | ------------------------- | --------------------------------------- |
+| `GET`    | `/categories`             | Listar categorias da residência.        |
+| `POST`   | `/categories`             | Criar categoria.                        |
+| `PATCH`  | `/categories/:categoryId` | Renomear categoria.                     |
 | `DELETE` | `/categories/:categoryId` | Remover categoria sem itens associados. |
 
 ### 3.2. Regras e persistência
@@ -58,13 +58,13 @@ Todas as rotas ficam sob `/residences/:residenceId/pantry`, exigem autenticaçã
 
 ## 4. Rastreabilidade
 
-| Entrega | Critério | Evidência no código |
-| --- | --- | --- |
-| CRUD de categorias | Criar, consultar, renomear e remover | Rotas do `PantryController`, serviço e repositório. |
-| Unicidade por residência | Caixa, acentos e espaços não criam duplicatas | `normalizePantryCategoryName` e índice único no banco. |
-| Proteção de categoria em uso | Não remover categoria vinculada a item | Verificação no serviço e FK restritiva da migração. |
-| Categoria do mesmo domicílio | Associação não pode cruzar residências | Validação no serviço e FK composta. |
-| Valores iniciais | Oito categorias por nova residência | `DEFAULT_PANTRY_CATEGORIES` e criação transacional em `ResidencesRepository`. |
+| Entrega                          | Critério                                               | Evidência no código                                                               |
+| -------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| CRUD de categorias               | Criar, consultar, renomear e remover                   | Rotas do `PantryController`, serviço e repositório.                               |
+| Unicidade por residência         | Caixa, acentos e espaços não criam duplicatas          | `normalizePantryCategoryName` e índice único no banco.                            |
+| Proteção de categoria em uso     | Não remover categoria vinculada a item                 | Verificação no serviço e FK restritiva da migração.                               |
+| Categoria do mesmo domicílio     | Associação não pode cruzar residências                 | Validação no serviço e FK composta.                                               |
+| Valores iniciais                 | Oito categorias por nova residência                    | `DEFAULT_PANTRY_CATEGORIES` e criação transacional em `ResidencesRepository`.     |
 | Migração sem fallback silencioso | Dados ambíguos/sem rótulo válido interrompem o cutover | Migração SQL transacional com verificações antes de tornar a relação obrigatória. |
 
 ## 5. Estado da entrega

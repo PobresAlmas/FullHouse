@@ -10,26 +10,26 @@ Este documento registra os testes automatizados das regras de subgrupos adiciona
 
 ## 2. Matriz de testes
 
-| ID | Cenário | Resultado esperado | Cobertura automatizada |
-| --- | --- | --- | --- |
-| SG001 | Criar subgrupo com nome e participantes | Criação persiste os integrantes ativos da residência do criador. | DTO e testes do serviço/repositório. |
-| SG002 | Validar participantes da residência | Lista vazia, IDs duplicados, moradores inativos e moradores de outra casa são rejeitados. | DTO, serviço e repositório. |
-| SG003 | Editar subgrupo | Criador pode alterar nome e integrantes; outro usuário é proibido. | Serviço e repositório. |
-| SG004 | Atualizar integrantes | Inclusões e remoções alteram as associações ativas de forma transacional. | Repositório. |
-| SG005 | Associar várias despesas | Despesas distintas podem referenciar o mesmo subgrupo sem compartilhar seus dados. | Serviço. |
-| SG006 | Rateio igualitário | Parcelas são calculadas em centavos para os participantes da despesa. | `expenses.repository.spec.ts`. |
-| SG007 | Rateio personalizado válido | Todos os participantes recebem uma parcela e a soma é igual ao total da despesa. | `expenses.repository.spec.ts`. |
-| SG008 | Rateio personalizado inválido | Participante ausente ou soma diferente do total impede a gravação das parcelas. | `expenses.repository.spec.ts`. |
-| SG009 | Comprovante por despesa | O anexo é associado à conta individual, não ao subgrupo como um todo. | Fluxo de despesa; sem teste unitário específico de interface nesta suíte. |
+| ID    | Cenário                                 | Resultado esperado                                                                        | Cobertura automatizada                                                    |
+| ----- | --------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| SG001 | Criar subgrupo com nome e participantes | Criação persiste os integrantes ativos da residência do criador.                          | DTO e testes do serviço/repositório.                                      |
+| SG002 | Validar participantes da residência     | Lista vazia, IDs duplicados, moradores inativos e moradores de outra casa são rejeitados. | DTO, serviço e repositório.                                               |
+| SG003 | Editar subgrupo                         | Criador pode alterar nome e integrantes; outro usuário é proibido.                        | Serviço e repositório.                                                    |
+| SG004 | Atualizar integrantes                   | Inclusões e remoções alteram as associações ativas de forma transacional.                 | Repositório.                                                              |
+| SG005 | Associar várias despesas                | Despesas distintas podem referenciar o mesmo subgrupo sem compartilhar seus dados.        | Serviço.                                                                  |
+| SG006 | Rateio igualitário                      | Parcelas são calculadas em centavos para os participantes da despesa.                     | `expenses.repository.spec.ts`.                                            |
+| SG007 | Rateio personalizado válido             | Todos os participantes recebem uma parcela e a soma é igual ao total da despesa.          | `expenses.repository.spec.ts`.                                            |
+| SG008 | Rateio personalizado inválido           | Participante ausente ou soma diferente do total impede a gravação das parcelas.           | `expenses.repository.spec.ts`.                                            |
+| SG009 | Comprovante por despesa                 | O anexo é associado à conta individual, não ao subgrupo como um todo.                     | Fluxo de despesa; sem teste unitário específico de interface nesta suíte. |
 
 ## 3. Arquivos de teste
 
-| Arquivo | Cobertura |
-| --- | --- |
-| `backend/test/unit/expenses/create-expense-subgroup.dto.spec.ts` | Validação do nome, IDs e participantes informados para criação. |
-| `backend/test/unit/expenses/expenses.subgroups.service.spec.ts` | Criação, consulta, edição pelo criador, validação de participantes e múltiplas despesas no subgrupo. |
-| `backend/test/unit/expenses/expenses.subgroups.repository.spec.ts` | Atualização transacional, autorização, residência e estado dos integrantes. |
-| `backend/test/unit/expenses/expenses.repository.spec.ts` | Persistência de despesas e parcelas igualitárias/personalizadas, incluindo rejeição de rateios inválidos. |
+| Arquivo                                                            | Cobertura                                                                                                 |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `backend/test/unit/expenses/create-expense-subgroup.dto.spec.ts`   | Validação do nome, IDs e participantes informados para criação.                                           |
+| `backend/test/unit/expenses/expenses.subgroups.service.spec.ts`    | Criação, consulta, edição pelo criador, validação de participantes e múltiplas despesas no subgrupo.      |
+| `backend/test/unit/expenses/expenses.subgroups.repository.spec.ts` | Atualização transacional, autorização, residência e estado dos integrantes.                               |
+| `backend/test/unit/expenses/expenses.repository.spec.ts`           | Persistência de despesas e parcelas igualitárias/personalizadas, incluindo rejeição de rateios inválidos. |
 
 ## 4. Comandos e resultados
 

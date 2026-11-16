@@ -12,6 +12,9 @@ import {
     BedDouble,
     Settings,
     UserRound,
+    MessageCircle,
+    ScrollText,
+    CalendarDays,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import {
@@ -26,9 +29,12 @@ export type AppSection =
     | "pantry"
     | "shopping-list"
     | "pets"
-    | "rooms"
     | "settings"
-    | "profile";
+    | "profile"
+    | "chat"
+    | "rules"
+    | "rooms"
+    | "meetings";
 
 const sections: { id: AppSection; label: string; href: string; icon: typeof House }[] = [
     { id: "home", label: "Home", href: "/", icon: House },
@@ -42,6 +48,9 @@ const sections: { id: AppSection; label: string; href: string; icon: typeof Hous
         icon: ShoppingBasket,
     },
     { id: "pets", label: "Pets", href: "/pets", icon: PawPrint },
+    { id: "chat", label: "Chat da casa", href: "/chat", icon: MessageCircle },
+    { id: "rules", label: "Regras", href: "/rules", icon: ScrollText },
+    { id: "meetings", label: "Reuniões", href: "/meetings", icon: CalendarDays },
     { id: "rooms", label: "Quartos", href: "/rooms", icon: BedDouble },
     { id: "settings", label: "Configurações", href: "/settings", icon: Settings },
     { id: "profile", label: "Perfil", href: "/profile", icon: UserRound },
@@ -53,6 +62,9 @@ const implementedSections: AppSection[] = [
     "pantry",
     "shopping-list",
     "pets",
+    "chat",
+    "rules",
+    "meetings",
     "rooms",
     "profile",
 ];

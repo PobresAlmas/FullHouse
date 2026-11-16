@@ -93,3 +93,35 @@ O diagrama do módulo de tarefas descreve tanto a criação quanto o gerenciamen
 O usuário pode criar uma nova tarefa informando título, descrição opcional, tags, responsável, data e horário. Também pode definir repetição e lembretes. O sistema valida os dados antes de cadastrar a tarefa e, quando necessário, registra a recorrência e agenda o lembrete.
 
 Além da criação, o usuário pode filtrar tarefas e interagir com registros existentes, marcando-os como concluídos, editando-os ou excluindo-os. Após cada alteração, o sistema atualiza os indicadores e a lista de tarefas para manter as informações exibidas consistentes.
+
+## 16. Chat da residência
+
+Este diagrama representa a consulta e a troca de mensagens previstas na especificação `group-chat`. Ao acessar o chat, o sistema verifica a autenticação e a participação ativa do usuário na residência. O acesso autorizado permite consultar o histórico em ordem cronológica, com autor, data e horário de cada mensagem, e abrir o canal de recebimento em tempo real. Usuários sem participação ativa não recebem o conteúdo da conversa.
+
+O fluxo contempla o envio de mensagens, o recebimento de novas mensagens e a consulta do histórico. Mensagens vazias ou compostas apenas por espaços são rejeitadas sem armazenamento. Uma mensagem válida é persistida com autoria autenticada e data e horário gerados pelo servidor, retornada ao remetente e entregue aos demais membros ativos conectados à mesma conversa, sem recarregar a página. As mensagens de outras residências não são entregues nesse canal. Se a participação terminar durante a conexão, o sistema encerra o fluxo e impede a entrega de mensagens posteriores ao usuário.
+
+[Especificação](../../../openspec/changes/implement-house-collaboration/specs/group-chat/spec.md) | [Código PlantUML](../codes/group-chat.puml) | [PDF](../pdf/group-chat.pdf)
+
+![Diagrama de atividades do chat da residência](../images/group-chat.png)
+
+## 17. Mural de regras da residência
+
+O diagrama da especificação `house-rules` apresenta a consulta, o cadastro e a edição das regras da residência. O sistema verifica a autenticação e a participação ativa antes de exibir o mural, que contém somente regras da residência autorizada. Cada regra apresenta título, descrição, data de cadastro e identificação do criador ou do membro que realizou a alteração mais recente.
+
+No cadastro, o morador informa título e descrição. Na edição, seleciona uma regra da residência e altera esses campos. Antes da gravação, o sistema verifica novamente a participação e o vínculo da regra com a residência, quando aplicável, e valida se os dois campos contêm texto além de espaços. Dados inválidos são rejeitados sem gravação, e tentativas de edição por usuários de fora da residência não modificam a regra. Um cadastro válido registra o criador e a data do servidor, enquanto uma edição válida atualiza o conteúdo e a identificação do último editor. Ao final, o mural é atualizado.
+
+[Especificação](../../../openspec/changes/implement-house-collaboration/specs/house-rules/spec.md) | [Código PlantUML](../codes/house-rules.puml) | [PDF](../pdf/house-rules.pdf)
+
+![Diagrama de atividades do mural de regras da residência](../images/house-rules.png)
+
+## 18. Reuniões da residência
+
+Este diagrama reúne as operações da especificação `house-meetings`: agendar reuniões, responder a convites, reagendar e cancelar. A consulta e as operações exigem autenticação e participação ativa na residência. O sistema verifica também se a reunião selecionada pertence àquela residência, negando acesso a usuários sem vínculo ativo e sem retornar detalhes das reuniões.
+
+Para agendar, o morador informa data, horário e pauta. O sistema exige data e horário futuros e pauta não vazia. Dados válidos resultam em uma reunião com o membro autenticado como organizador e convites pendentes para todos os membros ativos, incluindo o organizador. Dados inválidos não geram reunião nem convites. Na resposta a um convite, o membro ativo convidado pode confirmar ou recusar presença. O sistema registra a resposta e seu horário e a disponibiliza aos membros ativos. Quem não possui convite ativo não pode modificar as respostas.
+
+O reagendamento e o cancelamento de uma reunião agendada são restritos ao organizador. No reagendamento, os novos dados são validados, a reunião original é preservada no histórico como reagendada, uma substituta é criada e vinculada à original e todos os membros ativos atuais recebem novos convites pendentes. O cancelamento mantém a reunião no histórico com a situação cancelada. Operações não autorizadas ou reagendamentos inválidos não alteram os registros.
+
+[Especificação](../../../openspec/changes/implement-house-collaboration/specs/house-meetings/spec.md) | [Código PlantUML](../codes/house-meetings.puml) | [PDF](../pdf/house-meetings.pdf)
+
+![Diagrama de atividades das reuniões da residência](../images/house-meetings.png)

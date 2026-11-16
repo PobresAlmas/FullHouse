@@ -6,13 +6,13 @@
 
 As histórias foram relacionadas ao Documento de Especificação de Requisitos em `docs/req.pdf`. Esta entrega implementa somente comportamentos da área de tarefas. Os critérios que dependem de notificações e de despesas/finanças são registrados como pendentes para a respectiva área.
 
-| Requisito | História | Resultado no escopo de tarefas |
-| --- | --- | --- |
-| RF004 | US003 — cadastro de tarefas | Atendido: periodicidade, prazo, rodízio e cor. |
-| RF007 | US006 — conclusão de tarefa | Atendido: validação de responsável/líder/administrador, registro de data/hora e indicação de atraso. |
-| RF008 | US007 — lembretes e comprovantes | Parcial: o lembrete da tarefa pode ser configurado e persistido; o disparo/central de notificações e comprovantes de despesas ficam fora desta implementação. |
-| RF009 / RF010 | US008 — calendário | Parcial: calendário de tarefas com dia, semana e mês; vencimentos de despesas dependem da área financeira. |
-| RF018 | US016 — organização individual | Parcial: tarefas pessoais são separadas por usuário e ficam no navegador; despesas individuais pertencem à área financeira. |
+| Requisito     | História                         | Resultado no escopo de tarefas                                                                                                                                |
+| ------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF004         | US003 — cadastro de tarefas      | Atendido: periodicidade, prazo, rodízio e cor.                                                                                                                |
+| RF007         | US006 — conclusão de tarefa      | Atendido: validação de responsável/líder/administrador, registro de data/hora e indicação de atraso.                                                          |
+| RF008         | US007 — lembretes e comprovantes | Parcial: o lembrete da tarefa pode ser configurado e persistido; o disparo/central de notificações e comprovantes de despesas ficam fora desta implementação. |
+| RF009 / RF010 | US008 — calendário               | Parcial: calendário de tarefas com dia, semana e mês; vencimentos de despesas dependem da área financeira.                                                    |
+| RF018         | US016 — organização individual   | Parcial: tarefas pessoais são separadas por usuário e ficam no navegador; despesas individuais pertencem à área financeira.                                   |
 
 ## US003 — Cadastrar tarefas domésticas
 

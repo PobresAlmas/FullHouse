@@ -17,12 +17,14 @@ import { status_anuncio_enum, tipo_moradia_anuncio_enum } from "../../generated/
 
 export class UpdateRoomListingDto {
     @IsOptional()
+    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
     @IsString()
     @MinLength(1)
     @MaxLength(150)
     titulo?: string;
 
     @IsOptional()
+    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
     @IsString()
     @MaxLength(5000)
     descricao?: string;
@@ -35,6 +37,7 @@ export class UpdateRoomListingDto {
     preco?: number;
 
     @IsOptional()
+    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
     @IsString()
     @MinLength(1)
     @MaxLength(100)
@@ -55,6 +58,7 @@ export class UpdateRoomListingDto {
     exibeEnderecoCompleto?: boolean;
 
     @IsOptional()
+    @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
     @IsString()
     @MinLength(3)
     @MaxLength(100)

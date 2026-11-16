@@ -11,18 +11,18 @@ Este documento registra os comandos e resultados observados para a change `add-r
 
 ## 2. Resultado da execução automatizada
 
-| Suíte/verificação | Comando | Resultado observado |
-| --- | --- | --- |
-| Backend unitário completo | `cd backend && pnpm test` | **Aprovado:** 40 arquivos, 278 testes. |
-| Frontend completo | `cd web && pnpm exec vitest run` | **Aprovado:** 58 arquivos, 178 testes. |
-| Quartos — E2E | `cd backend && pnpm exec vitest run --config ./vitest.config.e2e.ts test/rooms.e2e-spec.ts` | **Aprovado:** 1 arquivo, 6 testes. |
-| Migration — PostgreSQL isolado | Ver comando da seção 5.2 | **Aprovado:** 1 teste; dados legados, interesse, defaults e rollback verificados no schema temporário. |
-| E2E backend completo | `cd backend && pnpm test:e2e` | **49 passaram; 1 falhou** em teste preexistente de despesas (`test/expenses.e2e-spec.ts`), por divergência do argumento adicional `HOME` em `expensesService.findAll`. O E2E de Quartos passou. |
-| Build backend | `cd backend && pnpm build` | **Aprovado.** |
-| Build frontend | `cd web && pnpm build` | **Aprovado.** |
-| Lint backend/frontend dos arquivos alterados | comandos direcionados via ESLint | **Aprovado.** |
-| Prisma | `pnpm exec prisma validate --config prisma7.config.ts` e `pnpm exec prisma generate --config prisma7.config.ts` (em `backend`) | **Aprovados.** |
-| OpenSpec | `openspec validate add-room-listings --strict` | **Aprovado.** |
+| Suíte/verificação                            | Comando                                                                                                                        | Resultado observado                                                                                                                                                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend unitário completo                    | `cd backend && pnpm test`                                                                                                      | **Aprovado:** 40 arquivos, 278 testes.                                                                                                                                                          |
+| Frontend completo                            | `cd web && pnpm exec vitest run`                                                                                               | **Aprovado:** 58 arquivos, 178 testes.                                                                                                                                                          |
+| Quartos — E2E                                | `cd backend && pnpm exec vitest run --config ./vitest.config.e2e.ts test/rooms.e2e-spec.ts`                                    | **Aprovado:** 1 arquivo, 6 testes.                                                                                                                                                              |
+| Migration — PostgreSQL isolado               | Ver comando da seção 5.2                                                                                                       | **Aprovado:** 1 teste; dados legados, interesse, defaults e rollback verificados no schema temporário.                                                                                          |
+| E2E backend completo                         | `cd backend && pnpm test:e2e`                                                                                                  | **49 passaram; 1 falhou** em teste preexistente de despesas (`test/expenses.e2e-spec.ts`), por divergência do argumento adicional `HOME` em `expensesService.findAll`. O E2E de Quartos passou. |
+| Build backend                                | `cd backend && pnpm build`                                                                                                     | **Aprovado.**                                                                                                                                                                                   |
+| Build frontend                               | `cd web && pnpm build`                                                                                                         | **Aprovado.**                                                                                                                                                                                   |
+| Lint backend/frontend dos arquivos alterados | comandos direcionados via ESLint                                                                                               | **Aprovado.**                                                                                                                                                                                   |
+| Prisma                                       | `pnpm exec prisma validate --config prisma7.config.ts` e `pnpm exec prisma generate --config prisma7.config.ts` (em `backend`) | **Aprovados.**                                                                                                                                                                                  |
+| OpenSpec                                     | `openspec validate add-room-listings --strict`                                                                                 | **Aprovado.**                                                                                                                                                                                   |
 
 Não foi executada a suíte completa E2E com resultado integralmente verde, devido à falha não relacionada descrita acima. O QA visual de viewport móvel e leitor de tela permanece pendente; não foram geradas capturas nesta rodada.
 
@@ -121,20 +121,20 @@ pnpm dev
 
 ### Matriz de cenários
 
-| ID | Cenário e passos | Resultado esperado | Status manual |
-| --- | --- | --- | --- |
-| MR01 | Abrir Quartos pela navegação autenticada e também consultar a tela sem sessão. | Busca pública carrega; gestão requer login e retorna ao destino após autenticação quando acionada. | A executar |
-| MR02 | Buscar por cidade e bairro, aplicar faixa de preço e remover chips individualmente. | Filtros são cumulativos, URL acompanha consulta quando suportado, resultados e contagem correspondem aos critérios. | A executar |
-| MR03 | Usar abas/tipo de moradia e filtro Aceita Pets. | Só aparecem anúncios com os valores estruturados persistidos correspondentes. | A executar |
-| MR04 | Avançar página e atualizar/reabrir a URL filtrada. | Paginação e filtros continuam consistentes; metadados/resultados refletem a página. | A executar |
-| MR05 | Abrir card e detalhe de anúncio com ambas flags privadas desligadas. | Endereço completo e contato aparecem ocultos/indicados como indisponíveis. | A executar |
-| MR06 | Testar flags independentes: somente endereço ou somente contato visível. | Cada campo respeita sua própria flag nas respostas e na tela; nenhum valor oculto vaza. | A executar |
-| MR07 | Publicar com conta que tenha participação ativa, fotos e flags desligadas. | Anúncio é criado, inicia aberto e pode ser encontrado; campos privados seguem ocultos publicamente. | A executar |
-| MR08 | Tentar publicar sem participação ativa ou com valores inválidos. | API/UI rejeita e apresenta erro sem criar anúncio. | A executar |
-| MR09 | Editar e fechar/reabrir anúncio com a conta anunciante. | Campos/status são atualizados; anúncio fechado deixa a busca pública. | A executar |
-| MR10 | Tentar editar/remover com outra conta; depois remover com o anunciante. | Terceiro recebe acesso negado; anunciante remove/fecha e interesses históricos são mantidos. | A executar |
-| MR11 | Manifestar interesse autenticado e tentar repetir enquanto pendente. | Primeiro interesse é registrado; não há duplicidade, e resposta não revela endereço/contato ocultos. | A executar |
-| MR12 | Conferir busca vazia, erro de rede, navegação só por teclado e viewport estreita. | Estados vazios/erro são distintos; controles têm foco/nomes acessíveis e não há sobreposição que impeça ações. | A executar |
+| ID   | Cenário e passos                                                                    | Resultado esperado                                                                                                  | Status manual |
+| ---- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------- |
+| MR01 | Abrir Quartos pela navegação autenticada e também consultar a tela sem sessão.      | Busca pública carrega; gestão requer login e retorna ao destino após autenticação quando acionada.                  | A executar    |
+| MR02 | Buscar por cidade e bairro, aplicar faixa de preço e remover chips individualmente. | Filtros são cumulativos, URL acompanha consulta quando suportado, resultados e contagem correspondem aos critérios. | A executar    |
+| MR03 | Usar abas/tipo de moradia e filtro Aceita Pets.                                     | Só aparecem anúncios com os valores estruturados persistidos correspondentes.                                       | A executar    |
+| MR04 | Avançar página e atualizar/reabrir a URL filtrada.                                  | Paginação e filtros continuam consistentes; metadados/resultados refletem a página.                                 | A executar    |
+| MR05 | Abrir card e detalhe de anúncio com ambas flags privadas desligadas.                | Endereço completo e contato aparecem ocultos/indicados como indisponíveis.                                          | A executar    |
+| MR06 | Testar flags independentes: somente endereço ou somente contato visível.            | Cada campo respeita sua própria flag nas respostas e na tela; nenhum valor oculto vaza.                             | A executar    |
+| MR07 | Publicar com conta que tenha participação ativa, fotos e flags desligadas.          | Anúncio é criado, inicia aberto e pode ser encontrado; campos privados seguem ocultos publicamente.                 | A executar    |
+| MR08 | Tentar publicar sem participação ativa ou com valores inválidos.                    | API/UI rejeita e apresenta erro sem criar anúncio.                                                                  | A executar    |
+| MR09 | Editar e fechar/reabrir anúncio com a conta anunciante.                             | Campos/status são atualizados; anúncio fechado deixa a busca pública.                                               | A executar    |
+| MR10 | Tentar editar/remover com outra conta; depois remover com o anunciante.             | Terceiro recebe acesso negado; anunciante remove/fecha e interesses históricos são mantidos.                        | A executar    |
+| MR11 | Manifestar interesse autenticado e tentar repetir enquanto pendente.                | Primeiro interesse é registrado; não há duplicidade, e resposta não revela endereço/contato ocultos.                | A executar    |
+| MR12 | Conferir busca vazia, erro de rede, navegação só por teclado e viewport estreita.   | Estados vazios/erro são distintos; controles têm foco/nomes acessíveis e não há sobreposição que impeça ações.      | A executar    |
 
 ### Capturas
 
