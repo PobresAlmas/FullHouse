@@ -68,6 +68,39 @@ export function localDateKey(date: Date) {
 export function taskDateKey(task: Task) {
     return localDateKey(new Date(task.dueAt));
 }
+
+export function groupTasksByDate(tasks: Task[]) {
+    const today = localDateKey(new Date());
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = localDateKey(tomorrowDate);
+    const result: { key: string; label: string; tasks: Task[]; overdue?: boolean }[] = [];
+    const map = new Map<string, Task[]>();
+
+    for (const task of tasks) {
+        const key = taskDateKey(task);
+        const list = map.get(key) ?? [];
+        list.push(task);
+        map.set(key, list);
+    }
+
+    for (const [key, entries] of map) {
+        const overdue = key < today || entries.some((task) => task.status === "ATRASADA");
+        const label = overdue
+            ? "Atrasadas"
+            : key === today
+              ? "Hoje"
+              : key === tomorrow
+                ? "Amanhã"
+                : new Intl.DateTimeFormat("pt-BR", { dateStyle: "full" }).format(
+                      new Date(`${key}T12:00:00`)
+                  );
+        result.push({ key, label, tasks: entries, overdue });
+    }
+
+    return result.sort((a, b) => (a.tasks[0]?.dueAt ?? "").localeCompare(b.tasks[0]?.dueAt ?? ""));
+}
+
 export function formatDate(
     value: string,
     options: Intl.DateTimeFormatOptions = { dateStyle: "short", timeStyle: "short" }

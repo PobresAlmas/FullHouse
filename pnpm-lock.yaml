@@ -206,10 +206,6 @@ settings:
 
 importers:
   .:
-    dependencies:
-      pnpm:
-        specifier: ^12.14.0
-        version: 12.15.0
     devDependencies:
       husky:
         specifier: ^9.1.7

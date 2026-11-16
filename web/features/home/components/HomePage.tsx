@@ -21,6 +21,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 import {
     createResidence,
     getResidences,
+    RESIDENCE_MEMBERSHIP_CHANGED_EVENT,
     type Residence,
 } from "@/features/residences/api/residences.api";
 import {
@@ -103,11 +104,11 @@ export function HomePage() {
     const [name, setName] = useState("");
     const [createError, setCreateError] = useState("");
     const [creating, setCreating] = useState(false);
-    const [profileSelected, setProfileSelected] = useState(false);
     const [profileMenuOpen, setProfileMenuOpen] = useState(false);
     const [loggingOut, setLoggingOut] = useState(false);
     const [logoutError, setLogoutError] = useState("");
     const requestId = useRef(0);
+    const residenceRequestId = useRef(0);
     const profileMenuRef = useRef<HTMLDivElement>(null);
     const selectedResidence = residences.find((residence) => residence.id === selectedId) ?? null;
     const requestKey = context === "personal" ? "personal" : `residence:${selectedId}`;
@@ -125,34 +126,31 @@ export function HomePage() {
     }, []);
 
     const loadResidences = useCallback(async () => {
+        const currentRequest = ++residenceRequestId.current;
         setLoadingResidences(true);
         setResidenceError("");
         setLoadedContextKey("");
         try {
-            applyResidenceList(await getResidences());
+            const items = await getResidences();
+            if (residenceRequestId.current === currentRequest) applyResidenceList(items);
         } catch (error) {
-            setResidenceError(errorMessage(error));
+            if (residenceRequestId.current === currentRequest) {
+                setResidenceError(errorMessage(error));
+            }
         } finally {
-            setLoadingResidences(false);
+            if (residenceRequestId.current === currentRequest) setLoadingResidences(false);
         }
     }, [applyResidenceList]);
 
     useEffect(() => {
-        let mounted = true;
-        void getResidences()
-            .then((items) => {
-                if (mounted) applyResidenceList(items);
-            })
-            .catch((error: unknown) => {
-                if (mounted) setResidenceError(errorMessage(error));
-            })
-            .finally(() => {
-                if (mounted) setLoadingResidences(false);
-            });
+        const refreshResidences = () => void loadResidences();
+        refreshResidences();
+        window.addEventListener(RESIDENCE_MEMBERSHIP_CHANGED_EVENT, refreshResidences);
         return () => {
-            mounted = false;
+            window.removeEventListener(RESIDENCE_MEMBERSHIP_CHANGED_EVENT, refreshResidences);
+            residenceRequestId.current += 1;
         };
-    }, [applyResidenceList]);
+    }, [loadResidences]);
 
     useEffect(() => {
         if (!profileMenuOpen) return;
@@ -326,10 +324,11 @@ export function HomePage() {
     return (
         <div className="min-h-screen bg-[#f7f2fa] text-[#28252b] md:flex">
             <AppSidebar
-                activeSection={residences.length ? "home" : profileSelected ? "profile" : "home"}
+                activeSection="home"
                 residenceName={selectedResidence?.name}
-                noResidence={!loadingResidences && residences.length === 0}
-                onProfileSelect={() => setProfileSelected(true)}
+                noResidence={
+                    loadingResidences || Boolean(residenceError) || residences.length === 0
+                }
             />
             <main className="min-w-0 flex-1">
                 <AppPageHeader

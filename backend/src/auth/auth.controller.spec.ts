@@ -4,6 +4,7 @@ import { AuthService } from "./auth.service.js";
 describe("AuthController", () => {
     const result = { access_token: "token", user: { id: "u1" } };
     type MockAuthService = {
+        getCurrentUser: ReturnType<typeof vi.fn>;
         register: ReturnType<typeof vi.fn>;
         login: ReturnType<typeof vi.fn>;
         forgotPassword: ReturnType<typeof vi.fn>;
@@ -17,6 +18,7 @@ describe("AuthController", () => {
 
     beforeEach(() => {
         auth = {
+            getCurrentUser: vi.fn().mockResolvedValue({ id: "u1", name: "Ana" }),
             register: vi.fn().mockResolvedValue(result),
             login: vi.fn().mockResolvedValue(result),
             forgotPassword: vi.fn().mockResolvedValue({ message: "ok" }),
@@ -27,8 +29,13 @@ describe("AuthController", () => {
         response = { cookie: vi.fn(), clearCookie: vi.fn() };
     });
 
-    it("returns the authenticated user", () =>
-        expect(controller.me({ id: "u1" })).toEqual({ id: "u1" }));
+    it("returns the authenticated user's current profile", async () => {
+        await expect(controller.me({ id: "u1" })).resolves.toEqual({
+            id: "u1",
+            name: "Ana",
+        });
+        expect(auth.getCurrentUser).toHaveBeenCalledWith("u1");
+    });
 
     it("registers and sets an http-only access cookie", async () => {
         const registerDto = { email: "a@example.com" } as Parameters<AuthService["register"]>[0];

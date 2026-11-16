@@ -42,6 +42,12 @@ describe("UserRepository", () => {
         });
     });
 
+    it("looks up a user by id", async () => {
+        prisma.usuario.findUnique.mockResolvedValue(null);
+        await repository.findById("u1");
+        expect(prisma.usuario.findUnique).toHaveBeenCalledWith({ where: { id: "u1" } });
+    });
+
     it("creates and updates user records", async () => {
         const data = {
             nome: "Ana",

@@ -21,6 +21,10 @@ export class AuthService {
         private readonly jwtService: JwtService
     ) {}
 
+    async getCurrentUser(userId: string) {
+        return toUserResponse(await this.usersService.findById(userId));
+    }
+
     async register(data: RegisterDto) {
         const user = await this.usersService.create(data);
 

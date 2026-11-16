@@ -9,12 +9,17 @@ import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/hooks/useAuth";
-import { getResidences, type Residence } from "@/features/residences/api/residences.api";
+import {
+    getResidences,
+    RESIDENCE_MEMBERSHIP_CHANGED_EVENT,
+    type Residence,
+} from "@/features/residences/api/residences.api";
 import {
     createRoomListing,
     deleteRoomListing,
     expressRoomInterest,
     getMyRoomListings,
+    getMyRoomInterests,
     getRoomInterests,
     searchRoomListings,
     updateRoomListing,
@@ -23,6 +28,7 @@ import {
 } from "../api/rooms.api";
 import type {
     RoomInterest,
+    MyRoomInterest,
     RoomListing,
     RoomListingFilters,
     RoomListingInput,
@@ -44,16 +50,42 @@ function errorText(error: unknown) {
     return "Não foi possível concluir a solicitação. Tente novamente.";
 }
 
+function getMyInterestForListing(interests: MyRoomInterest[], listingId: string) {
+    const listingInterests = interests.filter((interest) => interest.anuncio.id === listingId);
+    return (
+        listingInterests.find((interest) => interest.status === "ACEITO") ??
+        listingInterests.find((interest) => interest.status === "PENDENTE") ??
+        listingInterests[0]
+    );
+}
+
+function formatBrazilianMobilePhone(value: string) {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 2) return digits ? `(${digits}` : "";
+
+    const areaCode = digits.slice(0, 2);
+    const number = digits.slice(2);
+    if (number.length <= 5) return `(${areaCode}) ${number}`;
+    return `(${areaCode}) ${number.slice(0, 5)}-${number.slice(5)}`;
+}
+
 export function RoomsPage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const router = useRouter();
-    const [residences, setResidences] = useState<Residence[]>([]);
+    const [residenceLookup, setResidenceLookup] = useState<{
+        userId: string;
+        residences: Residence[];
+    } | null>(null);
+    const [residenceLookupError, setResidenceLookupError] = useState<{
+        userId: string;
+        message: string;
+    } | null>(null);
     const [residenceId, setResidenceId] = useState("");
     const [listings, setListings] = useState<RoomListing[]>([]);
     const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 0 });
     const [filters, setFilters] = useState<RoomListingFilters>({ page: 1, limit: 10 });
     const [search, setSearch] = useState("");
-    const [tab, setTab] = useState<"all" | "republic" | "pets" | "mine">("all");
+    const [tab, setTab] = useState<"all" | "republic" | "pets" | "mine" | "interests">("all");
     const [urlReady, setUrlReady] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -61,25 +93,96 @@ export function RoomsPage() {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState<RoomListing | null>(null);
     const [interests, setInterests] = useState<RoomInterest[]>([]);
+    const [myInterests, setMyInterests] = useState<MyRoomInterest[]>([]);
+    const [interestStatusError, setInterestStatusError] = useState("");
+    const [loadingInterestStatus, setLoadingInterestStatus] = useState(false);
     const [saving, setSaving] = useState(false);
     const [notice, setNotice] = useState("");
     const [interestMessage, setInterestMessage] = useState("");
     const closeDialogRef = useRef<HTMLButtonElement>(null);
+    const refreshingMyInterestsRef = useRef(false);
+    const residences =
+        user && residenceLookup?.userId === user.id ? residenceLookup.residences : [];
+    const residencesLoaded =
+        !user || residenceLookup?.userId === user.id || residenceLookupError?.userId === user.id;
+    const hasActiveResidence = Boolean(user && residences.length > 0);
+    const canSearch =
+        !authLoading &&
+        (!user ||
+            (residenceLookup?.userId === user.id &&
+                residenceLookup.residences.length === 0 &&
+                residenceLookupError?.userId !== user.id));
     const residence = residences.find((item) => item.id === residenceId) ?? null;
+    const canManageListings =
+        residence?.membership?.role === "LIDER" || residence?.membership?.role === "ADMINISTRADOR";
+    const visibleTabs = [
+        ...(canSearch
+            ? [
+                  { key: "all" as const, label: "Todos os Quartos" },
+                  { key: "republic" as const, label: "Repúblicas" },
+                  { key: "pets" as const, label: "Aceita Pets" },
+              ]
+            : hasActiveResidence && user
+              ? [{ key: "mine" as const, label: "Meus anúncios" }]
+              : []),
+        ...(user ? [{ key: "interests" as const, label: "Meus interesses" }] : []),
+    ];
     const memberName = user?.name?.trim() || user?.email?.split("@")[0] || "Visitante";
+    const selectedInterest = selected
+        ? getMyInterestForListing(myInterests, selected.id)
+        : undefined;
+
+    const refreshMyInterests = useCallback(async () => {
+        if (!user) {
+            setMyInterests([]);
+            setInterestStatusError("");
+            setLoadingInterestStatus(false);
+            return;
+        }
+        if (refreshingMyInterestsRef.current) return;
+        refreshingMyInterestsRef.current = true;
+        setLoadingInterestStatus(true);
+        try {
+            setMyInterests(await getMyRoomInterests());
+            setInterestStatusError("");
+        } catch (cause: unknown) {
+            setInterestStatusError(errorText(cause));
+        } finally {
+            refreshingMyInterestsRef.current = false;
+            setLoadingInterestStatus(false);
+        }
+    }, [user]);
 
     useEffect(() => {
-        if (!user) return;
-        getResidences()
-            .then((items) => {
-                setResidences(items);
+        if (authLoading || !user) return;
+        let active = true;
+        let latestRequest = 0;
+        const refreshResidences = async () => {
+            const request = ++latestRequest;
+            try {
+                const items = await getResidences();
+                if (!active || request !== latestRequest) return;
+                setResidenceLookup({ userId: user.id, residences: items });
+                setResidenceLookupError(null);
                 const saved = window.localStorage.getItem("fullhouse.home.residence");
                 setResidenceId(
                     items.some((item) => item.id === saved) ? saved! : (items[0]?.id ?? "")
                 );
-            })
-            .catch((cause: unknown) => setError(errorText(cause)));
-    }, [user]);
+                setTab(items.length > 0 ? "mine" : "all");
+            } catch (cause: unknown) {
+                if (!active || request !== latestRequest) return;
+                const message = errorText(cause);
+                setResidenceLookupError({ userId: user.id, message });
+                setError(message);
+            }
+        };
+        void refreshResidences();
+        window.addEventListener(RESIDENCE_MEMBERSHIP_CHANGED_EVENT, refreshResidences);
+        return () => {
+            active = false;
+            window.removeEventListener(RESIDENCE_MEMBERSHIP_CHANGED_EVENT, refreshResidences);
+        };
+    }, [authLoading, user]);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -117,6 +220,13 @@ export function RoomsPage() {
 
     const load = useCallback(async () => {
         if (!urlReady) return;
+        if (authLoading || (user && !residencesLoaded)) return;
+        if (user && tab !== "mine" && tab !== "interests" && !canSearch) {
+            setListings([]);
+            setMeta({ total: 0, page: 1, limit: 10, totalPages: 0 });
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         setError("");
         try {
@@ -126,24 +236,59 @@ export function RoomsPage() {
                 setMeta({ total: own.length, page: 1, limit: 10, totalPages: 1 });
                 return;
             }
+            if (tab === "interests") {
+                const ownInterests = await getMyRoomInterests();
+                setMyInterests(ownInterests);
+                setInterestStatusError("");
+                setListings([]);
+                setMeta({
+                    total: ownInterests.length,
+                    page: 1,
+                    limit: 10,
+                    totalPages: 1,
+                });
+                return;
+            }
             const nextFilters = { ...filters, page: filters.page ?? 1 };
             if (tab === "republic") nextFilters.tipoMoradia = "REPUBLICA";
             if (tab === "pets") nextFilters.aceitaPets = true;
             const result = await searchRoomListings(nextFilters);
             setListings(result.data);
             setMeta(result.meta);
+            await refreshMyInterests();
         } catch (cause: unknown) {
             setError(errorText(cause));
         } finally {
             setLoading(false);
         }
-    }, [filters, residenceId, tab, urlReady]);
+    }, [
+        authLoading,
+        canSearch,
+        filters,
+        refreshMyInterests,
+        residenceId,
+        residencesLoaded,
+        tab,
+        urlReady,
+        user,
+    ]);
 
     useEffect(() => {
         // Synchronize the visible results with the external API request.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         void load();
     }, [load]);
+
+    useEffect(() => {
+        if (!user || !canSearch) return;
+        const refreshWhenVisible = () => {
+            if (document.visibilityState === "visible") void refreshMyInterests();
+        };
+        document.addEventListener("visibilitychange", refreshWhenVisible);
+        return () => {
+            document.removeEventListener("visibilitychange", refreshWhenVisible);
+        };
+    }, [canSearch, refreshMyInterests, user]);
 
     const applied = useMemo(
         () =>
@@ -158,13 +303,6 @@ export function RoomsPage() {
             ].filter(Boolean),
         [filters, tab]
     );
-    const tabs: { key: "all" | "republic" | "pets" | "mine"; label: string }[] = [
-        { key: "all", label: "Todos os Quartos" },
-        { key: "republic", label: "Repúblicas" },
-        { key: "pets", label: "Aceita Pets" },
-        ...(user ? [{ key: "mine" as const, label: "Meus anúncios" }] : []),
-    ];
-
     function applySearch(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const [city, neighborhood] = search.split(",").map((part) => part.trim());
@@ -190,7 +328,7 @@ export function RoomsPage() {
         }));
     }
 
-    function chooseTab(next: "all" | "republic" | "pets" | "mine") {
+    function chooseTab(next: "all" | "republic" | "pets" | "mine" | "interests") {
         setTab(next);
         if (next !== "mine") {
             setFilters((current) => ({
@@ -265,9 +403,21 @@ export function RoomsPage() {
             return;
         }
         try {
-            await expressRoomInterest(listing.id, interestMessage);
+            const result = await expressRoomInterest(listing.id, interestMessage);
+            setMyInterests((current) => [
+                ...current.filter((interest) => interest.anuncio.id !== listing.id),
+                {
+                    id: result.id,
+                    status: result.status,
+                    mensagem: interestMessage.trim() || null,
+                    negotiationId: null,
+                    anuncio: listing,
+                },
+            ]);
+            setInterestStatusError("");
             setNotice("Seu interesse foi enviado ao anunciante.");
             setInterestMessage("");
+            setSelected(null);
         } catch (cause: unknown) {
             setError(errorText(cause));
         }
@@ -297,6 +447,11 @@ export function RoomsPage() {
         }
     }
 
+    function openListingDetails(listing: RoomListing) {
+        setSelected(listing);
+        if (user && canSearch) void refreshMyInterests();
+    }
+
     async function openManagement(listing: RoomListing) {
         setSelected(listing);
         setInterests([]);
@@ -317,12 +472,36 @@ export function RoomsPage() {
         return () => document.removeEventListener("keydown", onKeyDown);
     }, [selected]);
 
+    useEffect(() => {
+        if (!showForm) return;
+        function onKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape" && !saving) {
+                setShowForm(false);
+                setEditing(null);
+                setError("");
+            }
+        }
+        document.addEventListener("keydown", onKeyDown);
+        return () => document.removeEventListener("keydown", onKeyDown);
+    }, [saving, showForm]);
+
+    function closeListingForm() {
+        if (saving) return;
+        setShowForm(false);
+        setEditing(null);
+        setError("");
+    }
+
     async function decideInterest(interest: RoomInterest, status: "ACEITO" | "RECUSADO") {
         if (!selected) return;
         try {
-            await updateRoomInterest(selected.id, interest.id, status);
+            const result = await updateRoomInterest(selected.id, interest.id, status);
             setInterests((current) =>
-                current.map((item) => (item.id === interest.id ? { ...item, status } : item))
+                current.map((item) =>
+                    item.id === interest.id
+                        ? { ...item, status, negotiationId: result.negotiationId }
+                        : item
+                )
             );
         } catch (cause: unknown) {
             setError(errorText(cause));
@@ -331,7 +510,11 @@ export function RoomsPage() {
 
     return (
         <div className="min-h-screen bg-[#f7f8fa] text-[#24232a] md:flex">
-            <AppSidebar activeSection="rooms" residenceName={residence?.name} />
+            <AppSidebar
+                activeSection="rooms"
+                residenceName={residence?.name}
+                noResidence={!hasActiveResidence}
+            />
             <div className="min-w-0 flex-1">
                 <AppPageHeader
                     greetingName={memberName}
@@ -376,7 +559,7 @@ export function RoomsPage() {
                             role="tablist"
                             aria-label="Categorias de quartos"
                         >
-                            {tabs.map(({ key, label }) => (
+                            {visibleTabs.map(({ key, label }) => (
                                 <button
                                     key={key}
                                     role="tab"
@@ -388,12 +571,12 @@ export function RoomsPage() {
                                 </button>
                             ))}
                         </div>
-                        {user && (
+                        {canManageListings && (
                             <button
                                 className={greenButton}
                                 onClick={() => {
                                     setEditing(null);
-                                    setShowForm((value) => !value);
+                                    setShowForm(true);
                                     setError("");
                                 }}
                             >
@@ -402,7 +585,11 @@ export function RoomsPage() {
                         )}
                     </div>
 
-                    <form onSubmit={applySearch} className="mb-3 flex flex-wrap gap-3">
+                    <form
+                        hidden={!canSearch || tab === "mine" || tab === "interests"}
+                        onSubmit={applySearch}
+                        className="mb-3 flex flex-wrap gap-3"
+                    >
                         <label className="relative min-w-[260px] flex-1">
                             <span className="sr-only">Buscar por cidade ou bairro</span>
                             <Search size={17} className="absolute left-3 top-3 text-[#9aa2b0]" />
@@ -525,7 +712,7 @@ export function RoomsPage() {
                         </button>
                     </form>
 
-                    {applied.length > 0 && (
+                    {canSearch && tab !== "mine" && applied.length > 0 && (
                         <div className="mb-5">
                             <p className="mb-2 text-xs font-semibold text-[#77717c]">
                                 Filtros aplicados
@@ -543,6 +730,12 @@ export function RoomsPage() {
                                 ))}
                             </div>
                         </div>
+                    )}
+                    {hasActiveResidence && tab === "mine" && (
+                        <p role="status" className="mb-4 text-sm text-[#77717c]">
+                            A busca de quartos fica disponível para pessoas sem residência ativa.
+                            Você ainda pode gerir seus anúncios.
+                        </p>
                     )}
 
                     {notice && (
@@ -566,191 +759,300 @@ export function RoomsPage() {
                     )}
 
                     {showForm && (
-                        <form
-                            key={editing?.id ?? "create"}
-                            onSubmit={(event) => void submitListing(event)}
-                            className="mb-8 grid gap-4 rounded-2xl border bg-white p-5 md:grid-cols-2"
-                            aria-label="Formulário de anúncio"
+                        <div
+                            className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/40 p-4"
+                            role="presentation"
+                            onMouseDown={(event) => {
+                                if (event.target === event.currentTarget) closeListingForm();
+                            }}
                         >
-                            <h2 className="text-lg font-bold md:col-span-2">
-                                {editing ? "Editar anúncio" : "Novo anúncio"}
-                            </h2>
-                            <label className="text-sm">
-                                Título
-                                <input
-                                    name="titulo"
-                                    required
-                                    maxLength={150}
-                                    defaultValue={editing?.titulo ?? ""}
-                                    className={`${inputClass} mt-1`}
-                                />
-                            </label>
-                            <label className="text-sm">
-                                Preço mensal (R$)
-                                <input
-                                    name="preco"
-                                    type="number"
-                                    min="0.01"
-                                    step="0.01"
-                                    required
-                                    defaultValue={editing?.preco ?? ""}
-                                    className={`${inputClass} mt-1`}
-                                />
-                            </label>
-                            <label className="text-sm">
-                                Cidade
-                                <input
-                                    name="cidade"
-                                    required
-                                    maxLength={100}
-                                    defaultValue={editing?.cidade ?? residence?.city ?? ""}
-                                    className={`${inputClass} mt-1`}
-                                />
-                            </label>
-                            <label className="text-sm">
-                                Bairro
-                                <input
-                                    name="bairro"
-                                    maxLength={100}
-                                    defaultValue={editing?.bairro ?? residence?.neighborhood ?? ""}
-                                    className={`${inputClass} mt-1`}
-                                />
-                            </label>
-                            <label className="text-sm md:col-span-2">
-                                Descrição
-                                <textarea
-                                    name="descricao"
-                                    maxLength={5000}
-                                    rows={3}
-                                    defaultValue={editing?.descricao ?? ""}
-                                    className={`${inputClass} mt-1 h-auto py-2`}
-                                />
-                            </label>
-                            <label className="text-sm">
-                                Tipo
-                                <select
-                                    name="tipoMoradia"
-                                    defaultValue={editing?.tipoMoradia ?? "QUARTO_INDIVIDUAL"}
-                                    className={`${inputClass} mt-1`}
-                                >
-                                    {Object.entries(typeLabels).map(([key, value]) => (
-                                        <option key={key} value={key}>
-                                            {value}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="text-sm">
-                                Contato
-                                <input
-                                    name="contato"
-                                    required
-                                    maxLength={100}
-                                    defaultValue={editing?.contato ?? ""}
-                                    className={`${inputClass} mt-1`}
-                                />
-                            </label>
-                            <label className="text-sm md:col-span-2">
-                                Endereço completo
-                                <input
-                                    name="enderecoCompleto"
-                                    maxLength={255}
-                                    defaultValue={editing?.enderecoCompleto ?? ""}
-                                    className={`${inputClass} mt-1`}
-                                />
-                            </label>
-                            <label className="flex items-start gap-2 text-sm">
-                                <input
-                                    name="exibeEnderecoCompleto"
-                                    type="checkbox"
-                                    defaultChecked={editing?.exibeEnderecoCompleto ?? false}
-                                    className="mt-1"
-                                />{" "}
-                                Exibir endereço completo publicamente
-                            </label>
-                            <label className="flex items-start gap-2 text-sm">
-                                <input
-                                    name="exibeContato"
-                                    type="checkbox"
-                                    defaultChecked={editing?.exibeContato ?? false}
-                                    className="mt-1"
-                                />{" "}
-                                Exibir contato publicamente
-                            </label>
-                            <label className="text-sm md:col-span-2">
-                                Regras e perfil de convivência
-                                <textarea
-                                    name="perfilConvivencia"
-                                    rows={2}
-                                    maxLength={5000}
-                                    defaultValue={editing?.perfilConvivencia ?? ""}
-                                    className={`${inputClass} mt-1 h-auto py-2`}
-                                />
-                            </label>
-                            <label className="flex items-center gap-2 text-sm">
-                                <input
-                                    name="aceitaPets"
-                                    type="checkbox"
-                                    defaultChecked={editing?.aceitaPets ?? false}
-                                />{" "}
-                                Aceita pets
-                            </label>
-                            <label className="text-sm">
-                                Fotos (até 8)
-                                <input
-                                    name="fotos"
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    multiple
-                                    className={`${inputClass} mt-1 h-auto py-2`}
-                                />
-                            </label>
-                            <p className="text-xs text-[#77717c] md:col-span-2">
-                                Endereço e contato permanecem ocultos enquanto suas opções de
-                                exibição estiverem desmarcadas.
-                            </p>
-                            <div className="flex gap-2 md:col-span-2">
-                                <Button type="submit" disabled={saving || !residenceId}>
-                                    {saving
-                                        ? "Salvando..."
-                                        : editing
-                                          ? "Salvar alterações"
-                                          : "Publicar anúncio"}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => {
-                                        setShowForm(false);
-                                        setEditing(null);
-                                    }}
-                                >
-                                    Cancelar
-                                </Button>
-                            </div>
-                        </form>
+                            <form
+                                key={editing?.id ?? "create"}
+                                onSubmit={(event) => void submitListing(event)}
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="room-listing-form-title"
+                                className="my-auto grid max-h-[calc(100vh-2rem)] w-full max-w-3xl gap-4 overflow-y-auto rounded-2xl border bg-white p-5 shadow-2xl md:grid-cols-2"
+                            >
+                                <div className="flex items-center justify-between md:col-span-2">
+                                    <h2 id="room-listing-form-title" className="text-lg font-bold">
+                                        {editing ? "Editar anúncio" : "Novo anúncio"}
+                                    </h2>
+                                    <button
+                                        type="button"
+                                        aria-label="Fechar formulário"
+                                        disabled={saving}
+                                        onClick={closeListingForm}
+                                        className="rounded-lg p-1 text-[#77717c] hover:bg-[#f2edf3] disabled:opacity-50"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                                {error && (
+                                    <p
+                                        role="alert"
+                                        className="rounded-lg bg-red-50 p-3 text-sm text-red-800 md:col-span-2"
+                                    >
+                                        {error}
+                                    </p>
+                                )}
+                                <label className="text-sm">
+                                    Título
+                                    <input
+                                        name="titulo"
+                                        required
+                                        maxLength={150}
+                                        defaultValue={editing?.titulo ?? ""}
+                                        autoFocus
+                                        className={`${inputClass} mt-1`}
+                                    />
+                                </label>
+                                <label className="text-sm">
+                                    Preço mensal (R$)
+                                    <input
+                                        name="preco"
+                                        type="number"
+                                        min="0.01"
+                                        step="0.01"
+                                        required
+                                        defaultValue={editing?.preco ?? ""}
+                                        className={`${inputClass} mt-1`}
+                                    />
+                                </label>
+                                <label className="text-sm">
+                                    Cidade
+                                    <input
+                                        name="cidade"
+                                        required
+                                        maxLength={100}
+                                        defaultValue={editing?.cidade ?? residence?.city ?? ""}
+                                        className={`${inputClass} mt-1`}
+                                    />
+                                </label>
+                                <label className="text-sm">
+                                    Bairro
+                                    <input
+                                        name="bairro"
+                                        maxLength={100}
+                                        defaultValue={
+                                            editing?.bairro ?? residence?.neighborhood ?? ""
+                                        }
+                                        className={`${inputClass} mt-1`}
+                                    />
+                                </label>
+                                <label className="text-sm md:col-span-2">
+                                    Descrição
+                                    <textarea
+                                        name="descricao"
+                                        maxLength={5000}
+                                        rows={3}
+                                        defaultValue={editing?.descricao ?? ""}
+                                        className={`${inputClass} mt-1 h-auto py-2`}
+                                    />
+                                </label>
+                                <label className="text-sm">
+                                    Tipo
+                                    <select
+                                        name="tipoMoradia"
+                                        defaultValue={editing?.tipoMoradia ?? "QUARTO_INDIVIDUAL"}
+                                        className={`${inputClass} mt-1`}
+                                    >
+                                        {Object.entries(typeLabels).map(([key, value]) => (
+                                            <option key={key} value={key}>
+                                                {value}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label className="text-sm">
+                                    Contato
+                                    <input
+                                        name="contato"
+                                        required
+                                        type="tel"
+                                        inputMode="tel"
+                                        autoComplete="tel"
+                                        placeholder="(99) 99999-9999"
+                                        maxLength={16}
+                                        defaultValue={editing?.contato ?? ""}
+                                        onChange={(event) => {
+                                            event.currentTarget.value = formatBrazilianMobilePhone(
+                                                event.currentTarget.value
+                                            );
+                                        }}
+                                        className={`${inputClass} mt-1`}
+                                    />
+                                </label>
+                                <label className="text-sm md:col-span-2">
+                                    Endereço completo
+                                    <input
+                                        name="enderecoCompleto"
+                                        maxLength={255}
+                                        defaultValue={editing?.enderecoCompleto ?? ""}
+                                        className={`${inputClass} mt-1`}
+                                    />
+                                </label>
+                                <label className="flex items-start gap-2 text-sm">
+                                    <input
+                                        name="exibeEnderecoCompleto"
+                                        type="checkbox"
+                                        defaultChecked={editing?.exibeEnderecoCompleto ?? false}
+                                        className="mt-1"
+                                    />{" "}
+                                    Exibir endereço completo publicamente
+                                </label>
+                                <label className="flex items-start gap-2 text-sm">
+                                    <input
+                                        name="exibeContato"
+                                        type="checkbox"
+                                        defaultChecked={editing?.exibeContato ?? false}
+                                        className="mt-1"
+                                    />{" "}
+                                    Exibir contato publicamente
+                                </label>
+                                <label className="text-sm md:col-span-2">
+                                    Regras e perfil de convivência
+                                    <textarea
+                                        name="perfilConvivencia"
+                                        rows={2}
+                                        maxLength={5000}
+                                        defaultValue={editing?.perfilConvivencia ?? ""}
+                                        className={`${inputClass} mt-1 h-auto py-2`}
+                                    />
+                                </label>
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input
+                                        name="aceitaPets"
+                                        type="checkbox"
+                                        defaultChecked={editing?.aceitaPets ?? false}
+                                    />{" "}
+                                    Aceita pets
+                                </label>
+                                <label className="text-sm">
+                                    Fotos (até 8)
+                                    <input
+                                        name="fotos"
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        multiple
+                                        className={`${inputClass} mt-1 h-auto py-2`}
+                                    />
+                                </label>
+                                <p className="text-xs text-[#77717c] md:col-span-2">
+                                    Endereço e contato permanecem ocultos enquanto suas opções de
+                                    exibição estiverem desmarcadas.
+                                </p>
+                                <div className="flex gap-2 md:col-span-2">
+                                    <Button type="submit" disabled={saving || !residenceId}>
+                                        {saving
+                                            ? "Salvando..."
+                                            : editing
+                                              ? "Salvar alterações"
+                                              : "Publicar anúncio"}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={saving}
+                                        onClick={closeListingForm}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                </div>
+                            </form>
+                        </div>
                     )}
 
                     <div className="mb-4 flex items-end justify-between">
                         <div>
                             <h2 className="font-bold">
-                                {meta.total} {meta.total === 1 ? "resultado" : "resultados"}
-                                {filters.cidade ? ` para ${filters.cidade}` : ""}
+                                {meta.total}{" "}
+                                {tab === "interests"
+                                    ? meta.total === 1
+                                        ? "interesse"
+                                        : "interesses"
+                                    : meta.total === 1
+                                      ? "resultado"
+                                      : "resultados"}
+                                {tab !== "interests" && filters.cidade
+                                    ? ` para ${filters.cidade}`
+                                    : ""}
                             </h2>
                             <p className="text-xs text-[#77717c]">
-                                Endereço completo e contato aparecem apenas quando autorizados pelo
-                                anunciante.
+                                {tab === "interests"
+                                    ? "Acompanhe o status dos seus pedidos e continue a conversa após a aceitação."
+                                    : "Endereço completo e contato aparecem apenas quando autorizados pelo anunciante."}
                             </p>
                         </div>
                         <span className="rounded-full bg-[#e7f3e9] px-3 py-1.5 text-xs font-semibold text-[#2b6330]">
-                            {meta.total} anúncios encontrados
+                            {meta.total}{" "}
+                            {tab === "interests" ? "interesses" : "anúncios encontrados"}
                         </span>
                     </div>
                     {loading ? (
                         <p role="status" className="py-16 text-center text-sm text-[#77717c]">
-                            Carregando anúncios...
+                            {tab === "interests"
+                                ? "Carregando seus interesses..."
+                                : "Carregando anúncios..."}
                         </p>
-                    ) : error && !listings.length ? null : listings.length === 0 ? (
+                    ) : error && !listings.length ? null : tab === "interests" ? (
+                        myInterests.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed bg-white px-5 py-16 text-center">
+                                <BedDouble className="mx-auto mb-3 text-[#879080]" />
+                                <h3 className="font-semibold">
+                                    Você ainda não demonstrou interesse
+                                </h3>
+                                <p className="mt-1 text-sm text-[#77717c]">
+                                    Seus pedidos e conversas aceitas aparecerão aqui.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-3">
+                                {myInterests.map((interest) => (
+                                    <article
+                                        key={interest.id}
+                                        className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-white p-4"
+                                    >
+                                        <div>
+                                            <h3 className="font-semibold">
+                                                {interest.anuncio.titulo}
+                                            </h3>
+                                            <p className="mt-1 text-xs text-[#77717c]">
+                                                {[interest.anuncio.bairro, interest.anuncio.cidade]
+                                                    .filter(Boolean)
+                                                    .join(", ")}
+                                            </p>
+                                            <p className="mt-2 text-sm">
+                                                Estado:{" "}
+                                                {interest.status === "PENDENTE"
+                                                    ? "Aguardando resposta"
+                                                    : interest.status === "ACEITO"
+                                                      ? "Negociação aberta"
+                                                      : "Recusado"}
+                                            </p>
+                                            {interest.mensagem && (
+                                                <p className="mt-1 text-sm text-[#77717c]">
+                                                    Sua mensagem: {interest.mensagem}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {interest.negotiationId && (
+                                            <button
+                                                className={greenButton}
+                                                onClick={() =>
+                                                    router.push(
+                                                        `/rooms/negotiations/${interest.negotiationId}`
+                                                    )
+                                                }
+                                            >
+                                                Abrir conversa
+                                            </button>
+                                        )}
+                                    </article>
+                                ))}
+                            </div>
+                        )
+                    ) : listings.length === 0 ? (
                         <div className="rounded-2xl border border-dashed bg-white px-5 py-16 text-center">
                             <BedDouble className="mx-auto mb-3 text-[#879080]" />
                             <h3 className="font-semibold">Nenhum anúncio encontrado</h3>
@@ -760,108 +1062,152 @@ export function RoomsPage() {
                         </div>
                     ) : (
                         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                            {listings.map((listing) => (
-                                <article
-                                    key={listing.id}
-                                    className="overflow-hidden rounded-xl border border-[#d7d8de] bg-white shadow-sm"
-                                >
-                                    <div className="relative h-48 bg-gradient-to-br from-[#e4e2dc] to-[#c7ccc6]">
-                                        {listing.fotos[0] ? (
-                                            <Image
-                                                src={listing.fotos[0]}
-                                                alt={`Foto do anúncio ${listing.titulo}`}
-                                                fill
-                                                unoptimized
-                                                className="object-cover"
-                                            />
-                                        ) : (
-                                            <div className="grid h-full place-items-center text-[#788076]">
-                                                <BedDouble size={48} aria-hidden="true" />
-                                                <span className="sr-only">Anúncio sem foto</span>
-                                            </div>
-                                        )}
-                                        <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-sm font-semibold">
-                                            {listing.status === "ABERTO" ? "Disponível" : "Fechado"}
-                                        </span>
-                                    </div>
-                                    <div className="p-4">
-                                        <h3 className="font-bold">{listing.titulo}</h3>
-                                        <p className="mt-2 flex items-center gap-1 text-xs text-[#77717c]">
-                                            <MapPin size={13} className="text-red-500" />
-                                            {[listing.bairro, listing.cidade]
-                                                .filter(Boolean)
-                                                .join(", ")}
-                                        </p>
-                                        <p className="mt-3 text-xl font-bold text-[#315f35]">
-                                            R${" "}
-                                            {listing.preco.toLocaleString("pt-BR", {
-                                                minimumFractionDigits: 2,
-                                            })}
-                                            <span className="ml-1 text-xs font-normal text-[#77717c]">
-                                                /mês
-                                            </span>
-                                        </p>
-                                        <div className="my-3 flex flex-wrap gap-2">
-                                            {listing.aceitaPets && (
-                                                <span className="rounded bg-[#f0f1f3] px-2 py-1 text-xs">
-                                                    <PawPrint size={12} className="mr-1 inline" />
-                                                    Aceita Pets
-                                                </span>
+                            {listings.map((listing) => {
+                                const interest = getMyInterestForListing(myInterests, listing.id);
+                                return (
+                                    <article
+                                        key={listing.id}
+                                        className="overflow-hidden rounded-xl border border-[#d7d8de] bg-white shadow-sm"
+                                    >
+                                        <div className="relative h-48 bg-gradient-to-br from-[#e4e2dc] to-[#c7ccc6]">
+                                            {listing.fotos[0] ? (
+                                                <Image
+                                                    src={listing.fotos[0]}
+                                                    alt={`Foto do anúncio ${listing.titulo}`}
+                                                    fill
+                                                    unoptimized
+                                                    className="object-cover"
+                                                />
+                                            ) : (
+                                                <div className="grid h-full place-items-center text-[#788076]">
+                                                    <BedDouble size={48} aria-hidden="true" />
+                                                    <span className="sr-only">
+                                                        Anúncio sem foto
+                                                    </span>
+                                                </div>
                                             )}
-                                            <span className="rounded bg-[#f0f1f3] px-2 py-1 text-xs">
-                                                {typeLabels[listing.tipoMoradia]}
+                                            <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-sm font-semibold">
+                                                {listing.status === "ABERTO"
+                                                    ? "Disponível"
+                                                    : "Fechado"}
                                             </span>
                                         </div>
-                                        <button
-                                            onClick={() =>
-                                                tab === "mine"
-                                                    ? void openManagement(listing)
-                                                    : setSelected(listing)
-                                            }
-                                            className={`${greenButton} w-full`}
-                                        >
-                                            {tab === "mine"
-                                                ? "Detalhes e interessados"
-                                                : "Ver Detalhes do Anúncio"}
-                                        </button>
-                                        {tab === "mine" && (
-                                            <div className="mt-2 flex gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        setEditing(listing);
-                                                        setShowForm(true);
-                                                        window.scrollTo({
-                                                            top: 0,
-                                                            behavior: "smooth",
-                                                        });
-                                                    }}
-                                                    className="flex-1 rounded border px-3 py-2 text-xs"
-                                                >
-                                                    Editar
-                                                </button>
-                                                <button
-                                                    onClick={() => void toggleStatus(listing)}
-                                                    className="flex-1 rounded border px-3 py-2 text-xs"
-                                                >
-                                                    {listing.status === "ABERTO"
-                                                        ? "Pausar anúncio"
-                                                        : "Reabrir anúncio"}
-                                                </button>
-                                                <button
-                                                    onClick={() => void removeListing(listing)}
-                                                    className="rounded border border-red-200 px-3 py-2 text-xs text-red-700"
-                                                >
-                                                    Fechar
-                                                </button>
+                                        <div className="p-4">
+                                            <h3 className="font-bold">{listing.titulo}</h3>
+                                            <p className="mt-2 flex items-center gap-1 text-xs text-[#77717c]">
+                                                <MapPin size={13} className="text-red-500" />
+                                                {[listing.bairro, listing.cidade]
+                                                    .filter(Boolean)
+                                                    .join(", ")}
+                                            </p>
+                                            <p className="mt-3 text-xl font-bold text-[#315f35]">
+                                                R${" "}
+                                                {listing.preco.toLocaleString("pt-BR", {
+                                                    minimumFractionDigits: 2,
+                                                })}
+                                                <span className="ml-1 text-xs font-normal text-[#77717c]">
+                                                    /mês
+                                                </span>
+                                            </p>
+                                            <div className="my-3 flex flex-wrap gap-2">
+                                                {listing.aceitaPets && (
+                                                    <span className="rounded bg-[#f0f1f3] px-2 py-1 text-xs">
+                                                        <PawPrint
+                                                            size={12}
+                                                            className="mr-1 inline"
+                                                        />
+                                                        Aceita Pets
+                                                    </span>
+                                                )}
+                                                <span className="rounded bg-[#f0f1f3] px-2 py-1 text-xs">
+                                                    {typeLabels[listing.tipoMoradia]}
+                                                </span>
                                             </div>
-                                        )}
-                                    </div>
-                                </article>
-                            ))}
+                                            {interest?.status === "PENDENTE" && (
+                                                <p
+                                                    role="status"
+                                                    className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                                                >
+                                                    Interesse enviado · aguardando anunciante
+                                                </p>
+                                            )}
+                                            {interest?.status === "RECUSADO" && (
+                                                <p className="mb-3 rounded-lg bg-[#fcebec] px-3 py-2 text-sm text-[#8e282d]">
+                                                    Interesse recusado · você pode tentar novamente
+                                                </p>
+                                            )}
+                                            {interest?.status === "ACEITO" && (
+                                                <div className="mb-3 rounded-lg bg-[#e7f3e9] p-3">
+                                                    <p className="mb-2 text-sm font-semibold text-[#285a2e]">
+                                                        Interesse aceito · negociação aberta
+                                                    </p>
+                                                    {interest.negotiationId ? (
+                                                        <button
+                                                            type="button"
+                                                            className={greenButton}
+                                                            onClick={() =>
+                                                                router.push(
+                                                                    `/rooms/negotiations/${interest.negotiationId}`
+                                                                )
+                                                            }
+                                                        >
+                                                            Abrir conversa
+                                                        </button>
+                                                    ) : (
+                                                        <p className="text-sm text-[#285a2e]">
+                                                            Atualize a tela para acessar a conversa.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <button
+                                                onClick={() =>
+                                                    tab === "mine"
+                                                        ? void openManagement(listing)
+                                                        : openListingDetails(listing)
+                                                }
+                                                className={`${greenButton} w-full`}
+                                            >
+                                                {tab === "mine"
+                                                    ? "Detalhes e interessados"
+                                                    : "Ver Detalhes do Anúncio"}
+                                            </button>
+                                            {tab === "mine" && (
+                                                <div className="mt-2 flex gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditing(listing);
+                                                            setShowForm(true);
+                                                            setError("");
+                                                        }}
+                                                        className="flex-1 rounded border px-3 py-2 text-xs"
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => void toggleStatus(listing)}
+                                                        className="flex-1 rounded border px-3 py-2 text-xs"
+                                                    >
+                                                        {listing.status === "ABERTO"
+                                                            ? "Pausar anúncio"
+                                                            : "Reabrir anúncio"}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => void removeListing(listing)}
+                                                        className="rounded border border-red-200 px-3 py-2 text-xs text-red-700"
+                                                    >
+                                                        Fechar
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </article>
+                                );
+                            })}
                         </div>
                     )}
 
-                    {tab !== "mine" && meta.totalPages > 1 && (
+                    {tab !== "mine" && tab !== "interests" && meta.totalPages > 1 && (
                         <nav
                             aria-label="Paginação dos anúncios"
                             className="mt-6 flex items-center justify-center gap-3"
@@ -971,6 +1317,19 @@ export function RoomsPage() {
                                                     </p>
                                                 )}
                                                 <p className="text-xs">Estado: {interest.status}</p>
+                                                {interest.status === "ACEITO" &&
+                                                    interest.negotiationId && (
+                                                        <button
+                                                            className="mt-2 rounded border px-3 py-1.5 text-xs"
+                                                            onClick={() =>
+                                                                router.push(
+                                                                    `/rooms/negotiations/${interest.negotiationId}`
+                                                                )
+                                                            }
+                                                        >
+                                                            Abrir conversa
+                                                        </button>
+                                                    )}
                                                 {interest.status === "PENDENTE" && (
                                                     <div className="mt-2 flex gap-2">
                                                         <button
@@ -1005,23 +1364,91 @@ export function RoomsPage() {
                         ) : (
                             selected.status === "ABERTO" && (
                                 <div className="mt-5 grid gap-3">
-                                    <label className="text-sm">
-                                        Mensagem ao anunciante (opcional)
-                                        <textarea
-                                            className={`${inputClass} mt-1 h-24 py-2`}
-                                            value={interestMessage}
-                                            onChange={(event) =>
-                                                setInterestMessage(event.target.value)
-                                            }
-                                            maxLength={1000}
-                                        />
-                                    </label>
-                                    <button
-                                        className={greenButton}
-                                        onClick={() => void expressInterest(selected)}
-                                    >
-                                        Tenho interesse
-                                    </button>
+                                    {loadingInterestStatus ? (
+                                        <p role="status" className="text-sm text-[#77717c]">
+                                            Verificando o estado do seu interesse...
+                                        </p>
+                                    ) : interestStatusError ? (
+                                        <div
+                                            role="alert"
+                                            className="rounded-lg bg-red-50 p-3 text-sm text-red-800"
+                                        >
+                                            <p>
+                                                Não foi possível confirmar se você já demonstrou
+                                                interesse.
+                                            </p>
+                                            <button
+                                                type="button"
+                                                className="mt-2 underline"
+                                                onClick={() => void refreshMyInterests()}
+                                            >
+                                                Tentar novamente
+                                            </button>
+                                        </div>
+                                    ) : selectedInterest?.status === "ACEITO" ? (
+                                        <div className="rounded-lg bg-[#e7f3e9] p-3">
+                                            <p className="text-sm font-semibold text-[#285a2e]">
+                                                Seu interesse foi aceito. A negociação está aberta.
+                                            </p>
+                                            {selectedInterest.negotiationId ? (
+                                                <button
+                                                    type="button"
+                                                    className={`${greenButton} mt-3`}
+                                                    onClick={() =>
+                                                        router.push(
+                                                            `/rooms/negotiations/${selectedInterest.negotiationId}`
+                                                        )
+                                                    }
+                                                >
+                                                    Abrir conversa
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    className="mt-2 text-sm underline"
+                                                    onClick={() => void refreshMyInterests()}
+                                                >
+                                                    Atualizar conversa
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : selectedInterest?.status === "PENDENTE" ? (
+                                        <p
+                                            role="status"
+                                            className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"
+                                        >
+                                            Seu interesse já foi enviado. Aguarde a resposta do
+                                            anunciante.
+                                        </p>
+                                    ) : (
+                                        <>
+                                            {selectedInterest?.status === "RECUSADO" && (
+                                                <p className="rounded-lg bg-[#fcebec] p-3 text-sm text-[#8e282d]">
+                                                    Seu interesse anterior foi recusado. Você pode
+                                                    tentar novamente.
+                                                </p>
+                                            )}
+                                            <label className="text-sm">
+                                                Mensagem ao anunciante (opcional)
+                                                <textarea
+                                                    className={`${inputClass} mt-1 h-24 py-2`}
+                                                    value={interestMessage}
+                                                    onChange={(event) =>
+                                                        setInterestMessage(event.target.value)
+                                                    }
+                                                    maxLength={1000}
+                                                />
+                                            </label>
+                                            <button
+                                                className={greenButton}
+                                                onClick={() => void expressInterest(selected)}
+                                            >
+                                                {selectedInterest?.status === "RECUSADO"
+                                                    ? "Tentar novamente"
+                                                    : "Tenho interesse"}
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             )
                         )}

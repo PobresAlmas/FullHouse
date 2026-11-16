@@ -13,7 +13,7 @@
         "start": "nest start",
         "start:dev": "nest start --watch",
         "start:debug": "nest start --debug --watch",
-        "start:prod": "node dist/main",
+        "start:prod": "node dist/main.js",
         "db:seed:dev": "SEED_DEMO_DATA=1 node prisma/seed.mjs",
         "db:generate": "prisma generate",
         "db:seed:test": "SEED_TEST_DATA=1 node --env-file=.env prisma/seed-test-data.mjs",

@@ -19,6 +19,7 @@ import { memoryStorage } from "multer";
 import type { Express } from "express";
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth-guard.js";
+import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth-guard.js";
 import { CreateRoomInterestDto } from "./dto/create-room-interest.dto.js";
 import { CreateRoomListingDto } from "./dto/create-room-listing.dto.js";
 import { MyRoomListingsQueryDto } from "./dto/my-room-listings-query.dto.js";
@@ -32,8 +33,9 @@ export class RoomsController {
     constructor(private readonly service: RoomsService) {}
 
     @Get()
-    findMany(@Query() query: RoomListingQueryDto) {
-        return this.service.findMany(query);
+    @UseGuards(OptionalJwtAuthGuard)
+    findMany(@Query() query: RoomListingQueryDto, @CurrentUser() user?: { id: string }) {
+        return this.service.findMany(query, user?.id);
     }
 
     @Get("mine")
@@ -43,8 +45,12 @@ export class RoomsController {
     }
 
     @Get(":id")
-    findById(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {
-        return this.service.findById(id);
+    @UseGuards(OptionalJwtAuthGuard)
+    findById(
+        @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+        @CurrentUser() user?: { id: string }
+    ) {
+        return this.service.findById(id, user?.id);
     }
 
     @Post()

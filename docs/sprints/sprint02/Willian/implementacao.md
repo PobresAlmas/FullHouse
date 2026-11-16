@@ -24,10 +24,10 @@ A interface segue o shell existente do FullHouse e a referência visual `openspe
 
 ### Fluxos de interface
 
-1. A pessoa abre Quartos pelo menu e consulta anúncios públicos.
+1. Visitantes e usuários sem residência ativa abrem Quartos pelo menu e consultam anúncios públicos. Usuários com participação ativa acessam apenas a gestão dos próprios anúncios; a publicação fica disponível somente a líderes e administradores da casa selecionada.
 2. Busca por cidade/bairro e combina faixa de preço, tipo de moradia e aceita pets; os filtros aplicados podem ser removidos e a consulta é paginada/sincronizada com a URL.
 3. Os cards exibem dados retornados pela API, localização aproximada, preço mensal, status, fotos e preferências estruturadas; o detalhe respeita os campos mascarados.
-4. A pessoa autenticada com participação ativa pode publicar; o formulário permite configurar separadamente a exibição do endereço e do contato.
+4. Líderes e administradores autenticados podem publicar para a casa selecionada; moradores sem papel de gestão não veem a ação. O formulário permite configurar separadamente a exibição do endereço e do contato.
 5. O anunciante pode consultar seus anúncios, editar, alterar status e remover. Visitantes podem manifestar interesse após autenticar; a tela não revela contato oculto.
 6. A UI informa carregamento, falhas recuperáveis, sucesso e lista vazia, com controles rotulados e fluxo responsivo implementado. A verificação manual de teclado/leitor de tela e viewport móvel ainda está pendente.
 
@@ -48,20 +48,20 @@ A interface segue o shell existente do FullHouse e a referência visual `openspe
 
 ### Endpoints principais
 
-As rotas de busca e detalhe são públicas. Mutação e interesse exigem JWT; operações de gestão validam a participação anunciante. Erros incluem `400` para validação, `401` para sessão ausente/inválida, `403` para falta de ownership/participação e `404` para recurso inexistente. Conflito de interesse duplicado/fechado é tratado sem duplicar registros.
+O detalhe é público. A busca também aceita visitantes, mas rejeita com `403` usuários autenticados que tenham residência ativa; quem não tem residência ativa pode buscar. Mutação e interesse exigem JWT; a publicação e o envio das fotos exigem papel de líder/administrador, e operações de gestão validam a participação anunciante. Erros incluem `400` para validação, `401` para sessão ausente/inválida, `403` para falta de ownership/permissão ou tentativa de busca por morador ativo e `404` para recurso inexistente. Conflito de interesse duplicado/fechado é tratado sem duplicar registros.
 
-| Método   | Rota                                        | Acesso e finalidade                                                                |
-| -------- | ------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `GET`    | `/rooms/listings`                           | Público; filtros de localização, preço, status, tipo e aceita pets, com paginação. |
-| `GET`    | `/rooms/listings/:id`                       | Público; detalhe com privacidade aplicada.                                         |
-| `POST`   | `/rooms/listings`                           | JWT e participação ativa; cria anúncio.                                            |
-| `PATCH`  | `/rooms/listings/:id`                       | JWT e ownership; atualiza campos ou status.                                        |
-| `DELETE` | `/rooms/listings/:id`                       | JWT e ownership; fecha/remove sem apagar interesses históricos.                    |
-| `GET`    | `/rooms/listings/mine`                      | JWT; lista gestão do próprio anunciante com seus valores completos para edição.    |
-| `POST`   | `/rooms/listings/photos`                    | JWT; envia imagem ao storage existente.                                            |
-| `POST`   | `/rooms/listings/:id/interests`             | JWT; manifesta interesse em anúncio aberto.                                        |
-| `GET`    | `/rooms/listings/:id/interests`             | JWT e anunciante; consulta interesses recebidos.                                   |
-| `PATCH`  | `/rooms/listings/:id/interests/:interestId` | JWT e anunciante; responde ao interesse.                                           |
+| Método | Rota | Acesso e finalidade |
+| --- | --- | --- |
+| `GET` | `/rooms/listings` | Público; filtros de localização, preço, status, tipo e aceita pets, com paginação. |
+| `GET` | `/rooms/listings/:id` | Público; detalhe com privacidade aplicada. |
+| `POST` | `/rooms/listings` | JWT e papel de líder/administrador na casa ativa; cria anúncio. |
+| `PATCH` | `/rooms/listings/:id` | JWT e ownership; atualiza campos ou status. |
+| `DELETE` | `/rooms/listings/:id` | JWT e ownership; fecha/remove sem apagar interesses históricos. |
+| `GET` | `/rooms/listings/mine` | JWT; lista gestão do próprio anunciante com seus valores completos para edição. |
+| `POST` | `/rooms/listings/photos` | JWT e papel de líder/administrador na casa ativa; envia imagem ao storage existente. |
+| `POST` | `/rooms/listings/:id/interests` | JWT; manifesta interesse em anúncio aberto. |
+| `GET` | `/rooms/listings/:id/interests` | JWT e anunciante; consulta interesses recebidos. |
+| `PATCH` | `/rooms/listings/:id/interests/:interestId` | JWT e anunciante; responde ao interesse. |
 
 ### Privacidade
 

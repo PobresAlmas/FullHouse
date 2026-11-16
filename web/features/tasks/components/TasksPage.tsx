@@ -48,6 +48,7 @@ import {
     canCreateOrEditResidenceContent,
     isResidenceManager,
 } from "@/features/residences/permissions";
+import { groupTasksByDate } from "../lib/tasks.utils";
 
 type TaskFormState = {
     title: string;
@@ -985,36 +986,7 @@ function TaskList({
     exchangeTasks: Task[];
     onRequestExchange: (task: Task, recipientMemberId: string, targetTaskId?: string) => void;
 }) {
-    const groups = useMemo(() => {
-        const today = localDateKey(new Date());
-        const tomorrowDate = new Date();
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        const tomorrow = localDateKey(tomorrowDate);
-        const result: { label: string; tasks: Task[]; overdue?: boolean }[] = [];
-        const map = new Map<string, Task[]>();
-        for (const task of tasks) {
-            const key = taskDateKey(task);
-            const list = map.get(key) ?? [];
-            list.push(task);
-            map.set(key, list);
-        }
-        for (const [key, entries] of map) {
-            const isOverdue = key < today || entries.some((task) => task.status === "ATRASADA");
-            const label = isOverdue
-                ? "Atrasadas"
-                : key === today
-                  ? "Hoje"
-                  : key === tomorrow
-                    ? "Amanhã"
-                    : new Intl.DateTimeFormat("pt-BR", { dateStyle: "full" }).format(
-                          new Date(`${key}T12:00:00`)
-                      );
-            result.push({ label, tasks: entries, overdue: isOverdue });
-        }
-        return result.sort((a, b) =>
-            (a.tasks[0]?.dueAt ?? "").localeCompare(b.tasks[0]?.dueAt ?? "")
-        );
-    }, [tasks]);
+    const groups = useMemo(() => groupTasksByDate(tasks), [tasks]);
     if (loading)
         return <p className="py-10 text-center text-sm text-[#77717c]">Carregando tarefas…</p>;
     if (dataError)
@@ -1048,7 +1020,7 @@ function TaskList({
     return (
         <div className="grid gap-3" aria-label="Lista de tarefas">
             {groups.map((group) => (
-                <section key={group.label}>
+                <section key={group.key}>
                     <h3
                         className={`mb-2 flex items-center gap-2 text-[11px] font-semibold ${group.overdue ? "text-red-600" : "text-[#49434d]"}`}
                     >
