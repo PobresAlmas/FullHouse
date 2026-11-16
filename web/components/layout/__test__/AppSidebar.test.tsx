@@ -42,8 +42,8 @@ describe("AppSidebar", () => {
         expect(screen.getByRole("link", { name: "Chat da casa" })).toHaveAttribute("href", "/chat");
         expect(screen.getByRole("link", { name: "Regras" })).toHaveAttribute("href", "/rules");
         expect(screen.getByRole("link", { name: "Reuniões" })).toHaveAttribute("href", "/meetings");
-        expect(screen.getByRole("link", { name: "Quartos" })).toHaveAttribute("href", "/rooms");
-        expect(screen.queryByText("Perfil")).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Quartos" })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Perfil" })).toHaveAttribute("href", "/profile");
         expect(screen.getByText("Nenhuma casa associada")).toBeInTheDocument();
     });
 

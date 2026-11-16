@@ -1,7 +1,6 @@
-import { NotFoundException } from "@nestjs/common";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RoomsRepository } from "./rooms.repository.js";
-import { ConflictException, NotFoundException } from "@nestjs/common";
 
 describe("RoomsRepository room-interest decisions", () => {
     const transaction = {
@@ -215,6 +214,8 @@ describe("RoomsRepository room-interest decisions", () => {
         ).rejects.toThrow("Este convite já foi respondido.");
 
         expect(transaction.participacao.create).toHaveBeenCalledOnce();
+    });
+});
 
 describe("RoomsRepository", () => {
     let repository: RoomsRepository;
@@ -427,7 +428,11 @@ describe("RoomsRepository", () => {
             data: { status: "FECHADO" },
         });
         expect(prisma.interesse_anuncio.findFirst).toHaveBeenCalledWith({
-            where: { anuncio_id: "listing-1", usuario_id: "user-1", status: "PENDENTE" },
+            where: {
+                anuncio_id: "listing-1",
+                usuario_id: "user-1",
+                status: { in: ["PENDENTE", "ACEITO"] },
+            },
         });
     });
 
@@ -452,20 +457,16 @@ describe("RoomsRepository", () => {
         );
     });
 
-    it("lists interests with user details and updates only pending interests", async () => {
+    it("lists interests with user and negotiation details", async () => {
         await repository.listInterests("listing-1");
-        await repository.updateInterest("listing-1", "interest-1", "ACEITO" as never);
 
         expect(prisma.interesse_anuncio.findMany).toHaveBeenCalledWith({
             where: { anuncio_id: "listing-1" },
             include: {
                 usuario: { select: { id: true, nome: true, email: true, foto_url: true } },
+                negociacao_anuncio: { select: { id: true } },
             },
             orderBy: { id: "desc" },
-        });
-        expect(prisma.interesse_anuncio.updateMany).toHaveBeenCalledWith({
-            where: { id: "interest-1", anuncio_id: "listing-1", status: "PENDENTE" },
-            data: { status: "ACEITO" },
         });
     });
 });

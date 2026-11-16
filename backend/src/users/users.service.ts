@@ -92,6 +92,8 @@ export class UsersService {
             }
             throw error;
         }
+    }
+
     recordFailedLogin(userId: string, maxAttempts: number, lockDurationMs: number) {
         return this.repository.recordFailedLogin(userId, maxAttempts, lockDurationMs);
     }
