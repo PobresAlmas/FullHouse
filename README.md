@@ -8,6 +8,12 @@ Aplicação para organizar uma casa compartilhada: tarefas, despesas, despensa, 
 - pnpm 12 (`corepack enable` usa a versão declarada nos projetos)
 - Docker com Docker Compose
 
+## Arquitetura
+
+O FullHouse utiliza arquitetura cliente-servidor em camadas, com backend monolítico modular. A interface Next.js consome uma API NestJS organizada por funcionalidades, com persistência em PostgreSQL via Prisma e armazenamento de arquivos compatível com S3.
+
+O [guia de arquitetura](docs/architecture/README.md) apresenta as figuras de visão geral, componentes e camadas, a stack, as justificativas técnicas, os registros de decisões e uma proposta de padronização incremental para discussão com a equipe.
+
 ## Subir localmente
 
 Na raiz do repositório, crie os arquivos de configuração:
@@ -28,7 +34,7 @@ docker compose up -d
 docker compose logs -f api web
 ```
 
-O Compose inicia PostgreSQL, Silo, API e interface. O container da API instala as dependências, gera o cliente Prisma e aplica as migrações na primeira inicialização. Para criar fotos, crie no console do Silo ([http://localhost:9001](http://localhost:9001)) um bucket chamado `fullhouse`, usando as credenciais definidas em `.env`.
+O Compose inicia PostgreSQL, Silo, API e interface. O container da API instala as dependências, gera o cliente Prisma e aplica as migrações na inicialização. Para criar fotos, crie no console do Silo ([http://localhost:9001](http://localhost:9001)) um bucket chamado `fullhouse`, usando as credenciais definidas em `.env`.
 
 Para executar API e interface no host com hot reload, inicie apenas os serviços de infraestrutura:
 
@@ -49,6 +55,8 @@ pnpm start:dev
 Em outro terminal, instale e inicie a interface com `cd web && pnpm install --frozen-lockfile && pnpm dev --port 3001`. Abra [http://localhost:3001](http://localhost:3001); a API fica em [http://localhost:3000](http://localhost:3000).
 
 O serviço de arquivos usa [Silo](https://silo.pgsty.com/), um servidor de objetos compatível com S3 mantido como fork do MinIO. O backend já usa a API S3 do AWS SDK e as variáveis `MINIO_*`; Silo preserva esse contrato e oferece uma imagem publicada e mantida para o ambiente local.
+
+O PostgreSQL do Compose é exposto ao host em `localhost:5433`, conforme `backend/.env.example`. Dentro da rede dos containers, a API utiliza `postgres:5432`. Esses endereços correspondem a modos diferentes de execução.
 
 ## Prisma
 
@@ -85,4 +93,4 @@ Os dados de demonstração são opcionais. Leia [backend/README.md](backend/READ
 ## Protótipo
 
 - Figma: <a href="https://www.figma.com/design/cUDP98MCK6t4HV2pfHeeqP/Prot%C3%B3tipo-FullHouse?node-id=0-1&t=tsUGkTi8K2ujTOzq-1">
-Link protótipo </a>
+  Link protótipo </a>

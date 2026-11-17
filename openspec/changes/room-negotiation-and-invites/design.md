@@ -7,12 +7,14 @@ See `proposal.md` for the motivation and `specs/room-negotiation/spec.md` for ob
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Keep interest acceptance, negotiation, invitation, and house membership as separate states.
 - Ensure the prospective member can chat before joining and after declining an invitation.
 - Restrict negotiation and invitation data to their intended users.
 - Reuse existing room-interest, house-invitation, and notification concepts where their current access model fits.
 
 **Non-Goals:**
+
 - WebSocket, push delivery, or guaranteed real-time updates.
 - Payments, lease documents, reservation guarantees, or automatic changes to room-listing status.
 - Exposing a private negotiation in the general house or subgroup conversation.
