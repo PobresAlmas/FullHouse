@@ -1,8 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AxiosResponse } from "axios";
 import { api } from "../api";
 
 describe("api client", () => {
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.resetModules();
+    });
+
     const getResponseHandler = () => {
         const handler = api.interceptors.response.handlers?.[0];
         if (!handler) {
@@ -12,8 +17,25 @@ describe("api client", () => {
     };
 
     it("uses the configured base URL and sends credentials", () => {
-        expect(api.defaults.baseURL).toBe("http://localhost:3000");
+        expect(api.defaults.baseURL).toBe(
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+        );
         expect(api.defaults.withCredentials).toBe(true);
+    });
+
+    it("uses an alternative API address without changing cookie authentication", async () => {
+        vi.stubEnv("NEXT_PUBLIC_API_URL", "https://api.fullhouse.example");
+        vi.resetModules();
+        const { api: configuredApi } = await import("../api");
+        expect(configuredApi.defaults.baseURL).toBe("https://api.fullhouse.example");
+        expect(configuredApi.defaults.withCredentials).toBe(true);
+    });
+
+    it("keeps the local default when the public API address is empty", async () => {
+        vi.stubEnv("NEXT_PUBLIC_API_URL", "");
+        vi.resetModules();
+        const { api: localApi } = await import("../api");
+        expect(localApi.defaults.baseURL).toBe("http://localhost:3000");
     });
 
     it("passes successful responses through the response interceptor", () => {

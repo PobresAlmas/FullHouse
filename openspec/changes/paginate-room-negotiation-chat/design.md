@@ -7,12 +7,14 @@ See `proposal.md` for the motivation and `specs/room-negotiation/spec.md` for th
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Bound initial and subsequent message reads without changing message storage.
 - Preserve deterministic page boundaries and chronological rendering.
 - Keep authorization checks and existing manual conversation refresh behavior intact.
 - Confine layout changes to the negotiation page.
 
 **Non-Goals:**
+
 - Realtime transport, polling, or changing notification delivery.
 - Pagination for unrelated room, house, or subgroup conversations.
 - Database schema changes or deletion/retention policies for messages.

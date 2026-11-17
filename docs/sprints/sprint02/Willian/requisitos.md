@@ -30,17 +30,17 @@ A funcionalidade integra descoberta pública de anúncios com publicação e ges
 
 ## 2. Privacidade e autorização
 
-| Campo/ação | Regra |
-| --- | --- |
-| `enderecoCompleto` em respostas públicas | Retorna `null` se `exibeEnderecoCompleto` for `false`. |
-| `contato` em respostas públicas | Retorna `null` se `exibeContato` for `false`. |
-| Flags de privacidade | Independentes: habilitar uma não revela o outro campo. |
-| Gestão própria (`/rooms/listings/mine`) | Anunciante autenticado recebe os próprios valores para poder editar; a exceção não se aplica à busca ou detalhe público. |
-| Criar anúncio | Exige JWT e papel de líder/administrador na casa ativa indicada. |
-| Editar, fechar, reabrir ou remover | Exige JWT e ownership pela participação anunciante; terceiros recebem `403` (recurso inexistente pode retornar `404`). |
-| Buscar anúncios | Público para visitantes e usuários sem residência ativa; usuários autenticados com participação ativa recebem `403`. |
-| Consultar detalhe | Público; somente anúncios disponíveis podem ser consultados. |
-| Manifestar interesse | Exige JWT e anúncio aberto; interesse não contorna as flags de privacidade. |
+| Campo/ação                               | Regra                                                                                                                    |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `enderecoCompleto` em respostas públicas | Retorna `null` se `exibeEnderecoCompleto` for `false`.                                                                   |
+| `contato` em respostas públicas          | Retorna `null` se `exibeContato` for `false`.                                                                            |
+| Flags de privacidade                     | Independentes: habilitar uma não revela o outro campo.                                                                   |
+| Gestão própria (`/rooms/listings/mine`)  | Anunciante autenticado recebe os próprios valores para poder editar; a exceção não se aplica à busca ou detalhe público. |
+| Criar anúncio                            | Exige JWT e papel de líder/administrador na casa ativa indicada.                                                         |
+| Editar, fechar, reabrir ou remover       | Exige JWT e ownership pela participação anunciante; terceiros recebem `403` (recurso inexistente pode retornar `404`).   |
+| Buscar anúncios                          | Público para visitantes e usuários sem residência ativa; usuários autenticados com participação ativa recebem `403`.     |
+| Consultar detalhe                        | Público; somente anúncios disponíveis podem ser consultados.                                                             |
+| Manifestar interesse                     | Exige JWT e anúncio aberto; interesse não contorna as flags de privacidade.                                              |
 
 ## 3. Modelo de domínio
 

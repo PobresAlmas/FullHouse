@@ -2,6 +2,8 @@
 
 API REST construída com NestJS, Prisma 7 e PostgreSQL. Ela atende a interface em `web/` e usa Silo como armazenamento de objetos compatível com S3.
 
+A API é um monólito modular organizado em camadas abertas. Consulte o [guia de arquitetura](../docs/architecture/README.md) para figuras de componentes, responsabilidades, decisões e limites atuais.
+
 ## Configurar e iniciar
 
 Na raiz do repositório, copie `backend/.env.example` para `backend/.env` e ajuste os valores locais. O [guia principal](../README.md) explica como subir o stack completo ou iniciar somente PostgreSQL e Silo para executar a API no host.
@@ -16,6 +18,8 @@ pnpm start:dev
 ```
 
 A API inicia em `http://localhost:3000`. `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN` e as configurações `MINIO_*` são obrigatórias. `RESEND_API_KEY` só é necessária para enviar e-mails de recuperação de senha. Os valores e a finalidade de cada variável estão em [`.env.example`](.env.example).
+
+Ao executar a API no host com o PostgreSQL do Compose, use `localhost:5433` na conexão. A configuração interna do container da API usa `postgres:5432`. Um PostgreSQL instalado separadamente pode utilizar outra porta, que deve ser informada no seu `.env`.
 
 ## Prisma
 
