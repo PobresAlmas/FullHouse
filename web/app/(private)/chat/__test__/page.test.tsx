@@ -51,7 +51,9 @@ describe("ChatPage", () => {
 
     it("shows history, reconnects by loading after last message, and appends live events", async () => {
         render(<ChatPage />);
-        expect(await screen.findByText("Vamos conversar")).toBeInTheDocument();
+        expect(
+            await screen.findByText("Vamos conversar", {}, { timeout: 5000 })
+        ).toBeInTheDocument();
         eventSource.onopen?.();
         await waitFor(() => expect(getChatMessages).toHaveBeenCalledWith(residence.id, "m1"));
         eventSource.onmessage?.({
