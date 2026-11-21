@@ -30,7 +30,7 @@ export class NotificationsController {
         return interval(5_000).pipe(
             startWith(0),
             switchMap(() => from(this.service.list(user.id, 20))),
-            map((data) => ({ data } satisfies MessageEvent))
+            map((data) => ({ data }) satisfies MessageEvent)
         );
     }
 

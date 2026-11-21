@@ -136,7 +136,10 @@ export class TasksService {
     }
 
     async create(residenceId: string, data: CreateTaskDto, userId: string) {
-        const membership = await this.residenceAccess.requireCreateEditPermission(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const repeats = data.repeats ?? false;
         if (repeats && (!data.periodicity || data.periodicity === TaskPeriodicity.PERSONALIZADA)) {
             throw new BadRequestException("Selecione uma frequÃªncia para a repetiÃ§Ã£o.");

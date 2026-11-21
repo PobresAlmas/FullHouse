@@ -132,6 +132,19 @@ export function SystemSelect({
             : (emptyOptionLabel ?? "Selecione")
         : (selectedLabels[0] ?? emptyOptionLabel ?? "Selecione");
 
+    function attachTrigger(node: HTMLButtonElement | null) {
+        triggerRef.current = node;
+        if (!node || node.hasAttribute("aria-label")) return;
+        const label = node.closest("label");
+        if (!label) return;
+        const labelText = label.cloneNode(true) as HTMLLabelElement;
+        labelText
+            .querySelectorAll("select, button, [aria-hidden='true']")
+            .forEach((element) => element.remove());
+        const accessibleName = labelText.textContent?.replace(/\s+/g, " ").trim();
+        if (accessibleName) node.setAttribute("aria-label", accessibleName);
+    }
+
     function commit(nextValues: string[]) {
         const select = hiddenRef.current;
         if (!select) return;
@@ -223,7 +236,7 @@ export function SystemSelect({
             </select>
             <button
                 {...(triggerProps as HTMLAttributes<HTMLButtonElement>)}
-                ref={triggerRef}
+                ref={attachTrigger}
                 id={id}
                 type="button"
                 role="combobox"

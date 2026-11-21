@@ -11,7 +11,9 @@ describe("UpdateResidencePreferencesDto", () => {
         });
 
     it.each([1, 3, 5, 7, 14])("accepts %i as an allowed notification lead-time", async (days) => {
-        await expect(validateBody({ pantry: { expirationNoticeDays: days } })).resolves.toHaveLength(0);
+        await expect(
+            validateBody({ pantry: { expirationNoticeDays: days } })
+        ).resolves.toHaveLength(0);
         await expect(validateBody({ finance: { dueNoticeDays: days } })).resolves.toHaveLength(0);
     });
 
@@ -20,8 +22,12 @@ describe("UpdateResidencePreferencesDto", () => {
     });
 
     it("accepts sparse boolean updates, including false", async () => {
-        await expect(validateBody({ notifications: { houseUpdates: false }, pets: { vaccineReminders: true } }))
-            .resolves.toHaveLength(0);
+        await expect(
+            validateBody({
+                notifications: { houseUpdates: false },
+                pets: { vaccineReminders: true },
+            })
+        ).resolves.toHaveLength(0);
     });
 
     it("rejects non-boolean flags, unexpected sections and an empty nested object key", async () => {

@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import Image from "next/image";
 
 export const avatarGradients: Record<string, string> = {
     "#e8f3e8": "linear-gradient(135deg, #7dcc45 0%, #347b2b 100%)",
@@ -41,12 +42,16 @@ export function UserAvatar({
                 : "size-10 text-sm";
     const shapeClass =
         shape === "circle" || (!shape && size === "lg") ? "rounded-full" : "rounded-xl";
+    const pixelSize = size === "lg" ? 96 : size === "md" ? 48 : size === "xs" ? 32 : 40;
 
     if (photo) {
         return (
-            <img
+            <Image
                 src={photo}
                 alt={name ? `Foto de ${name}` : "Foto do perfil"}
+                width={pixelSize}
+                height={pixelSize}
+                unoptimized
                 className={`${sizeClass} ${shapeClass} shrink-0 object-cover ${className}`}
             />
         );

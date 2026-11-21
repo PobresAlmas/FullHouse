@@ -138,12 +138,6 @@ function errorText(error: unknown) {
     return "Não foi possível concluir a solicitação. Tente novamente.";
 }
 
-function roleName(role: ResidenceMember["role"]) {
-    if (role === "LIDER") return "Líder";
-    if (role === "ADMINISTRADOR") return "Administrador";
-    return "Morador";
-}
-
 function residenceError(error: unknown) {
     return errorText(error);
 }
@@ -1056,15 +1050,6 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
                     </div>
                 </main>
             </div>
-        </div>
-    );
-}
-
-function InfoField({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="rounded-lg border border-[#e6dfe9] bg-white px-3 py-2.5">
-            <span className="block text-xs text-[#77717c]">{label}</span>
-            <span className="mt-0.5 block text-sm font-medium">{value}</span>
         </div>
     );
 }

@@ -255,5 +255,4 @@ describe("Pantry HTTP API (e2e)", () => {
             .send({ name: "Arroz integral" })
             .expect(404);
     });
-
 });

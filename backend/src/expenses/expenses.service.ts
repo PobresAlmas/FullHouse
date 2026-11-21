@@ -31,7 +31,10 @@ export class ExpensesService {
             throw new BadRequestException("Não repita participantes no subgrupo.");
         }
 
-        const membership = await this.residenceAccess.requireCreateEditPermission(data.homeId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            data.homeId,
+            userId
+        );
         return this.repository.createSubgroup(data, membership.memberId);
     }
 

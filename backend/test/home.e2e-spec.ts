@@ -41,5 +41,4 @@ describe("Home HTTP API (e2e)", () => {
 
         expect(homeService.getPersonal).toHaveBeenCalledWith(USER_ID);
     });
-
 });

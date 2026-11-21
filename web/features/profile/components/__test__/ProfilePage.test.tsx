@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createElement } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProfilePage } from "../ProfilePage";
@@ -25,9 +26,8 @@ vi.mock("@/services/api", () => ({
     api: { patch: vi.fn(), post: vi.fn() },
 }));
 vi.mock("next/image", () => ({
-    default: (props: { alt?: string }) => (
-        <div data-testid="profile-image" aria-label={props.alt} />
-    ),
+    default: (props: { alt?: string; src?: string }) =>
+        createElement("img", { ...props, "data-testid": "profile-image" }),
 }));
 vi.mock("@/features/profile/api/profile.api", () => ({
     updateProfile: vi.fn(),

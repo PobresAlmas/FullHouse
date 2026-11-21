@@ -33,7 +33,10 @@ describe("ExpensesService subgroups", () => {
         findHomeForUser: ReturnType<typeof vi.fn>;
         create: ReturnType<typeof vi.fn>;
     };
-    let residenceAccess: { requireMembership: ReturnType<typeof vi.fn> };
+    let residenceAccess: {
+        requireMembership: ReturnType<typeof vi.fn>;
+        requireCreateEditPermission: ReturnType<typeof vi.fn>;
+    };
     let service: ExpensesService;
 
     beforeEach(() => {
@@ -64,6 +67,9 @@ describe("ExpensesService subgroups", () => {
         };
         residenceAccess = {
             requireMembership: vi.fn().mockResolvedValue({ memberId: "creator-participation" }),
+            requireCreateEditPermission: vi
+                .fn()
+                .mockResolvedValue({ memberId: "creator-participation" }),
         };
         service = new ExpensesService(
             repository as never,
@@ -77,7 +83,10 @@ describe("ExpensesService subgroups", () => {
             id: "subgroup-id",
             name: "Café",
         });
-        expect(residenceAccess.requireMembership).toHaveBeenCalledWith("home-id", "creator-user");
+        expect(residenceAccess.requireCreateEditPermission).toHaveBeenCalledWith(
+            "home-id",
+            "creator-user"
+        );
         expect(repository.createSubgroup).toHaveBeenCalledWith(
             subgroupData,
             "creator-participation"

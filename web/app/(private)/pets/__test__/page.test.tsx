@@ -15,6 +15,7 @@ import {
 import type { Pet, PetResidence } from "@/features/pets/api/pets.api";
 import { getExpenses } from "@/features/expenses/api/expenses.api";
 import { createResidenceFixture } from "@/test/fixtures/residence";
+import { selectSystemOption } from "@/test/utils/render";
 
 vi.mock("@/features/pets/api/pets.api", () => ({
     createPet: vi.fn(),
@@ -78,7 +79,11 @@ describe("PetsPage", () => {
             screen.queryByRole("combobox", { name: "Trocar residência" })
         ).not.toBeInTheDocument();
         await user.type(screen.getByLabelText(/Nome do pet/), "Mel");
-        await user.selectOptions(screen.getByLabelText(/Espécie/), "Cachorro");
+        await selectSystemOption(
+            user,
+            screen.getByRole("combobox", { name: "Espécie" }),
+            "Cachorro"
+        );
         await user.click(screen.getByRole("button", { name: /Salvar pet/ }));
 
         await waitFor(() =>
@@ -99,7 +104,7 @@ describe("PetsPage", () => {
         render(<PetsPage />);
 
         const selector = await screen.findByRole("combobox", { name: "Trocar residência" });
-        await user.selectOptions(selector, otherResidence.id);
+        await selectSystemOption(user, selector, otherResidence.name);
 
         await waitFor(() => expect(getPets).toHaveBeenCalledWith(otherResidence.id));
     });
@@ -125,7 +130,7 @@ describe("PetsPage", () => {
         await screen.findByText("Histórico de cuidados e gastos");
         await user.click(screen.getByRole("button", { name: /Registrar cuidado/ }));
         await user.type(screen.getByLabelText(/Título/), "Vacina anual");
-        fireEvent.change(screen.getByLabelText("Data do cuidado *"), {
+        fireEvent.change(screen.getByLabelText(/Data do cuidado/), {
             target: { value: "2026-10-11" },
         });
         await user.click(screen.getByRole("button", { name: "Salvar registro" }));

@@ -9,7 +9,9 @@ describe("NotificationsQueryDto", () => {
         const defaults = plainToInstance(NotificationsQueryDto, {});
         expect(defaults.limit).toBe(20);
         expect(await validate(defaults)).toHaveLength(0);
-        expect(await validate(plainToInstance(NotificationsQueryDto, { limit: "50" }))).toHaveLength(0);
+        expect(
+            await validate(plainToInstance(NotificationsQueryDto, { limit: "50" }))
+        ).toHaveLength(0);
     });
 
     it.each(["0", "51", "1.5", "NaN"])("rejects unsafe limits %s", async (limit) => {
@@ -23,7 +25,11 @@ describe("NotificationsQueryDto", () => {
     });
 
     it("accepts only boolean unread filters", async () => {
-        expect(await validate(plainToInstance(NotificationsQueryDto, { unreadOnly: "true" }))).toHaveLength(0);
-        expect(await validate(plainToInstance(NotificationsQueryDto, { unreadOnly: "maybe" }))).not.toHaveLength(0);
+        expect(
+            await validate(plainToInstance(NotificationsQueryDto, { unreadOnly: "true" }))
+        ).toHaveLength(0);
+        expect(
+            await validate(plainToInstance(NotificationsQueryDto, { unreadOnly: "maybe" }))
+        ).not.toHaveLength(0);
     });
 });

@@ -15,6 +15,8 @@ import type { PantryCategory, PantryItem, PantryMember } from "@/features/pantry
 import { getPetResidences } from "@/features/pets/api/pets.api";
 import type { PetResidence } from "@/features/pets/api/pets.api";
 import { createResidenceFixture } from "@/test/fixtures/residence";
+import { getResidencePreferences } from "@/features/settings/api/settings.api";
+import { selectSystemOption } from "@/test/utils/render";
 
 vi.mock("@/features/pantry/api/pantry.api", () => ({
     createPantryCategory: vi.fn(),
@@ -27,6 +29,9 @@ vi.mock("@/features/pantry/api/pantry.api", () => ({
 }));
 
 vi.mock("@/features/pets/api/pets.api", () => ({ getPetResidences: vi.fn() }));
+vi.mock("@/features/settings/api/settings.api", () => ({
+    getResidencePreferences: vi.fn(),
+}));
 vi.mock("@/features/auth/hooks/useAuth", () => ({
     useAuth: () => ({
         user: { id: "user-1", email: "emilson@example.com", name: "Emilson Apelido Silva" },
@@ -60,6 +65,22 @@ describe("PantryPage", () => {
         vi.mocked(getPantryMembers).mockResolvedValue([member]);
         vi.mocked(getPantryCategories).mockResolvedValue([category]);
         vi.mocked(getPantryItems).mockResolvedValue([item]);
+        vi.mocked(getResidencePreferences).mockResolvedValue({
+            notifications: {
+                newTasks: true,
+                newExpenses: true,
+                upcomingDueDates: true,
+                residentInvitations: true,
+                houseUpdates: false,
+            },
+            pantry: { expirationNoticeDays: 5, showExpired: true },
+            finance: { dueNoticeDays: 5, showOverdue: true },
+            pets: {
+                vaccineReminders: true,
+                dewormingReminders: true,
+                appointmentReminders: true,
+            },
+        });
     });
 
     it("registers the exact decimal movement quantity entered by the user", async () => {
@@ -98,7 +119,7 @@ describe("PantryPage", () => {
         render(<PantryPage />);
 
         const selector = await screen.findByRole("combobox", { name: "Trocar residência" });
-        await user.selectOptions(selector, otherResidence.id);
+        await selectSystemOption(user, selector, otherResidence.name);
 
         await waitFor(() => expect(getPantryItems).toHaveBeenCalledWith(otherResidence.id));
     });

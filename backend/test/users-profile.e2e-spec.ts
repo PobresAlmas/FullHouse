@@ -76,32 +76,71 @@ describe("User profile HTTP API (e2e)", () => {
 
     it("validates and persists the avatar gradient color", async () => {
         const cookie = await authenticatedCookie();
-        await request(app.getHttpServer()).patch("/users/me").set("Cookie", cookie)
-            .send({ avatarBackgroundColor: "#2f7f6f" }).expect(200);
-        expect(service.updateProfile).toHaveBeenCalledWith(USER_ID, { avatarBackgroundColor: "#2f7f6f" });
-        await request(app.getHttpServer()).patch("/users/me").set("Cookie", cookie)
-            .send({ avatarBackgroundColor: "green" }).expect(400);
-        await request(app.getHttpServer()).patch("/users/me").set("Cookie", cookie)
-            .send({ avatarBackgroundColor: "#fff" }).expect(400);
+        await request(app.getHttpServer())
+            .patch("/users/me")
+            .set("Cookie", cookie)
+            .send({ avatarBackgroundColor: "#2f7f6f" })
+            .expect(200);
+        expect(service.updateProfile).toHaveBeenCalledWith(USER_ID, {
+            avatarBackgroundColor: "#2f7f6f",
+        });
+        await request(app.getHttpServer())
+            .patch("/users/me")
+            .set("Cookie", cookie)
+            .send({ avatarBackgroundColor: "green" })
+            .expect(400);
+        await request(app.getHttpServer())
+            .patch("/users/me")
+            .set("Cookie", cookie)
+            .send({ avatarBackgroundColor: "#fff" })
+            .expect(400);
     });
 
     it("accepts PNG avatar uploads and rejects unauthenticated, missing, invalid, and oversized files", async () => {
-        const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pZsAAAAASUVORK5CYII=", "base64");
-        await request(app.getHttpServer()).post("/users/me/avatar")
-            .attach("photo", png, { filename: "avatar.png", contentType: "image/png" }).expect(401);
+        const png = Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/pZsAAAAASUVORK5CYII=",
+            "base64"
+        );
+        await request(app.getHttpServer())
+            .post("/users/me/avatar")
+            .attach("photo", png, { filename: "avatar.png", contentType: "image/png" })
+            .expect(401);
 
         const cookie = await authenticatedCookie();
-        await request(app.getHttpServer()).post("/users/me/avatar").set("Cookie", cookie).expect(400);
-        await request(app.getHttpServer()).post("/users/me/avatar").set("Cookie", cookie)
-            .attach("photo", Buffer.from("plain text"), { filename: "avatar.txt", contentType: "text/plain" }).expect(400);
-        await request(app.getHttpServer()).post("/users/me/avatar").set("Cookie", cookie)
-            .attach("photo", Buffer.alloc(5 * 1024 * 1024 + 1), { filename: "large.png", contentType: "image/png" }).expect(400);
+        await request(app.getHttpServer())
+            .post("/users/me/avatar")
+            .set("Cookie", cookie)
+            .expect(400);
+        await request(app.getHttpServer())
+            .post("/users/me/avatar")
+            .set("Cookie", cookie)
+            .attach("photo", Buffer.from("plain text"), {
+                filename: "avatar.txt",
+                contentType: "text/plain",
+            })
+            .expect(400);
+        await request(app.getHttpServer())
+            .post("/users/me/avatar")
+            .set("Cookie", cookie)
+            .attach("photo", Buffer.alloc(5 * 1024 * 1024 + 1), {
+                filename: "large.png",
+                contentType: "image/png",
+            })
+            .expect(400);
 
-        await request(app.getHttpServer()).post("/users/me/avatar").set("Cookie", cookie)
-            .attach("photo", png, { filename: "avatar.png", contentType: "image/png" }).expect(201)
+        await request(app.getHttpServer())
+            .post("/users/me/avatar")
+            .set("Cookie", cookie)
+            .attach("photo", png, { filename: "avatar.png", contentType: "image/png" })
+            .expect(201)
             .expect(({ body }) => expect(body.photo).toBe("https://cdn.example/profile.png"));
-        expect(service.updateAvatar).toHaveBeenCalledWith(USER_ID, expect.objectContaining({
-            originalname: "avatar.png", mimetype: "image/png", buffer: png,
-        }));
+        expect(service.updateAvatar).toHaveBeenCalledWith(
+            USER_ID,
+            expect.objectContaining({
+                originalname: "avatar.png",
+                mimetype: "image/png",
+                buffer: png,
+            })
+        );
     });
 });

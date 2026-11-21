@@ -59,7 +59,7 @@ describe("residences API client", () => {
         vi.mocked(api.patch).mockResolvedValue({ data: residence });
 
         await expect(getResidenceMembers("home-1")).resolves.toEqual(members);
-        expect(api.get).toHaveBeenCalledWith("/residences/home-1/members");
+        expect(api.get).toHaveBeenCalledWith("/residences/home-1/settings/members");
         await expect(updateResidenceName("home-1", "Casa Nova")).resolves.toEqual(residence);
         expect(api.patch).toHaveBeenCalledWith("/residences/home-1", { name: "Casa Nova" });
     });

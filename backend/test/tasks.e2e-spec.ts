@@ -131,5 +131,4 @@ describe("Tasks HTTP API (e2e)", () => {
             .expect(400);
         expect(tasksService.create).not.toHaveBeenCalled();
     });
-
 });

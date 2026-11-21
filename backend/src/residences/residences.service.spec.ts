@@ -89,7 +89,9 @@ describe("residence creation", () => {
             },
             categoria_despensa: { createMany: vi.fn() },
         };
-        const prisma = { $transaction: vi.fn((work: (tx: typeof transaction) => unknown) => work(transaction)) };
+        const prisma = {
+            $transaction: vi.fn((work: (tx: typeof transaction) => unknown) => work(transaction)),
+        };
         const repository = new ResidencesRepository(prisma as never);
 
         await expect(repository.create("Outra casa", "user-1")).rejects.toThrow(

@@ -18,6 +18,8 @@ describe("UpdateMemberAccessDto", () => {
     });
 
     it("does not accept unknown fields", async () => {
-        expect(await validateBody({ canEditContent: true, role: "ADMINISTRADOR" })).not.toHaveLength(0);
+        expect(
+            await validateBody({ canEditContent: true, role: "ADMINISTRADOR" })
+        ).not.toHaveLength(0);
     });
 });

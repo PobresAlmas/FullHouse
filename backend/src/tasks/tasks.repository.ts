@@ -48,7 +48,9 @@ export class TasksRepository {
             select: {
                 id: true,
                 papel: true,
-                usuario: { select: { nome: true, apelido: true, foto_url: true, cor_avatar: true } },
+                usuario: {
+                    select: { nome: true, apelido: true, foto_url: true, cor_avatar: true },
+                },
             },
             orderBy: [{ usuario: { nome: "asc" } }, { id: "asc" }],
         });

@@ -177,5 +177,4 @@ describe("Shopping list HTTP API (e2e)", () => {
             .send({ version: 1, status: "COMPRADO" })
             .expect(409);
     });
-
 });

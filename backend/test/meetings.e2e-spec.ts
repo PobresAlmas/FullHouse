@@ -107,5 +107,4 @@ describe("Residence meetings HTTP API (e2e)", () => {
             .set("Cookie", cookie)
             .expect(404);
     });
-
 });

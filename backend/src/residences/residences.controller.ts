@@ -99,12 +99,7 @@ export class ResidencesController {
         @Body() data: UpdateMemberAccessDto,
         @CurrentUser() user: { id: string }
     ) {
-        return this.residenceAccessService.updateMemberAccess(
-            residenceId,
-            memberId,
-            user.id,
-            data
-        );
+        return this.residenceAccessService.updateMemberAccess(residenceId, memberId, user.id, data);
     }
 
     @Delete(":residenceId/members/:memberId")

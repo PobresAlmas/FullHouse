@@ -69,5 +69,4 @@ describe("House rules HTTP API (e2e)", () => {
             USER_ID
         );
     });
-
 });

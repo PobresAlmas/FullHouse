@@ -301,11 +301,12 @@ describe("TasksService business rules", () => {
     });
 
     it("rejects assigning another resident when the residence policy restricts assignment", async () => {
-        residenceAccess.requireMembership.mockResolvedValueOnce({
+        residenceAccess.requireCreateEditPermission.mockResolvedValueOnce({
             residenceId,
             memberId,
             role: "MORADOR",
             creationEditPolicy: "LIDERES",
+            canEditContent: false,
         });
 
         await expect(

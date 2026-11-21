@@ -48,7 +48,8 @@ describe("toUserResponse", () => {
     });
 
     it("maps the selected avatar color while preserving a profile photo", () => {
-        expect(toUserResponse({ ...user, foto_url: "https://cdn/photo.png", cor_avatar: "#2f7f6f" }))
-            .toMatchObject({ photo: "https://cdn/photo.png", avatarBackgroundColor: "#2f7f6f" });
+        expect(
+            toUserResponse({ ...user, foto_url: "https://cdn/photo.png", cor_avatar: "#2f7f6f" })
+        ).toMatchObject({ photo: "https://cdn/photo.png", avatarBackgroundColor: "#2f7f6f" });
     });
 });

@@ -232,7 +232,16 @@ export class ResidenceAccessService {
                     id: true,
                     papel: true,
                     edicao_conteudo_override: true,
-                    usuario: { select: { id: true, nome: true, apelido: true, email: true, foto_url: true, cor_avatar: true } },
+                    usuario: {
+                        select: {
+                            id: true,
+                            nome: true,
+                            apelido: true,
+                            email: true,
+                            foto_url: true,
+                            cor_avatar: true,
+                        },
+                    },
                 },
                 orderBy: [{ data_entrada: "asc" }, { id: "asc" }],
             }),
@@ -268,7 +277,9 @@ export class ResidenceAccessService {
         const target = await this.requireActiveMember(residenceId, memberId);
         if (!target) throw new NotFoundException("O morador não está ativo nesta casa.");
         if (isResidenceManager(target.papel)) {
-            throw new ConflictException("O acesso de administradores é definido pelo papel de gestão.");
+            throw new ConflictException(
+                "O acesso de administradores é definido pelo papel de gestão."
+            );
         }
         if (data.canEditContent === undefined) {
             throw new ConflictException("Informe a permissão de edição.");
@@ -299,7 +310,9 @@ export class ResidenceAccessService {
                 throw new ConflictException("Você não pode remover a si mesmo da casa.");
             }
             if (target.papel === "LIDER") {
-                throw new ConflictException("Transfira a liderança antes de remover o líder da casa.");
+                throw new ConflictException(
+                    "Transfira a liderança antes de remover o líder da casa."
+                );
             }
             if (isResidenceManager(target.papel)) {
                 const otherManagers = await tx.participacao.count({
@@ -319,7 +332,11 @@ export class ResidenceAccessService {
                 data: { data_saida: new Date() },
             });
             const otherActiveHomes = await tx.participacao.count({
-                where: { usuario_id: target.usuario_id, data_saida: null, casa_id: { not: residenceId } },
+                where: {
+                    usuario_id: target.usuario_id,
+                    data_saida: null,
+                    casa_id: { not: residenceId },
+                },
             });
             if (otherActiveHomes === 0) {
                 await tx.usuario.update({

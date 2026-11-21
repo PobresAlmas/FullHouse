@@ -39,7 +39,7 @@ describe("NotificationsService", () => {
         });
         expect(unreadCount).toBe(3);
         expect(nextCursor).toBe("next-page");
-        expect(repository.listForUser).toHaveBeenCalledWith("user-1", 20, undefined);
+        expect(repository.listForUser).toHaveBeenCalledWith("user-1", 20, undefined, false);
     });
 
     it("delegates read marking with the authenticated user identity", async () => {

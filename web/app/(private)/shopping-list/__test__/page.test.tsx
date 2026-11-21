@@ -12,6 +12,7 @@ import {
 import type { ShoppingListItem } from "@/features/shopping-list/api/shopping-list.api";
 import { getPetResidences } from "@/features/pets/api/pets.api";
 import { createResidenceFixture } from "@/test/fixtures/residence";
+import { selectSystemOption } from "@/test/utils/render";
 
 vi.mock("@/features/shopping-list/api/shopping-list.api", () => ({
     createShoppingListItem: vi.fn(),
@@ -74,7 +75,11 @@ describe("ShoppingListPage", () => {
         ).toBeInTheDocument();
         expect(createShoppingListItem).not.toHaveBeenCalled();
 
-        await user.selectOptions(screen.getByLabelText("Unidade (opcional)"), "KG");
+        await selectSystemOption(
+            user,
+            screen.getByRole("combobox", { name: "Unidade (opcional)" }),
+            "kg"
+        );
         const created = {
             ...item,
             id: "item-2",
@@ -234,9 +239,10 @@ describe("ShoppingListPage", () => {
         vi.mocked(getPetResidences).mockResolvedValue([residence, secondResidence]);
         vi.mocked(getShoppingListItems).mockResolvedValueOnce([item]).mockResolvedValueOnce([]);
         render(<ShoppingListPage />);
-        await user.selectOptions(
+        await selectSystemOption(
+            user,
             await screen.findByRole("combobox", { name: "Trocar residência" }),
-            "residence-2"
+            secondResidence.name
         );
         await waitFor(() => expect(getShoppingListItems).toHaveBeenLastCalledWith("residence-2"));
         expect(await screen.findByText("Sua lista de compras está vazia.")).toBeInTheDocument();

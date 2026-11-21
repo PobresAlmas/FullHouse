@@ -79,7 +79,7 @@ export class NotificationsRepository {
                         : null,
             })),
             unreadCount,
-            nextCursor: hasMore ? pageItems[pageItems.length - 1]?.id ?? null : null,
+            nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
         };
     }
 
