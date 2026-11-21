@@ -28,7 +28,10 @@ describe("AppSidebar", () => {
         expect(navigation.querySelectorAll("a")).toHaveLength(10);
         expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
         expect(screen.getByRole("link", { name: "Tarefas" })).toHaveAttribute("href", "/tasks");
-        expect(screen.queryByRole("link", { name: "Configurações" })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
+            "href",
+            "/settings"
+        );
         expect(screen.getByRole("link", { name: "Financeiro" })).toHaveAttribute(
             "aria-current",
             "page"
@@ -43,16 +46,16 @@ describe("AppSidebar", () => {
         expect(screen.getByRole("link", { name: "Regras" })).toHaveAttribute("href", "/rules");
         expect(screen.getByRole("link", { name: "Reuniões" })).toHaveAttribute("href", "/meetings");
         expect(screen.queryByRole("link", { name: "Quartos" })).not.toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Perfil" })).toHaveAttribute("href", "/profile");
+        expect(screen.queryByRole("link", { name: "Perfil" })).not.toBeInTheDocument();
         expect(screen.getByText("Nenhuma casa associada")).toBeInTheDocument();
     });
 
-    it("shows home, room search, and profile navigation when no residence is linked", () => {
-        render(<AppSidebar activeSection="profile" noResidence />);
+    it("shows home, room search, and settings navigation when no residence is linked", () => {
+        render(<AppSidebar activeSection="settings" noResidence />);
 
         expect(screen.getByRole("link", { name: "Home" })).not.toHaveAttribute("aria-current");
         expect(screen.getByRole("link", { name: "Quartos" })).toHaveAttribute("href", "/rooms");
-        expect(screen.getByRole("link", { name: "Perfil" })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
             "aria-current",
             "page"
         );
@@ -80,7 +83,10 @@ describe("AppSidebar", () => {
             expect(screen.getByRole("link", { name: "Quartos" })).toHaveAttribute("href", "/rooms");
             expect(screen.queryByRole("link", { name: "Financeiro" })).not.toBeInTheDocument();
         });
-        expect(screen.getByRole("link", { name: "Perfil" })).toHaveAttribute("href", "/profile");
+        expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
+            "href",
+            "/settings"
+        );
     });
 
     it("shows residence sections after confirming an active membership", async () => {

@@ -1,4 +1,6 @@
 "use client";
+import { SystemSelect } from "@/components/ui/system-select";
+import { SystemSwitch } from "@/components/ui/system-switch";
 
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
@@ -35,6 +37,7 @@ import {
 } from "@/features/expenses/api/expenses.api";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
+import { getResidencePreferences } from "@/features/settings/api/settings.api";
 import type {
     CreateExpenseInput,
     Expense,
@@ -144,6 +147,7 @@ export default function FinancePage() {
     const [homes, setHomes] = useState<ExpenseHome[]>([]);
     const [subgroups, setSubgroups] = useState<ExpenseSubgroup[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [showOverdue, setShowOverdue] = useState(true);
     const [scope, setScope] = useState<ExpenseScope>("HOME");
     const [paymentUpdatingIds, setPaymentUpdatingIds] = useState<string[]>([]);
     const [proofUploadingIds, setProofUploadingIds] = useState<string[]>([]);
@@ -175,11 +179,16 @@ export default function FinancePage() {
     useEffect(() => {
         let active = true;
         Promise.all([getExpenseHomes(), getExpenseSubgroups(), getExpenses(scope)])
-            .then(([availableHomes, availableSubgroups, registeredExpenses]) => {
+            .then(async ([availableHomes, availableSubgroups, registeredExpenses]) => {
+                if (!active) return;
+                const preferences = availableHomes[0]
+                    ? await getResidencePreferences(availableHomes[0].id)
+                    : null;
                 if (!active) return;
                 setHomes(availableHomes);
                 setSubgroups(availableSubgroups);
                 setExpenses(sortExpenses(registeredExpenses));
+                if (preferences) setShowOverdue(preferences.finance.showOverdue);
             })
             .catch((loadError: unknown) => {
                 if (active) setError(getErrorMessage(loadError));
@@ -192,6 +201,19 @@ export default function FinancePage() {
             active = false;
         };
     }, [scope]);
+
+    const visibleExpenses = useMemo(
+        () =>
+            scope === "HOME" && !showOverdue
+                ? expenses.filter(
+                      (expense) =>
+                          expense.paymentStatus !== "PENDING" ||
+                          !expense.date ||
+                          expense.date >= localIsoDate(new Date())
+                  )
+                : expenses,
+        [expenses, scope, showOverdue]
+    );
 
     async function loadHomeMembers(homeId: string) {
         const requestId = ++memberRequest.current;
@@ -764,28 +786,40 @@ export default function FinancePage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-[#eee9f0]">
-                                        {expenses.map((expense) => (
-                                            <ExpenseRow
-                                                key={expense.id}
-                                                expense={expense}
-                                                onEdit={openEditModal}
-                                                onDelete={setExpenseToDelete}
-                                                personalMode={scope === "PERSONAL"}
-                                                paymentUpdating={paymentUpdatingIds.includes(
-                                                    expense.id
-                                                )}
-                                                onTogglePaid={() =>
-                                                    void togglePersonalPayment(expense)
-                                                }
-                                                onReminder={() => openReminder(expense)}
-                                                proofUploading={proofUploadingIds.includes(
-                                                    expense.id
-                                                )}
-                                                onProofUpload={(file) =>
-                                                    void handleProofUpload(expense, file)
-                                                }
-                                            />
-                                        ))}
+                                        {visibleExpenses.length === 0 ? (
+                                            <tr>
+                                                <td
+                                                    colSpan={11}
+                                                    className="px-4 py-10 text-center text-sm text-[#77717c]"
+                                                >
+                                                    Nenhuma despesa corresponde às preferências de
+                                                    exibição.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            visibleExpenses.map((expense) => (
+                                                <ExpenseRow
+                                                    key={expense.id}
+                                                    expense={expense}
+                                                    onEdit={openEditModal}
+                                                    onDelete={setExpenseToDelete}
+                                                    personalMode={scope === "PERSONAL"}
+                                                    paymentUpdating={paymentUpdatingIds.includes(
+                                                        expense.id
+                                                    )}
+                                                    onTogglePaid={() =>
+                                                        void togglePersonalPayment(expense)
+                                                    }
+                                                    onReminder={() => openReminder(expense)}
+                                                    proofUploading={proofUploadingIds.includes(
+                                                        expense.id
+                                                    )}
+                                                    onProofUpload={(file) =>
+                                                        void handleProofUpload(expense, file)
+                                                    }
+                                                />
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -795,7 +829,7 @@ export default function FinancePage() {
                                 Total das despesas exibidas:{" "}
                                 <strong className="text-[#29252d]">
                                     {formatCurrency(
-                                        expenses.reduce(
+                                        visibleExpenses.reduce(
                                             (sum, item) => sum + amountToCents(item.amount),
                                             0
                                         ) / 100
@@ -1478,7 +1512,7 @@ function ExpenseReminderModal({
                         </div>
                         <label className="grid gap-1.5 text-xs font-semibold">
                             Despesa
-                            <select
+                            <SystemSelect
                                 required
                                 value={selectedId}
                                 disabled={!!expenseId || mode === "edit"}
@@ -1493,7 +1527,7 @@ function ExpenseReminderModal({
                                             {expense.description}
                                         </option>
                                     ))}
-                            </select>
+                            </SystemSelect>
                         </label>
                         <div className="grid gap-3 sm:grid-cols-2">
                             <label className="grid gap-1.5 text-xs font-semibold">
@@ -1545,12 +1579,10 @@ function ExpenseReminderModal({
                                     Você será notificado na data e horário escolhidos.
                                 </small>
                             </span>
-                            <input
-                                aria-label="Receber notificação"
-                                type="checkbox"
+                            <SystemSwitch
+                                label="Receber notificação"
                                 checked={enabled}
-                                onChange={(event) => setEnabled(event.target.checked)}
-                                className="size-5 accent-[#4e812f]"
+                                onCheckedChange={setEnabled}
                             />
                         </label>
                         <footer className="flex justify-end gap-2">
@@ -1746,7 +1778,7 @@ function SubgroupModal({
                     {homes.length > 1 ? (
                         <label className="grid gap-1.5 text-xs font-medium">
                             Residência
-                            <select
+                            <SystemSelect
                                 aria-label="Residência"
                                 value={homeId}
                                 onChange={(event) => onHomeChange(event.target.value)}
@@ -1757,7 +1789,7 @@ function SubgroupModal({
                                         {home.name}
                                     </option>
                                 ))}
-                            </select>
+                            </SystemSelect>
                         </label>
                     ) : (
                         <p className="text-sm text-[#625c66]">Residência: {homes[0]?.name}</p>
@@ -1912,7 +1944,7 @@ function SubgroupModal({
                             <div className="grid gap-2 sm:grid-cols-2">
                                 <label className="grid gap-1 text-[11px] font-medium">
                                     Status
-                                    <select
+                                    <SystemSelect
                                         value={newExpense.paymentStatus}
                                         onChange={(event) =>
                                             setNewExpense({
@@ -1925,7 +1957,7 @@ function SubgroupModal({
                                     >
                                         <option value="PENDING">Pendente</option>
                                         <option value="PAID">Pago</option>
-                                    </select>
+                                    </SystemSelect>
                                 </label>
                                 {newExpense.paymentStatus === "PAID" && (
                                     <label className="grid gap-1 text-[11px] font-medium">
@@ -1947,7 +1979,7 @@ function SubgroupModal({
                             <div className="grid gap-2 rounded border border-[#eee9f0] p-2">
                                 <label className="flex items-center justify-between gap-2 text-[11px] font-medium">
                                     Rateio desta despesa
-                                    <select
+                                    <SystemSelect
                                         aria-label="Tipo de divisão da despesa"
                                         value={newExpense.allocations ? "CUSTOM" : "EQUAL"}
                                         onChange={(event) =>
@@ -1966,7 +1998,7 @@ function SubgroupModal({
                                     >
                                         <option value="EQUAL">Igualitário</option>
                                         <option value="CUSTOM">Personalizado</option>
-                                    </select>
+                                    </SystemSelect>
                                 </label>
                                 {newExpense.allocations &&
                                     selectedMembers.map((member) => {
@@ -2555,7 +2587,7 @@ function ExpenseModal({
                     {scope === "HOME" && homes.length > 1 && (
                         <label className="grid max-w-[360px] gap-1.5 text-xs font-medium">
                             Casa
-                            <select
+                            <SystemSelect
                                 required
                                 value={form.homeId ?? ""}
                                 onChange={(event) => {
@@ -2578,7 +2610,7 @@ function ExpenseModal({
                                         {home.name}
                                     </option>
                                 ))}
-                            </select>
+                            </SystemSelect>
                         </label>
                     )}
                     <label className="grid gap-1.5 text-xs font-medium">
@@ -2616,7 +2648,7 @@ function ExpenseModal({
                     {scope === "HOME" && (
                         <label className="grid max-w-[360px] gap-1.5 text-xs font-medium">
                             Subgrupo / Categoria (opcional)
-                            <select
+                            <SystemSelect
                                 value={form.subgroupId ?? ""}
                                 onChange={(event) => {
                                     const subgroupId = event.target.value;
@@ -2640,7 +2672,7 @@ function ExpenseModal({
                                         {item.name} · {item.homeName}
                                     </option>
                                 ))}
-                            </select>
+                            </SystemSelect>
                             {subgroup && (
                                 <span className="font-normal text-[#716b74]">
                                     Participantes: {subgroup.members.join(", ")}
@@ -2658,7 +2690,7 @@ function ExpenseModal({
                                         Ajuste quanto cada integrante deve pagar.
                                     </p>
                                 </div>
-                                <select
+                                <SystemSelect
                                     aria-label="Tipo de divisão"
                                     value={form.allocations ? "CUSTOM" : "EQUAL"}
                                     onChange={(event) =>
@@ -2674,7 +2706,7 @@ function ExpenseModal({
                                 >
                                     <option value="EQUAL">Divisão igualitária</option>
                                     <option value="CUSTOM">Personalizar valores</option>
-                                </select>
+                                </SystemSelect>
                             </div>
                             {form.allocations && (
                                 <div className="grid gap-2">
@@ -2756,7 +2788,7 @@ function ExpenseModal({
                         </label>
                         <label className="grid gap-1.5 text-xs font-medium">
                             Status do pagamento
-                            <select
+                            <SystemSelect
                                 required
                                 value={form.paymentStatus}
                                 onChange={(event) =>
@@ -2770,7 +2802,7 @@ function ExpenseModal({
                             >
                                 <option value="PENDING">Pendente</option>
                                 <option value="PAID">Pago</option>
-                            </select>
+                            </SystemSelect>
                         </label>
                     </div>
                     {form.paymentStatus === "PAID" && (

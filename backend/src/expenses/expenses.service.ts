@@ -31,7 +31,7 @@ export class ExpensesService {
             throw new BadRequestException("Não repita participantes no subgrupo.");
         }
 
-        const membership = await this.residenceAccess.requireMembership(data.homeId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(data.homeId, userId);
         return this.repository.createSubgroup(data, membership.memberId);
     }
 
@@ -131,6 +131,8 @@ export class ExpensesService {
             throw new BadRequestException("Selecione uma casa para registrar a despesa.");
         }
 
+        await this.residenceAccess.requireCreateEditPermission(homeId, userId);
+
         const home = await this.repository.findHomeForUser(homeId, userId);
         if (!home)
             throw new NotFoundException(
@@ -207,6 +209,7 @@ export class ExpensesService {
         const homeId = data.homeId ?? subgroup?.casa_id ?? existing.casa_id;
         const home = homeId ? await this.repository.findHomeForUser(homeId, userId) : null;
         if (!home) throw new NotFoundException("A casa da despesa não está mais disponível.");
+        await this.residenceAccess.requireCreateEditPermission(home.id, userId);
 
         if (subgroup && subgroup.casa_id !== home.id) {
             throw new NotFoundException("O subgrupo selecionado não está disponível.");
@@ -246,6 +249,10 @@ export class ExpensesService {
             throw new NotFoundException("A despesa não está disponível.");
         }
 
+        if (existing.casa_id) {
+            await this.residenceAccess.requireCreateEditPermission(existing.casa_id, userId);
+        }
+
         await this.repository.softDelete(id);
         return { id, deleted: true };
     }
@@ -257,6 +264,9 @@ export class ExpensesService {
     async setExpenseReminder(id: string, userId: string, data: UpsertExpenseReminderDto) {
         const expense = await this.repository.findEditableExpense(id, userId);
         if (!expense) throw new NotFoundException("A despesa não está disponível.");
+        if (expense.casa_id) {
+            await this.residenceAccess.requireCreateEditPermission(expense.casa_id, userId);
+        }
         return this.repository.setExpenseReminder(
             id,
             userId,
@@ -270,12 +280,18 @@ export class ExpensesService {
     async deleteExpenseReminder(id: string, userId: string) {
         const expense = await this.repository.findEditableExpense(id, userId);
         if (!expense) throw new NotFoundException("A despesa não está disponível.");
+        if (expense.casa_id) {
+            await this.residenceAccess.requireCreateEditPermission(expense.casa_id, userId);
+        }
         return this.repository.deleteExpenseReminder(id, userId);
     }
 
     async addExpenseProof(id: string, userId: string, file: Express.Multer.File) {
         const expense = await this.repository.findEditableExpense(id, userId);
         if (!expense) throw new NotFoundException("A despesa não está disponível.");
+        if (expense.casa_id) {
+            await this.residenceAccess.requireCreateEditPermission(expense.casa_id, userId);
+        }
         if (!file || file.size > 10 * 1024 * 1024) {
             throw new BadRequestException("O comprovante deve ter no máximo 10 MB.");
         }

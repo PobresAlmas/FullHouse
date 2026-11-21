@@ -178,7 +178,4 @@ describe("Shopping list HTTP API (e2e)", () => {
             .expect(409);
     });
 
-    afterEach(async () => {
-        await app.close();
-    });
 });

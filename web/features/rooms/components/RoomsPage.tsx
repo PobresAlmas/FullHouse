@@ -1,4 +1,5 @@
 "use client";
+import { SystemSelect } from "@/components/ui/system-select";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
@@ -524,7 +525,7 @@ export function RoomsPage() {
                         residences.length ? (
                             <label className="flex items-center gap-2 rounded-xl bg-[#e8e5e9] p-1 text-xs">
                                 <span className="sr-only">Residência ativa</span>
-                                <select
+                                <SystemSelect
                                     aria-label="Residência ativa"
                                     value={residenceId}
                                     onChange={(event) => setResidenceId(event.target.value)}
@@ -539,7 +540,7 @@ export function RoomsPage() {
                                             {item.name}
                                         </option>
                                     ))}
-                                </select>
+                                </SystemSelect>
                             </label>
                         ) : undefined
                     }
@@ -686,7 +687,7 @@ export function RoomsPage() {
                         >
                             <label className="max-w-sm text-sm">
                                 Tipo de moradia
-                                <select
+                                <SystemSelect
                                     className={`${inputClass} mt-1`}
                                     value={filters.tipoMoradia ?? ""}
                                     onChange={(event) =>
@@ -704,7 +705,7 @@ export function RoomsPage() {
                                             {value}
                                         </option>
                                     ))}
-                                </select>
+                                </SystemSelect>
                             </label>
                         </div>
                         <button type="submit" className="sr-only">
@@ -852,7 +853,7 @@ export function RoomsPage() {
                                 </label>
                                 <label className="text-sm">
                                     Tipo
-                                    <select
+                                    <SystemSelect
                                         name="tipoMoradia"
                                         defaultValue={editing?.tipoMoradia ?? "QUARTO_INDIVIDUAL"}
                                         className={`${inputClass} mt-1`}
@@ -862,7 +863,7 @@ export function RoomsPage() {
                                                 {value}
                                             </option>
                                         ))}
-                                    </select>
+                                    </SystemSelect>
                                 </label>
                                 <label className="text-sm">
                                     Contato

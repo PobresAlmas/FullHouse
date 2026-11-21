@@ -132,7 +132,4 @@ describe("Tasks HTTP API (e2e)", () => {
         expect(tasksService.create).not.toHaveBeenCalled();
     });
 
-    afterEach(async () => {
-        await app.close();
-    });
 });

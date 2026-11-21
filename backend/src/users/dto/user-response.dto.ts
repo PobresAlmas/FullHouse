@@ -7,5 +7,6 @@ export class UserRespondeDto {
     nickname?: string;
     email: string;
     photo?: string;
+    avatarBackgroundColor?: string;
     housingStatus: HousingStatus;
 }

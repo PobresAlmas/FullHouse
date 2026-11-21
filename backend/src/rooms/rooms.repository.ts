@@ -398,12 +398,13 @@ export class RoomsRepository {
         });
     }
 
-    respondToNegotiationInvitation(
+    async respondToNegotiationInvitation(
         invitationId: string,
         userId: string,
         decision: "ACEITO" | "RECUSADO"
     ) {
-        return this.prisma.$transaction(async (transaction) => {
+        try {
+            return await this.prisma.$transaction(async (transaction) => {
             const invitation = await transaction.convite_casa.findUnique({
                 where: { id: invitationId },
                 select: {
@@ -442,12 +443,14 @@ export class RoomsRepository {
             if (decision === "ACEITO") {
                 const activeMembership = await transaction.participacao.findFirst({
                     where: {
-                        casa_id: invitation.casa_id,
                         usuario_id: userId,
                         data_saida: null,
                     },
-                    select: { id: true },
+                    select: { id: true, casa_id: true },
                 });
+                if (activeMembership && activeMembership.casa_id !== invitation.casa_id) {
+                    throw new ConflictException("Você já possui uma residência ativa.");
+                }
                 const membership =
                     activeMembership ??
                     (await transaction.participacao.create({
@@ -486,6 +489,17 @@ export class RoomsRepository {
                 },
             });
             return { id: invitationId, status: decision, membershipId };
-        });
+            });
+        } catch (error) {
+            if (
+                typeof error === "object" &&
+                error !== null &&
+                "code" in error &&
+                error.code === "P2002"
+            ) {
+                throw new ConflictException("Você já possui uma residência ativa.");
+            }
+            throw error;
+        }
     }
 }

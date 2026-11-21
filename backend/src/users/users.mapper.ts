@@ -10,6 +10,7 @@ export function toUserResponse(user: usuario): UserRespondeDto {
         nickname: user.apelido ?? undefined,
         email: user.email,
         photo: user.foto_url ?? undefined,
+        avatarBackgroundColor: user.cor_avatar,
         housingStatus: user.status_moradia as HousingStatus,
     };
 }

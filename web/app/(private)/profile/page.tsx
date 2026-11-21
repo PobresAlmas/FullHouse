@@ -1,5 +1,5 @@
-import { ProfilePage } from "@/features/profile/components/ProfilePage";
+import { redirect } from "next/navigation";
 
 export default function ProfileRoute() {
-    return <ProfilePage />;
+    redirect("/settings?section=account");
 }

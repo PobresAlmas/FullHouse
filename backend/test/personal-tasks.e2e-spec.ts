@@ -117,7 +117,4 @@ describe("Personal tasks HTTP API (e2e)", () => {
         expect(tasksService.findPersonalOne).not.toHaveBeenCalled();
     });
 
-    afterEach(async () => {
-        await app.close();
-    });
 });

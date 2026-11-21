@@ -163,6 +163,20 @@ describe("RoomsRepository room-interest decisions", () => {
         });
     });
 
+    it("rejects accepting an invite to a second residence without changing the invite", async () => {
+        transaction.$queryRaw.mockResolvedValue([{ id: "invitation-1" }]);
+        transaction.participacao.findFirst.mockResolvedValueOnce({
+            id: "membership-existing",
+            casa_id: "another-house",
+        });
+
+        await expect(
+            repository.respondToNegotiationInvitation("invitation-1", "seeker-1", "ACEITO")
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(transaction.participacao.create).not.toHaveBeenCalled();
+        expect(transaction.convite_casa.update).not.toHaveBeenCalled();
+    });
+
     it("declines an invite without creating a membership", async () => {
         transaction.$queryRaw.mockResolvedValue([{ id: "invitation-1" }]);
 

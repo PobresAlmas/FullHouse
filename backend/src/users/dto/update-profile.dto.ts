@@ -1,7 +1,12 @@
 import { Transform } from "class-transformer";
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from "class-validator";
 
 export class UpdateProfileDto {
+    @IsOptional()
+    @IsString()
+    @Matches(/^#[0-9a-fA-F]{6}$/, { message: "Selecione uma cor válida para o avatar." })
+    avatarBackgroundColor?: string;
+
     @IsOptional()
     @IsString()
     @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))

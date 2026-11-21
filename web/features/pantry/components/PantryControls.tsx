@@ -1,3 +1,4 @@
+import { SystemSelect } from "@/components/ui/system-select";
 import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
@@ -40,13 +41,13 @@ export function SelectFilter({
     return (
         <label className="relative">
             <span className="sr-only">{label}</span>
-            <select
+            <SystemSelect
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
                 className="h-10 w-full appearance-none rounded-lg border border-[#d9d1de] bg-[#fffaff] px-3 pr-8 text-sm text-[#625c66] outline-none focus:border-[#4e812f]"
             >
                 {children}
-            </select>
+            </SystemSelect>
             <ChevronDown
                 className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#77717c]"
                 size={15}

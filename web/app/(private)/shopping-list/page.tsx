@@ -1,4 +1,5 @@
 "use client";
+import { SystemSelect } from "@/components/ui/system-select";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
@@ -388,7 +389,7 @@ export default function ShoppingListPage() {
                         residences.length > 1 ? (
                             <label className="flex items-center gap-2 rounded-xl bg-[#e8e5e9] p-1 text-xs">
                                 <span className="sr-only">Trocar residência</span>
-                                <select
+                                <SystemSelect
                                     value={residenceId}
                                     onChange={(event) => void changeResidence(event.target.value)}
                                     className="max-w-56 rounded-lg border-0 bg-[#4e812f] px-4 py-2 text-white outline-none"
@@ -402,7 +403,7 @@ export default function ShoppingListPage() {
                                             {item.name}
                                         </option>
                                     ))}
-                                </select>
+                                </SystemSelect>
                             </label>
                         ) : null
                     }
@@ -504,7 +505,7 @@ export default function ShoppingListPage() {
                                         </label>
                                         <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
                                             Unidade (opcional)
-                                            <select
+                                            <SystemSelect
                                                 value={draft.unit}
                                                 onChange={(event) =>
                                                     setDraft({
@@ -521,7 +522,7 @@ export default function ShoppingListPage() {
                                                         {label}
                                                     </option>
                                                 ))}
-                                            </select>
+                                            </SystemSelect>
                                         </label>
                                     </div>
                                     <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
@@ -737,7 +738,7 @@ export default function ShoppingListPage() {
                                 </label>
                                 <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
                                     Unidade
-                                    <select
+                                    <SystemSelect
                                         value={editDraft.unit}
                                         onChange={(event) =>
                                             setEditDraft({
@@ -753,7 +754,7 @@ export default function ShoppingListPage() {
                                                 {label}
                                             </option>
                                         ))}
-                                    </select>
+                                    </SystemSelect>
                                 </label>
                             </div>
                             <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">

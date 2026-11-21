@@ -9,6 +9,7 @@ import { RESIDENCE_MEMBERSHIP_CHANGED_EVENT } from "@/features/residences/api/re
 vi.mock("../../api/notifications.api", () => ({
     getNotifications: vi.fn(),
     markNotificationRead: vi.fn(),
+    subscribeNotifications: vi.fn(() => () => undefined),
 }));
 vi.mock("@/features/rooms/api/rooms.api", () => ({
     respondToRoomInvitation: vi.fn(),

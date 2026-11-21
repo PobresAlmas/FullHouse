@@ -196,7 +196,7 @@ export function RoomNegotiationPage() {
                     settingsHref="/settings"
                     profile={
                         <Link
-                            href="/profile"
+                            href="/settings?section=account"
                             aria-label="Perfil"
                             className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white"
                         >

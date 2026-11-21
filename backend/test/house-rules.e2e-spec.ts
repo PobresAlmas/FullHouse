@@ -70,7 +70,4 @@ describe("House rules HTTP API (e2e)", () => {
         );
     });
 
-    afterEach(async () => {
-        await app.close();
-    });
 });

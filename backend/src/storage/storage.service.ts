@@ -1,6 +1,6 @@
 import { ConfigService } from "@nestjs/config";
 import { Injectable } from "@nestjs/common";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetBucketPolicyCommand, PutBucketPolicyCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { randomUUID } from "node:crypto";
 
 @Injectable()
@@ -33,6 +33,35 @@ export class StorageService {
             })
         );
 
-        return `http://localhost:9000/fullhouse/${key}`;
+        if (folder === "avatars") {
+            const bucket = this.configService.getOrThrow<string>("MINIO_BUCKET");
+            let policy: { Version: string; Statement: unknown[] } = { Version: "2012-10-17", Statement: [] };
+            try {
+                const existing = await this.s3.send(new GetBucketPolicyCommand({ Bucket: bucket }));
+                if (existing.Policy) policy = JSON.parse(existing.Policy) as typeof policy;
+            } catch (error: unknown) {
+                if (!(error instanceof Error) || !/NoSuchBucketPolicy|PolicyNotFound/i.test(error.name)) {
+                    throw error;
+                }
+            }
+            const statementId = "FullHousePublicAvatarRead";
+            policy.Statement = policy.Statement.filter((statement) =>
+                typeof statement !== "object" || statement === null || !("Sid" in statement) || statement.Sid !== statementId
+            );
+            policy.Statement.push({
+                Sid: statementId,
+                Effect: "Allow",
+                Principal: "*",
+                Action: ["s3:GetObject"],
+                Resource: [`arn:aws:s3:::${bucket}/avatars/*`],
+            });
+            await this.s3.send(new PutBucketPolicyCommand({
+                Bucket: bucket,
+                Policy: JSON.stringify(policy),
+            }));
+        }
+
+        const publicEndpoint = this.configService.get<string>("MINIO_PUBLIC_ENDPOINT") ?? "http://localhost:9000";
+        return `${publicEndpoint.replace(/\/$/, "")}/${this.configService.getOrThrow<string>("MINIO_BUCKET")}/${key}`;
     }
 }

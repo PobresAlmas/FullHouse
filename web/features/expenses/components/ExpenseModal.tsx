@@ -1,3 +1,4 @@
+import { SystemSelect } from "@/components/ui/system-select";
 import type { FormEvent } from "react";
 import { CalendarDays, Check, Trash2, X } from "lucide-react";
 import type {
@@ -86,7 +87,7 @@ export default function ExpenseModal({
                     {homes.length > 1 && (
                         <label className="grid max-w-[360px] gap-1.5 text-xs font-medium">
                             Casa
-                            <select
+                            <SystemSelect
                                 required
                                 value={form.homeId ?? ""}
                                 onChange={(event) => {
@@ -109,7 +110,7 @@ export default function ExpenseModal({
                                         {home.name}
                                     </option>
                                 ))}
-                            </select>
+                            </SystemSelect>
                         </label>
                     )}
                     <label className="grid gap-1.5 text-xs font-medium">
@@ -146,7 +147,7 @@ export default function ExpenseModal({
 
                     <label className="grid max-w-[360px] gap-1.5 text-xs font-medium">
                         Subgrupo / Categoria (opcional)
-                        <select
+                        <SystemSelect
                             value={form.subgroupId ?? ""}
                             onChange={(event) => {
                                 const subgroupId = event.target.value;
@@ -169,7 +170,7 @@ export default function ExpenseModal({
                                     {item.name} · {item.homeName}
                                 </option>
                             ))}
-                        </select>
+                        </SystemSelect>
                         {subgroup && (
                             <span className="font-normal text-[#716b74]">
                                 Participantes: {subgroup.members.join(", ")}
@@ -195,7 +196,7 @@ export default function ExpenseModal({
                         </label>
                         <label className="grid gap-1.5 text-xs font-medium">
                             Status do pagamento
-                            <select
+                            <SystemSelect
                                 required
                                 value={form.paymentStatus}
                                 onChange={(event) =>
@@ -209,7 +210,7 @@ export default function ExpenseModal({
                             >
                                 <option value="PENDING">Pendente</option>
                                 <option value="PAID">Pago</option>
-                            </select>
+                            </SystemSelect>
                         </label>
                     </div>
 

@@ -69,7 +69,9 @@ export class UsersService {
             apelido?: string | null;
             email?: string;
             senha_hash?: string;
+            cor_avatar?: string;
         } = {};
+        if (data.avatarBackgroundColor !== undefined) update.cor_avatar = data.avatarBackgroundColor;
         if (data.name !== undefined) update.nome = data.name;
         if (data.nickname !== undefined) update.apelido = data.nickname || null;
         if (emailChanged) update.email = email;

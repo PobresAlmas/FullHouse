@@ -1,4 +1,5 @@
 "use client";
+import { SystemSelect } from "@/components/ui/system-select";
 
 import type { Residence } from "@/features/residences/api/residences.api";
 
@@ -15,7 +16,7 @@ export function ResidenceSelector({
     return (
         <label className="flex items-center gap-2 text-sm font-medium">
             Residência
-            <select
+            <SystemSelect
                 aria-label="Residência"
                 className="rounded-md border border-[#d9d0dc] bg-white px-3 py-2"
                 value={value}
@@ -26,7 +27,7 @@ export function ResidenceSelector({
                         {residence.name}
                     </option>
                 ))}
-            </select>
+            </SystemSelect>
         </label>
     );
 }

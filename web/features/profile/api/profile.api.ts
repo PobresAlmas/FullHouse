@@ -6,6 +6,7 @@ export type ProfileUpdate = {
     email?: string;
     currentPassword?: string;
     newPassword?: string;
+    avatarBackgroundColor?: string;
 };
 
 export async function updateProfile(data: ProfileUpdate) {
@@ -16,8 +17,6 @@ export async function updateProfile(data: ProfileUpdate) {
 export async function uploadProfilePhoto(file: File) {
     const formData = new FormData();
     formData.append("photo", file);
-    const response = await api.post("/users/me/avatar", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-    });
+    const response = await api.post("/users/me/avatar", formData);
     return response.data;
 }

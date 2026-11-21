@@ -45,9 +45,6 @@ describe("Pets API (e2e)", () => {
             testApp.authenticatedCookie({ id: "user-1", email: "resident@example.com" });
     });
 
-    afterEach(async () => {
-        await app.close();
-    });
 
     it("lists pets for a residence", async () => {
         await request(app.getHttpServer())

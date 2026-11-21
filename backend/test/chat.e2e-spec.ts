@@ -99,7 +99,4 @@ describe("Residence chat HTTP API (e2e)", () => {
             .expect(200);
     });
 
-    afterEach(async () => {
-        await app.close();
-    });
 });

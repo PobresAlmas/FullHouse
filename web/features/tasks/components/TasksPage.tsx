@@ -1,4 +1,5 @@
 "use client";
+import { SystemSelect } from "@/components/ui/system-select";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
@@ -35,6 +36,7 @@ import {
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import type {
     Task,
     TaskAssignmentType,
@@ -216,7 +218,7 @@ export default function TasksPage() {
     const residence = residences.find((item) => item.id === residenceId) ?? null;
     const myMemberId = residence?.membership?.id ?? "";
     const userName = user?.name?.trim() || user?.email?.split("@")[0] || "Minha conta";
-    const avatarInitial = user?.name?.trim().charAt(0) || user?.email?.trim().charAt(0) || "?";
+    const avatarName = user?.nickname?.trim() || user?.name?.trim() || user?.email?.trim() || "?";
     const canEditHouseTasks = canCreateOrEditResidenceContent(
         residence?.membership?.role,
         residence?.creationEditPolicy
@@ -626,7 +628,7 @@ export default function TasksPage() {
                                         {residence?.name}
                                     </button>
                                 ) : (
-                                    <select
+                                    <SystemSelect
                                         aria-label="Residência"
                                         value={residenceId}
                                         disabled={loading}
@@ -640,7 +642,7 @@ export default function TasksPage() {
                                                 {item.name}
                                             </option>
                                         ))}
-                                    </select>
+                                    </SystemSelect>
                                 )}
                             </div>
                         ) : null
@@ -657,9 +659,13 @@ export default function TasksPage() {
                                 aria-label={`Abrir menu da conta de ${userName}`}
                                 aria-haspopup="menu"
                                 aria-expanded={profileMenuOpen}
-                                className="grid size-10 place-items-center rounded-full bg-[#4b825f] font-semibold text-white transition hover:bg-[#3e704f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
+                                className="grid size-10 place-items-center rounded-xl transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
                             >
-                                {avatarInitial.toLocaleUpperCase("pt-BR")}
+                                <UserAvatar
+                                    name={avatarName}
+                                    photo={user?.photo}
+                                    backgroundColor={user?.avatarBackgroundColor}
+                                />
                             </button>
                             {profileMenuOpen && (
                                 <div
@@ -1284,7 +1290,7 @@ function TaskRow({
                                             </div>
                                             <label className="grid gap-1 text-[10px] text-[#514c56]">
                                                 Tarefa desejada (opcional)
-                                                <select
+                                                <SystemSelect
                                                     aria-label={`Tarefa desejada de ${selectedRecipient.name}`}
                                                     value={preferredTaskId}
                                                     onChange={(event) =>
@@ -1303,7 +1309,7 @@ function TaskRow({
                                                             {candidate.title}
                                                         </option>
                                                     ))}
-                                                </select>
+                                                </SystemSelect>
                                             </label>
                                             <button
                                                 type="button"
@@ -1622,7 +1628,7 @@ function ExchangeRequests({
                                                 ? "Tarefa sugerida · confirme ou altere"
                                                 : "Sua tarefa"}
                                         </span>
-                                        <select
+                                        <SystemSelect
                                             aria-label={`Escolher tarefa para trocar com ${request.requester}`}
                                             value={selectedTargetTaskId}
                                             onChange={(event) =>
@@ -1639,7 +1645,7 @@ function ExchangeRequests({
                                                     {candidate.title}
                                                 </option>
                                             ))}
-                                        </select>
+                                        </SystemSelect>
                                         {recipientTaskChoices.length === 0 && (
                                             <span className="mt-1 block text-[10px]">
                                                 Você não tem outra tarefa aberta disponível.
@@ -1902,7 +1908,7 @@ function TaskModal({
                         <div className="grid gap-3 sm:grid-cols-2">
                             <label className="grid gap-1.5 text-[11px] font-medium">
                                 Atribuição
-                                <select
+                                <SystemSelect
                                     value={form.assignmentType}
                                     onChange={(event) =>
                                         onChange(
@@ -1916,7 +1922,7 @@ function TaskModal({
                                     {canAssignOthers && (
                                         <option value="RODIZIO">Rodízio entre moradores</option>
                                     )}
-                                </select>
+                                </SystemSelect>
                             </label>
                             <label className="grid gap-1.5 text-[11px] font-medium">
                                 Cor da tarefa
@@ -1982,7 +1988,7 @@ function TaskModal({
                         </label>
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Repetição
-                            <select
+                            <SystemSelect
                                 value={form.repeats ? form.periodicity : "NUNCA"}
                                 onChange={(event) => {
                                     const value = event.target.value;
@@ -2005,7 +2011,7 @@ function TaskModal({
                                         {periodicityLabels[value]}
                                     </option>
                                 ))}
-                            </select>
+                            </SystemSelect>
                         </label>
                     </div>
                     <label className="flex items-center gap-3 rounded-lg bg-[#e9e8e8] px-3 py-2.5 text-[11px]">
@@ -2026,7 +2032,7 @@ function TaskModal({
                     {form.hasReminder && (
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Avisar com antecedência
-                            <select
+                            <SystemSelect
                                 value={form.reminderMinutesBefore}
                                 onChange={(event) =>
                                     onChange("reminderMinutesBefore", event.target.value)
@@ -2038,7 +2044,7 @@ function TaskModal({
                                 <option value="60">1 hora antes</option>
                                 <option value="1440">1 dia antes</option>
                                 <option value="10080">1 semana antes</option>
-                            </select>
+                            </SystemSelect>
                         </label>
                     )}
                     {error && (

@@ -1,3 +1,5 @@
+import { SystemSelect } from "@/components/ui/system-select";
+import { SystemSwitch } from "@/components/ui/system-switch";
 import type { FormEvent } from "react";
 import { Bell, Check, X } from "lucide-react";
 import type { TaskMember, TaskPeriodicity, TaskAssignmentType } from "../api/tasks.api";
@@ -99,7 +101,7 @@ export function TaskModal({
                         <div className="grid gap-3 sm:grid-cols-2">
                             <label className="grid gap-1.5 text-[11px] font-medium">
                                 Atribuição
-                                <select
+                                <SystemSelect
                                     value={form.assignmentType}
                                     onChange={(event) =>
                                         onChange(
@@ -111,7 +113,7 @@ export function TaskModal({
                                 >
                                     <option value="FIXA">Responsável fixo</option>
                                     <option value="RODIZIO">Rodízio entre moradores</option>
-                                </select>
+                                </SystemSelect>
                             </label>
                             <label className="grid gap-1.5 text-[11px] font-medium">
                                 Cor da tarefa
@@ -127,7 +129,7 @@ export function TaskModal({
                     {hasResidence && form.assignmentType === "FIXA" ? (
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Responsável
-                            <select
+                            <SystemSelect
                                 value={form.assigneeId}
                                 onChange={(event) => onChange("assigneeId", event.target.value)}
                                 className={inputClass}
@@ -138,12 +140,12 @@ export function TaskModal({
                                         {member.name}
                                     </option>
                                 ))}
-                            </select>
+                            </SystemSelect>
                         </label>
                     ) : hasResidence ? (
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Ordem do rodízio (selecione ao menos dois moradores)
-                            <select
+                            <SystemSelect
                                 multiple
                                 value={form.assigneeIds}
                                 onChange={(event) =>
@@ -162,7 +164,7 @@ export function TaskModal({
                                         {member.name}
                                     </option>
                                 ))}
-                            </select>
+                            </SystemSelect>
                         </label>
                     ) : null}
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -178,7 +180,7 @@ export function TaskModal({
                         </label>
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Repetição
-                            <select
+                            <SystemSelect
                                 value={form.repeats ? form.periodicity : "NUNCA"}
                                 onChange={(event) => {
                                     const value = event.target.value;
@@ -201,7 +203,7 @@ export function TaskModal({
                                         {periodicityLabels[value]}
                                     </option>
                                 ))}
-                            </select>
+                            </SystemSelect>
                         </label>
                     </div>
                     <label className="flex items-center gap-3 rounded-lg bg-[#e9e8e8] px-3 py-2.5 text-[11px]">
@@ -212,17 +214,16 @@ export function TaskModal({
                                 Notificar os responsáveis antes do prazo
                             </span>
                         </span>
-                        <input
-                            type="checkbox"
+                        <SystemSwitch
+                            label="Notificar os responsáveis antes do prazo"
                             checked={form.hasReminder}
-                            onChange={(event) => onChange("hasReminder", event.target.checked)}
-                            className="size-4 accent-[#4e812f]"
+                            onCheckedChange={(checked) => onChange("hasReminder", checked)}
                         />
                     </label>
                     {form.hasReminder && (
                         <label className="grid gap-1.5 text-[11px] font-medium">
                             Avisar com antecedência
-                            <select
+                            <SystemSelect
                                 value={form.reminderMinutesBefore}
                                 onChange={(event) =>
                                     onChange("reminderMinutesBefore", event.target.value)
@@ -234,7 +235,7 @@ export function TaskModal({
                                 <option value="60">1 hora antes</option>
                                 <option value="1440">1 dia antes</option>
                                 <option value="10080">1 semana antes</option>
-                            </select>
+                            </SystemSelect>
                         </label>
                     )}
                     {error && (

@@ -5,6 +5,7 @@ import { PassportModule } from "@nestjs/passport";
 import { Test } from "@nestjs/testing";
 import cookieParser from "cookie-parser";
 import { App } from "supertest/types.js";
+import { afterAll } from "vitest";
 import { JwtStrategy } from "../../src/auth/jwt.strategy.js";
 
 const JWT_SECRET = "authenticated-e2e-test-secret";
@@ -13,18 +14,48 @@ const DEFAULT_USER = {
     email: "resident@example.com",
 };
 
+type AuthenticatedTestAppOptions = {
+    controllers: Type<unknown>[];
+    providers: Array<{ provide: unknown; useValue: unknown }>;
+    validateRequests?: boolean;
+};
+
+type AuthenticatedTestApp = {
+    app: INestApplication<App>;
+    authenticatedCookie: (user?: typeof DEFAULT_USER) => Promise<string>;
+};
+
+let sharedTestApp: Promise<AuthenticatedTestApp> | undefined;
+
+// Vitest isolates this module per test file, so HTTP tests in one file can share
+// the same Nest bootstrap and close it once after the file finishes.
+afterAll(async () => {
+    if (sharedTestApp) {
+        const { app } = await sharedTestApp;
+        await app.close();
+    }
+});
+
 export async function createAuthenticatedTestApp({
     controllers,
     providers,
     validateRequests = true,
-}: {
-    controllers: Type<unknown>[];
-    providers: Array<{ provide: unknown; useValue: unknown }>;
-    validateRequests?: boolean;
-}): Promise<{
-    app: INestApplication<App>;
-    authenticatedCookie: (user?: typeof DEFAULT_USER) => Promise<string>;
-}> {
+}: AuthenticatedTestAppOptions): Promise<AuthenticatedTestApp> {
+    if (sharedTestApp) return sharedTestApp;
+
+    sharedTestApp = bootstrapAuthenticatedTestApp({
+        controllers,
+        providers,
+        validateRequests,
+    });
+    return sharedTestApp;
+}
+
+async function bootstrapAuthenticatedTestApp({
+    controllers,
+    providers,
+    validateRequests = true,
+}: AuthenticatedTestAppOptions): Promise<AuthenticatedTestApp> {
     const moduleFixture = await Test.createTestingModule({
         imports: [
             PassportModule,

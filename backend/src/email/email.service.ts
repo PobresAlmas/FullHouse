@@ -24,8 +24,9 @@ export class EmailService {
     }
 
     async sendResetPasswordEmail(email: string, code: string) {
-        await this.getResendClient().emails.send({
-            from: "FullHouse <onboarding@resend.dev>",
+        const sender = process.env.RESEND_FROM || "FullHouse <onboarding@resend.dev>";
+        const result = await this.getResendClient().emails.send({
+            from: sender,
             to: email,
             subject: "Código para redefinir sua senha",
             html: `
@@ -197,5 +198,8 @@ export class EmailService {
                 </html>
             `,
         });
+        if (result.error) {
+            throw new Error(`Falha ao enviar o código por e-mail: ${result.error.message}`);
+        }
     }
 }

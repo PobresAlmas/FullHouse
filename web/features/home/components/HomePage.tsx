@@ -1,4 +1,5 @@
 "use client";
+import { SystemSelect } from "@/components/ui/system-select";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import {
@@ -114,7 +116,7 @@ export function HomePage() {
     const requestKey = context === "personal" ? "personal" : `residence:${selectedId}`;
     const today = useMemo(() => dayInBusinessTime(), []);
     const userName = user?.name?.trim() || user?.email?.split("@")[0] || "bem-vindo(a)";
-    const avatarInitial = user?.name?.trim().charAt(0) || user?.email?.trim().charAt(0) || "?";
+    const avatarName = user?.nickname?.trim() || user?.name?.trim() || user?.email?.trim() || "?";
 
     const applyResidenceList = useCallback((items: Residence[]) => {
         setResidences(items);
@@ -359,7 +361,7 @@ export function HomePage() {
                                         {selectedResidence?.name}
                                     </button>
                                 ) : (
-                                    <select
+                                    <SystemSelect
                                         aria-label="Residência"
                                         value={selectedId}
                                         onChange={(event) => chooseResidence(event.target.value)}
@@ -370,7 +372,7 @@ export function HomePage() {
                                                 {residence.name}
                                             </option>
                                         ))}
-                                    </select>
+                                    </SystemSelect>
                                 )}
                             </div>
                         ) : null
@@ -386,9 +388,13 @@ export function HomePage() {
                                 aria-label={`Abrir menu da conta de ${userName}`}
                                 aria-haspopup="menu"
                                 aria-expanded={profileMenuOpen}
-                                className="grid size-10 place-items-center rounded-full bg-[#4b825f] font-semibold text-white transition hover:bg-[#3e704f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
+                                className="grid size-10 place-items-center rounded-xl transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
                             >
-                                {avatarInitial.toLocaleUpperCase("pt-BR")}
+                                <UserAvatar
+                                    name={avatarName}
+                                    photo={user?.photo}
+                                    backgroundColor={user?.avatarBackgroundColor}
+                                />
                             </button>
                             {profileMenuOpen && (
                                 <div
@@ -779,9 +785,14 @@ export function HomePage() {
                                                         key={member.id}
                                                         className="flex items-center gap-3 border-b border-[#e3dce5] px-4 py-2.5 last:border-0"
                                                     >
-                                                        <span className="grid size-8 place-items-center rounded-lg bg-[#579a4e] text-sm font-semibold text-white">
-                                                            {member.name.charAt(0).toUpperCase()}
-                                                        </span>
+                                                        <UserAvatar
+                                                            name={member.name}
+                                                            photo={member.photo}
+                                                            backgroundColor={
+                                                                member.avatarBackgroundColor
+                                                            }
+                                                            size="xs"
+                                                        />
                                                         <div className="min-w-0">
                                                             <p className="text-sm font-semibold">
                                                                 {member.name}

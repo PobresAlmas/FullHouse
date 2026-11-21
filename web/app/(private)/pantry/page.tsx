@@ -1,4 +1,5 @@
 "use client";
+import { SystemSelect } from "@/components/ui/system-select";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
@@ -27,6 +28,7 @@ import type {
 } from "@/features/pantry/api/pantry.api";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
+import { getResidencePreferences } from "@/features/settings/api/settings.api";
 import { PantryItemsTable } from "@/features/pantry/components/PantryItemsTable";
 import { SelectFilter, TabButton } from "@/features/pantry/components/PantryControls";
 import { PantryCategoryModal } from "@/features/pantry/components/PantryCategoryModal";
@@ -51,6 +53,7 @@ export default function PantryPage() {
     const [members, setMembers] = useState<PantryMember[]>([]);
     const [categories, setCategories] = useState<PantryCategory[]>([]);
     const [items, setItems] = useState<PantryItem[]>([]);
+    const [showExpired, setShowExpired] = useState(true);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -81,14 +84,16 @@ export default function PantryPage() {
     const canManageCategories = residence?.creationEditPolicy !== "LIDERES" || canManageHouse;
 
     const loadResidenceData = useCallback(async (id: string) => {
-        const [nextMembers, nextItems, nextCategories] = await Promise.all([
+        const [nextMembers, nextItems, nextCategories, preferences] = await Promise.all([
             getPantryMembers(id),
             getPantryItems(id),
             getPantryCategories(id),
+            getResidencePreferences(id),
         ]);
         setMembers(nextMembers);
         setItems(nextItems);
         setCategories(nextCategories);
+        setShowExpired(preferences.pantry.showExpired);
     }, []);
 
     useEffect(() => {
@@ -129,6 +134,8 @@ export default function PantryPage() {
     const filteredItems = useMemo(() => {
         const normalizedSearch = search.trim().toLocaleLowerCase("pt-BR");
         return items.filter((item) => {
+            if (!showExpired && item.expirationDate && item.expirationDate < localDateString())
+                return false;
             if (activeTab === "communal" && item.property !== "COMUNITARIO") return false;
             if (activeTab === "private" && item.property === "COMUNITARIO") return false;
             if (activeTab === "mine" && !item.isMine) return false;
@@ -160,7 +167,15 @@ export default function PantryPage() {
                 return false;
             return true;
         });
-    }, [activeTab, categoryFilter, expirationFilter, items, responsibleFilter, search]);
+    }, [
+        activeTab,
+        categoryFilter,
+        expirationFilter,
+        items,
+        responsibleFilter,
+        search,
+        showExpired,
+    ]);
 
     const tabCounts = useMemo(
         () => ({
@@ -410,7 +425,7 @@ export default function PantryPage() {
                         residences.length > 1 ? (
                             <label className="flex items-center gap-2 rounded-xl bg-[#e8e5e9] p-1 text-xs">
                                 <span className="sr-only">Trocar residência</span>
-                                <select
+                                <SystemSelect
                                     value={residenceId}
                                     onChange={(event) => void changeResidence(event.target.value)}
                                     className="max-w-56 rounded-lg border-0 bg-[#4e812f] px-4 py-2 text-white outline-none"
@@ -424,7 +439,7 @@ export default function PantryPage() {
                                             {item.name}
                                         </option>
                                     ))}
-                                </select>
+                                </SystemSelect>
                             </label>
                         ) : null
                     }

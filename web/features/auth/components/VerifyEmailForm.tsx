@@ -7,15 +7,17 @@ import SubmitButton from "./SubmitButton";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { forgotPassword, verifyResetCode } from "../api/auth.api";
+import { isApiError } from "@/services/api-error.utils";
 
 export default function VerifyEmailForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const email = searchParams.get("email");
+    const email = searchParams.get("email")?.trim() ?? "";
 
     const [code, setCode] = useState("");
     const [seconds, setSeconds] = useState(60);
+    const [errorMessage, setErrorMessage] = useState("");
 
     const canResend = seconds === 0;
 
@@ -28,27 +30,41 @@ export default function VerifyEmailForm() {
     }, [seconds]);
 
     async function onSubmit() {
-        const response = await verifyResetCode(email!, code);
+        const response = await verifyResetCode(email, code);
 
         if (response.valid) router.push(`/create-new-password?email=${email}&code=${code}`);
     }
 
     async function resendCode() {
         if (!email) return;
-
-        await forgotPassword(email);
-
-        setSeconds(60);
+        setErrorMessage("");
+        try {
+            await forgotPassword(email);
+            setSeconds(60);
+        } catch (error: unknown) {
+            setErrorMessage(
+                isApiError(error) ? error.message : "Não foi possível reenviar o código."
+            );
+        }
     }
 
     return (
         <AuthFormLayout
             title="Verifique o seu email"
-            description="Enviamos um código de 6 dígitos para seuemail@email.com"
+            description={
+                email
+                    ? `Enviamos um código de 6 dígitos para ${email}`
+                    : "Informe o e-mail para receber um código de 6 dígitos."
+            }
             onSubmit={onSubmit}
         >
             <OtpInput length={6} onChange={setCode} />
             <SubmitButton text="Confirmar código" />
+            {errorMessage && (
+                <p role="alert" className="text-center text-sm text-red-500">
+                    {errorMessage}
+                </p>
+            )}
             <p className="text-center text-muted-foreground">
                 Não recebeu o código? <br />
                 {canResend ? (
@@ -69,7 +85,7 @@ export default function VerifyEmailForm() {
                 )}
             </p>
             <a
-                href="/Forgot-password"
+                href="/forgot-password"
                 className="text-secondary font-bold flex justify-center items-center w-full gap-2 hover:underline"
             >
                 <ArrowLeft className="text-secondary" />

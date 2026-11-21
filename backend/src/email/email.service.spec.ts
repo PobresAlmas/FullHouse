@@ -30,4 +30,14 @@ describe("EmailService", () => {
             "resend unavailable"
         );
     });
+
+    it("propagates Resend response errors", async () => {
+        send.mockResolvedValue({
+            data: null,
+            error: { message: "sending not allowed" },
+        });
+        await expect(service.sendResetPasswordEmail("a@example.com", "123456")).rejects.toThrow(
+            "Falha ao enviar o código por e-mail: sending not allowed"
+        );
+    });
 });

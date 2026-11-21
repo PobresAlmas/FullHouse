@@ -108,7 +108,4 @@ describe("Residence meetings HTTP API (e2e)", () => {
             .expect(404);
     });
 
-    afterEach(async () => {
-        await app.close();
-    });
 });

@@ -3,6 +3,7 @@ import { Nunito_Sans, Roboto } from "next/font/google";
 import "./globals.css";
 import React from "react";
 import { AuthProvider } from "@/providers/AuthProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 
 const nunito = Nunito_Sans({
     variable: "--font-nunito",
@@ -22,7 +23,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     return (
         <html lang="pt-BR" className={`${nunito.variable} ${roboto.variable}`}>
             <body>
-                <AuthProvider>{children}</AuthProvider>
+                <ThemeProvider>
+                    <AuthProvider>{children}</AuthProvider>
+                </ThemeProvider>
             </body>
         </html>
     );
