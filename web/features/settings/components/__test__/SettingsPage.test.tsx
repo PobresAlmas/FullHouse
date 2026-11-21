@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsPage } from "../SettingsPage";
@@ -114,8 +114,9 @@ describe("SettingsPage", () => {
             "href",
             "/settings?section=account"
         );
-        await user.clear(screen.getByLabelText("Nome da casa"));
-        await user.type(screen.getByLabelText("Nome da casa"), "Nova Casa");
+        fireEvent.change(screen.getByLabelText("Nome da casa"), {
+            target: { value: "Nova Casa" },
+        });
         await user.click(screen.getByRole("button", { name: "Editar" }));
 
         await waitFor(() =>
