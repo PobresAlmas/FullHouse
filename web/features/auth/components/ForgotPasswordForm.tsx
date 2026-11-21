@@ -9,16 +9,27 @@ import { forgotPassword } from "../api/auth.api";
 import { ForgotPasswordFormData, forgotPasswordSchema } from "./schemas/forgot-passowrd.schema";
 import { useRouter } from "next/navigation";
 import { useAuthForm } from "../hooks/useAuthForm";
+import { useState } from "react";
+import { isApiError } from "@/services/api-error.utils";
 
 export default function ForgotPasswordForm() {
     const router = useRouter();
+    const [errorMessage, setErrorMessage] = useState("");
 
     const form = useAuthForm(forgotPasswordSchema);
 
     async function onSubmit(data: ForgotPasswordFormData) {
-        await forgotPassword(data.email);
-
-        router.push(`/verify-email?email=${data.email}`);
+        setErrorMessage("");
+        try {
+            await forgotPassword(data.email);
+            router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+        } catch (error: unknown) {
+            setErrorMessage(
+                isApiError(error)
+                    ? error.message
+                    : "Não foi possível enviar o código. Tente novamente."
+            );
+        }
     }
 
     return (
@@ -36,6 +47,12 @@ export default function ForgotPasswordForm() {
             />
 
             <SubmitButton text="Enviar código" />
+
+            {errorMessage && (
+                <p role="alert" className="text-center text-sm text-red-500">
+                    {errorMessage}
+                </p>
+            )}
 
             <a
                 href="/login"

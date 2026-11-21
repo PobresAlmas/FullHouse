@@ -3,7 +3,10 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { StorageService } from "./storage.service.js";
 
 describe("StorageService", () => {
-    const config: { getOrThrow: (key: string) => string } = {
+    const config: {
+        getOrThrow: (key: string) => string;
+        get: (key: string) => string | undefined;
+    } = {
         getOrThrow: vi.fn(
             (key: string) =>
                 ({
@@ -14,6 +17,7 @@ describe("StorageService", () => {
                     MINIO_BUCKET: "fullhouse",
                 })[key] as string
         ),
+        get: vi.fn((key: string) => ({ MINIO_PUBLIC_ENDPOINT: "http://localhost:9000" })[key]),
     };
     let service: StorageService;
     let send: ReturnType<typeof vi.fn>;

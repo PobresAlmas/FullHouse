@@ -10,6 +10,7 @@ import {
 } from "@/features/house-collaboration/api/chat.api";
 import { getResidences } from "@/features/residences/api/residences.api";
 import { createResidenceFixture } from "@/test/fixtures/residence";
+import { selectSystemOption } from "@/test/utils/render";
 
 vi.mock("@/features/house-collaboration/api/chat.api", () => ({
     createChatEventSource: vi.fn(),
@@ -98,9 +99,10 @@ describe("ChatPage", () => {
         }));
         render(<ChatPage />);
         expect(await screen.findByText("Mensagem da primeira casa")).toBeInTheDocument();
-        await user.selectOptions(
+        await selectSystemOption(
+            user,
             screen.getByRole("combobox", { name: "Residência" }),
-            secondResidence.id
+            secondResidence.name
         );
         expect(await screen.findByText("Mensagem da outra casa")).toBeInTheDocument();
         expect(screen.queryByText("Mensagem da primeira casa")).not.toBeInTheDocument();

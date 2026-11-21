@@ -5,6 +5,7 @@ import { NotificationsRepository } from "./notifications.repository.js";
 describe("NotificationsRepository", () => {
     const prisma = {
         notificacao: {
+            findFirst: vi.fn(),
             findMany: vi.fn(),
             count: vi.fn(),
             updateMany: vi.fn(),
@@ -23,6 +24,10 @@ describe("NotificationsRepository", () => {
                 entidade_id: "invitation-1",
             },
         ]);
+        prisma.notificacao.findFirst.mockResolvedValue({
+            id: "cursor-1",
+            criado_em: new Date("2026-11-19T12:00:00.000Z"),
+        });
         prisma.notificacao.count.mockResolvedValue(1);
         prisma.convite_casa.findMany.mockResolvedValue([
             {
@@ -37,12 +42,12 @@ describe("NotificationsRepository", () => {
     });
 
     it("scopes notification and invitation records to the authenticated user", async () => {
-        const result = await repository.listForUser("user-1");
+        const result = await repository.listForUser("user-1", 20);
 
         expect(prisma.notificacao.findMany).toHaveBeenCalledWith({
             where: { usuario_id: "user-1" },
             orderBy: [{ criado_em: "desc" }, { id: "desc" }],
-            take: 4,
+            take: 21,
         });
         expect(prisma.notificacao.count).toHaveBeenCalledWith({
             where: { usuario_id: "user-1", lida: false },
@@ -56,6 +61,39 @@ describe("NotificationsRepository", () => {
         );
         expect(result.items[0].invitation?.id).toBe("invitation-1");
         expect(result.unreadCount).toBe(1);
+    });
+
+    it("validates the cursor belongs to the authenticated account and applies stable ordering", async () => {
+        await repository.listForUser("user-1", 10, "cursor-1");
+        expect(prisma.notificacao.findFirst).toHaveBeenCalledWith({
+            where: { id: "cursor-1", usuario_id: "user-1" },
+            select: { id: true, criado_em: true },
+        });
+
+        expect(prisma.notificacao.findMany).toHaveBeenCalledWith({
+            where: {
+                usuario_id: "user-1",
+                OR: [
+                    { criado_em: { lt: new Date("2026-11-19T12:00:00.000Z") } },
+                    { criado_em: new Date("2026-11-19T12:00:00.000Z"), id: { lt: "cursor-1" } },
+                ],
+            },
+            orderBy: [{ criado_em: "desc" }, { id: "desc" }],
+            take: 11,
+        });
+    });
+
+    it("filters only unread notifications without changing the global unread count", async () => {
+        await repository.listForUser("user-1", 10, undefined, true);
+
+        expect(prisma.notificacao.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: { usuario_id: "user-1", lida: false },
+            })
+        );
+        expect(prisma.notificacao.count).toHaveBeenCalledWith({
+            where: { usuario_id: "user-1", lida: false },
+        });
     });
 
     it("does not allow a user to mark another user's notification as read", async () => {

@@ -66,6 +66,7 @@ describe("PantryRepository", () => {
         repository.findCategories("home-1");
         expect(prisma.categoria_despensa.findMany).toHaveBeenCalledWith({
             where: { casa_id: "home-1" },
+            select: { id: true, nome: true, _count: { select: { item_despensa: true } } },
             orderBy: [{ nome: "asc" }, { id: "asc" }],
         });
         repository.findCategory("home-1", "category-1");

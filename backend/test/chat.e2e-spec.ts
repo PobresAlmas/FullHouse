@@ -98,8 +98,4 @@ describe("Residence chat HTTP API (e2e)", () => {
             .set("Cookie", cookie)
             .expect(200);
     });
-
-    afterEach(async () => {
-        await app.close();
-    });
 });

@@ -16,6 +16,9 @@ describe("Residence creation HTTP API (e2e)", () => {
         listForUser: vi.fn(),
         getPermissionSettings: vi.fn(),
         updatePermissionSettings: vi.fn(),
+        getPreferences: vi.fn(),
+        updatePreferences: vi.fn(),
+        updateMemberAccess: vi.fn(),
     };
 
     beforeEach(async () => {
@@ -28,6 +31,30 @@ describe("Residence creation HTTP API (e2e)", () => {
             status: "ATIVA",
             membership: { id: "membership-id", role: "LIDER" },
             creationEditPolicy: "TODOS",
+        });
+        residenceAccessService.getPreferences.mockResolvedValue({
+            notifications: {
+                newTasks: true,
+                newExpenses: true,
+                upcomingDueDates: true,
+                residentInvitations: true,
+                houseUpdates: false,
+            },
+            pantry: { expirationNoticeDays: 5, showExpired: true },
+            finance: { dueNoticeDays: 5, showOverdue: true },
+            pets: { vaccineReminders: true, dewormingReminders: true, appointmentReminders: true },
+        });
+        residenceAccessService.updatePreferences.mockResolvedValue({
+            notifications: {
+                newTasks: true,
+                newExpenses: true,
+                upcomingDueDates: true,
+                residentInvitations: true,
+                houseUpdates: false,
+            },
+            pantry: { expirationNoticeDays: 14, showExpired: false },
+            finance: { dueNoticeDays: 5, showOverdue: true },
+            pets: { vaccineReminders: true, dewormingReminders: true, appointmentReminders: true },
         });
         const testApp = await createAuthenticatedTestApp({
             controllers: [ResidencesController],
@@ -77,7 +104,70 @@ describe("Residence creation HTTP API (e2e)", () => {
         expect(residencesService.create).toHaveBeenCalledWith({ name: "Casa do Vale" }, USER_ID);
     });
 
-    afterEach(async () => {
-        await app.close();
+    it("integrates authenticated preference reads and sparse updates with DTO validation", async () => {
+        const cookie = await authenticatedCookie();
+        const path = "/residences/821f394d-6215-48b4-89a9-0af953ba8a76/settings/preferences";
+        await request(app.getHttpServer()).get(path).expect(401);
+        await request(app.getHttpServer()).get(path).set("Cookie", cookie).expect(200);
+        expect(residenceAccessService.getPreferences).toHaveBeenCalledWith(
+            "821f394d-6215-48b4-89a9-0af953ba8a76",
+            USER_ID
+        );
+
+        await request(app.getHttpServer())
+            .patch(path)
+            .set("Cookie", cookie)
+            .send({ pantry: { expirationNoticeDays: 14, showExpired: false } })
+            .expect(200);
+        expect(residenceAccessService.updatePreferences).toHaveBeenCalledWith(
+            "821f394d-6215-48b4-89a9-0af953ba8a76",
+            USER_ID,
+            { pantry: { expirationNoticeDays: 14, showExpired: false } }
+        );
+        await request(app.getHttpServer())
+            .patch(path)
+            .set("Cookie", cookie)
+            .send({ pantry: { expirationNoticeDays: 2 } })
+            .expect(400);
+        await request(app.getHttpServer())
+            .patch(path)
+            .set("Cookie", cookie)
+            .send({ pets: { vaccineReminders: "yes" } })
+            .expect(400);
+        await request(app.getHttpServer())
+            .get("/residences/not-a-uuid/settings/preferences")
+            .set("Cookie", cookie)
+            .expect(400);
+    });
+
+    it("validates member access overrides including inherited null", async () => {
+        const cookie = await authenticatedCookie();
+        const path =
+            "/residences/821f394d-6215-48b4-89a9-0af953ba8a76/settings/members/821f394d-6215-48b4-89a9-0af953ba8a76/access";
+        residenceAccessService.updateMemberAccess.mockResolvedValue({
+            id: "member",
+            canEditContent: null,
+        });
+        await request(app.getHttpServer())
+            .patch(path)
+            .set("Cookie", cookie)
+            .send({ canEditContent: null })
+            .expect(200);
+        expect(residenceAccessService.updateMemberAccess).toHaveBeenCalledWith(
+            "821f394d-6215-48b4-89a9-0af953ba8a76",
+            "821f394d-6215-48b4-89a9-0af953ba8a76",
+            USER_ID,
+            { canEditContent: null }
+        );
+        await request(app.getHttpServer())
+            .patch(path)
+            .set("Cookie", cookie)
+            .send({ canEditContent: "true" })
+            .expect(400);
+        await request(app.getHttpServer())
+            .patch(path)
+            .set("Cookie", cookie)
+            .send({ unexpected: true })
+            .expect(400);
     });
 });

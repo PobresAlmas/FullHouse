@@ -6,6 +6,7 @@ export default defineConfig({
     resolve: { tsconfigPaths: true },
     test: {
         environment: "jsdom",
+        pool: "vmThreads",
         setupFiles: ["./test/setup.ts"],
         coverage: {
             provider: "v8",

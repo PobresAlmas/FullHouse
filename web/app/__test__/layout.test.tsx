@@ -18,9 +18,11 @@ describe("RootLayout", () => {
         expect(tree.props.lang).toBe("pt-BR");
         expect(tree.props.className).toContain("font-nunito");
         const body = tree.props.children;
-        const provider = body.props.children;
-        expect(provider.type).toBeTypeOf("function");
-        expect(provider.props.children.props.children).toBe("Page contents");
+        const themeProvider = body.props.children;
+        expect(themeProvider.type).toBeTypeOf("function");
+        const authProvider = themeProvider.props.children;
+        expect(authProvider.type).toBeTypeOf("function");
+        expect(authProvider.props.children.props.children).toBe("Page contents");
     });
 
     it("exports site metadata", () => {

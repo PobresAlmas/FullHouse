@@ -20,11 +20,37 @@ export interface AppNotification {
 export interface NotificationsResponse {
     items: AppNotification[];
     unreadCount: number;
+    nextCursor?: string | null;
 }
 
-export async function getNotifications() {
-    const response = await api.get<NotificationsResponse>("/notifications");
+export async function getNotifications(limit = 20, cursor?: string, unreadOnly = false) {
+    const response = await api.get<NotificationsResponse>("/notifications", {
+        params: {
+            limit,
+            ...(cursor ? { cursor } : {}),
+            ...(unreadOnly ? { unreadOnly: true } : {}),
+        },
+    });
     return response.data;
+}
+
+export function subscribeNotifications(
+    onUpdate: (response: NotificationsResponse) => void,
+    onError?: (event: Event) => void
+) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    const source = new EventSource(`${baseUrl}/notifications/stream`, {
+        withCredentials: true,
+    });
+    source.onmessage = (event) => {
+        try {
+            onUpdate(JSON.parse(event.data) as NotificationsResponse);
+        } catch {
+            onError?.(event);
+        }
+    };
+    source.onerror = (event) => onError?.(event);
+    return () => source.close();
 }
 
 export async function markNotificationRead(id: string) {

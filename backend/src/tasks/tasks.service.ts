@@ -31,6 +31,8 @@ export class TasksService {
             id: member.id,
             name: member.usuario.apelido || member.usuario.nome,
             role: member.papel,
+            photo: member.usuario.foto_url ?? undefined,
+            avatarBackgroundColor: member.usuario.cor_avatar,
         }));
     }
 
@@ -134,13 +136,15 @@ export class TasksService {
     }
 
     async create(residenceId: string, data: CreateTaskDto, userId: string) {
-        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const repeats = data.repeats ?? false;
         if (repeats && (!data.periodicity || data.periodicity === TaskPeriodicity.PERSONALIZADA)) {
             throw new BadRequestException("Selecione uma frequÃªncia para a repetiÃ§Ã£o.");
         }
-        const mayAssignOthers =
-            membership.creationEditPolicy !== "LIDERES" || isResidenceManager(membership.role);
+        const mayAssignOthers = membership.canEditContent ?? true;
         const rotationIds = data.assigneeIds ?? [];
         const assignmentType = data.assignmentType ?? TaskAssignmentType.FIXA;
         if (!mayAssignOthers) {

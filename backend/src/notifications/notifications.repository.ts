@@ -1,22 +1,51 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 @Injectable()
 export class NotificationsRepository {
     constructor(private readonly prisma: PrismaService) {}
 
-    async listForUser(userId: string) {
+    async listForUser(userId: string, limit: number, cursor?: string, unreadOnly = false) {
+        const cursorNotification = cursor
+            ? await this.prisma.notificacao.findFirst({
+                  where: { id: cursor, usuario_id: userId },
+                  select: { id: true, criado_em: true },
+              })
+            : null;
+        if (cursor && !cursorNotification) {
+            throw new BadRequestException("Cursor de notificação inválido.");
+        }
+
+        const cursorWhere = cursorNotification
+            ? {
+                  OR: [
+                      { criado_em: { lt: cursorNotification.criado_em } },
+                      {
+                          criado_em: cursorNotification.criado_em,
+                          id: { lt: cursorNotification.id },
+                      },
+                  ],
+              }
+            : {};
+        const listWhere = {
+            usuario_id: userId,
+            ...(unreadOnly ? { lida: false } : {}),
+            ...cursorWhere,
+        };
+
         const [notifications, unreadCount] = await Promise.all([
             this.prisma.notificacao.findMany({
-                where: { usuario_id: userId },
+                where: listWhere,
                 orderBy: [{ criado_em: "desc" }, { id: "desc" }],
-                take: 4,
+                take: limit + 1,
             }),
             this.prisma.notificacao.count({
                 where: { usuario_id: userId, lida: false },
             }),
         ]);
-        const invitationIds = notifications
+        const hasMore = notifications.length > limit;
+        const pageItems = notifications.slice(0, limit);
+        const invitationIds = pageItems
             .filter(
                 (notification) =>
                     notification.entidade_tipo === "CONVITE_CASA" &&
@@ -42,7 +71,7 @@ export class NotificationsRepository {
         );
 
         return {
-            items: notifications.map((notification) => ({
+            items: pageItems.map((notification) => ({
                 ...notification,
                 invitation:
                     notification.entidade_tipo === "CONVITE_CASA" && notification.entidade_id
@@ -50,6 +79,7 @@ export class NotificationsRepository {
                         : null,
             })),
             unreadCount,
+            nextCursor: hasMore ? (pageItems[pageItems.length - 1]?.id ?? null) : null,
         };
     }
 

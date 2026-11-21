@@ -34,6 +34,7 @@ export class PantryRepository {
     findCategories(residenceId: string) {
         return this.prisma.categoria_despensa.findMany({
             where: { casa_id: residenceId },
+            select: { id: true, nome: true, _count: { select: { item_despensa: true } } },
             orderBy: [{ nome: "asc" }, { id: "asc" }],
         });
     }

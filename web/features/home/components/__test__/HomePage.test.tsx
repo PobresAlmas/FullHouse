@@ -8,6 +8,7 @@ import { getExpenses } from "@/features/expenses/api/expenses.api";
 import { getPersonalHome } from "../../api/home.api";
 import { dayInBusinessTime } from "../../lib/home-metrics";
 import { createResidenceFixture } from "@/test/fixtures/residence";
+import { selectSystemOption } from "@/test/utils/render";
 
 const { logout } = vi.hoisted(() => ({ logout: vi.fn() }));
 
@@ -244,8 +245,8 @@ describe("HomePage", () => {
         vi.mocked(getResidences).mockResolvedValue([residence, otherResidence]);
         render(<HomePage />);
         const selector = await screen.findByRole("combobox", { name: "Residência" });
-        expect(selector).toHaveValue(residence.id);
-        await user.selectOptions(selector, otherResidence.id);
+        expect(selector).toHaveTextContent(residence.name);
+        await selectSystemOption(user, selector, otherResidence.name);
         await waitFor(() => expect(getTasks).toHaveBeenCalledWith(otherResidence.id));
         expect(screen.getByText("Casa da Praia", { selector: "p" })).toBeInTheDocument();
     });
@@ -263,7 +264,7 @@ describe("HomePage", () => {
         render(<HomePage />);
         const selector = await screen.findByRole("combobox", { name: "Residência" });
         expect(await screen.findByText("Pessoa da primeira casa")).toBeInTheDocument();
-        await user.selectOptions(selector, otherResidence.id);
+        await selectSystemOption(user, selector, otherResidence.name);
         expect(await screen.findByText("A residência não está disponível.")).toBeInTheDocument();
         expect(screen.queryByText("Pessoa da primeira casa")).not.toBeInTheDocument();
     });

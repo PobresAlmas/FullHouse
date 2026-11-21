@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Bell } from "lucide-react";
-import { getNotifications, markNotificationRead } from "../api/notifications.api";
+import {
+    getNotifications,
+    markNotificationRead,
+    subscribeNotifications,
+} from "../api/notifications.api";
 import type { AppNotification } from "../api/notifications.api";
 import { respondToRoomInvitation } from "@/features/rooms/api/rooms.api";
 import { announceResidenceMembershipChanged } from "@/features/residences/api/residences.api";
@@ -56,8 +60,18 @@ export function NotificationBell() {
             .catch((cause: unknown) => {
                 if (active) setError(errorText(cause));
             });
+        const unsubscribe = subscribeNotifications(
+            (result) => {
+                if (active) setNotificationState({ userId, ...result });
+            },
+            () => {
+                if (active)
+                    setError("A atualização em tempo real está temporariamente indisponível.");
+            }
+        );
         return () => {
             active = false;
+            unsubscribe();
         };
     }, [userId]);
 

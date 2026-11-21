@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadGatewayException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { UsersService } from "../users/users.service.js";
 import { RegisterDto } from "./dto/register.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
@@ -88,7 +88,13 @@ export class AuthService {
                 message: "Se o email existir, enviaremos um código.",
             };
 
-        await this.passwordResetService.create(user.id, user.email);
+        try {
+            await this.passwordResetService.create(user.id, user.email);
+        } catch {
+            throw new BadGatewayException(
+                "Não foi possível enviar o código agora. Verifique o serviço de e-mail e tente novamente."
+            );
+        }
 
         return {
             message: "Se o email existir, enviaremos um código.",

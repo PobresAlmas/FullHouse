@@ -47,6 +47,7 @@ export class PantryService {
         return (await this.repository.findCategories(residenceId)).map((category) => ({
             id: category.id,
             name: category.nome,
+            itemCount: category._count.item_despensa,
         }));
     }
 
@@ -134,7 +135,10 @@ export class PantryService {
     }
 
     async createItem(residenceId: string, data: CreatePantryItemDto, userId: string) {
-        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const memberId = membership.memberId;
         const category = await this.repository.findCategory(residenceId, data.categoryId);
         if (!category) throw new BadRequestException("Selecione uma categoria desta residência.");
@@ -168,7 +172,10 @@ export class PantryService {
         data: UpdatePantryItemDto,
         userId: string
     ) {
-        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const member = { id: membership.memberId, papel: membership.role };
         const existing = await this.repository.findItem(residenceId, itemId, membership.memberId);
         if (!existing) throw new NotFoundException("O item não está disponível nesta residência.");
@@ -226,7 +233,10 @@ export class PantryService {
         data: CreatePantryMovementDto,
         userId: string
     ) {
-        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const member = { id: membership.memberId, papel: membership.role };
         const item = await this.repository.findItem(residenceId, itemId, membership.memberId);
         if (!item) throw new NotFoundException("O item não está disponível nesta residência.");
@@ -242,7 +252,10 @@ export class PantryService {
     }
 
     async removeItem(residenceId: string, itemId: string, userId: string) {
-        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const member = { id: membership.memberId, papel: membership.role };
         const item = await this.repository.findItem(residenceId, itemId, membership.memberId);
         if (!item) throw new NotFoundException("O item não está disponível nesta residência.");

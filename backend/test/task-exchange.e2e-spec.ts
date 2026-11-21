@@ -125,8 +125,4 @@ describe("Task exchange HTTP API (e2e)", () => {
 
         expect(exchangeService.respond).not.toHaveBeenCalled();
     });
-
-    afterEach(async () => {
-        await app.close();
-    });
 });

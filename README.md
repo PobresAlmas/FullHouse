@@ -27,19 +27,18 @@ pnpm install --frozen-lockfile
 
 Os valores de exemplo são exclusivos para desenvolvimento local. Mantenha as credenciais iguais entre a raiz e `backend/.env` se alterar os dados do PostgreSQL ou do Silo.
 
-Suba a aplicação inteira em containers:
+Por padrão, suba somente os serviços de infraestrutura:
 
 ```bash
 docker compose up -d
-docker compose logs -f api web
 ```
 
-O Compose inicia PostgreSQL, Silo, API e interface. O container da API instala as dependências, gera o cliente Prisma e aplica as migrações na inicialização. Para criar fotos, crie no console do Silo ([http://localhost:9001](http://localhost:9001)) um bucket chamado `fullhouse`, usando as credenciais definidas em `.env`.
+Isso inicia PostgreSQL e Silo. A API e a interface têm o profile opcional `container-app`, então não iniciam junto com `docker compose up -d`. Se já estavam rodando de uma inicialização anterior, pare-as uma vez com `docker compose stop api web`.
 
-Para executar API e interface no host com hot reload, inicie apenas os serviços de infraestrutura:
+Para executar a API e a interface no host com hot reload — incluindo o envio de e-mail pela API local — inicie os serviços de infraestrutura e siga os passos abaixo. Para subir o stack inteiro em containers, use `docker compose --profile container-app up -d`.
 
 ```bash
-docker compose up -d postgres minio
+docker compose up -d
 ```
 
 Depois, prepare a API em um terminal:
@@ -56,7 +55,7 @@ Em outro terminal, instale e inicie a interface com `cd web && pnpm install --fr
 
 O serviço de arquivos usa [Silo](https://silo.pgsty.com/), um servidor de objetos compatível com S3 mantido como fork do MinIO. O backend já usa a API S3 do AWS SDK e as variáveis `MINIO_*`; Silo preserva esse contrato e oferece uma imagem publicada e mantida para o ambiente local.
 
-O PostgreSQL do Compose é exposto ao host em `localhost:5433`, conforme `backend/.env.example`. Dentro da rede dos containers, a API utiliza `postgres:5432`. Esses endereços correspondem a modos diferentes de execução.
+O PostgreSQL do Compose é exposto ao host em `localhost:5433`, conforme `backend/.env.example`. Dentro da rede dos containers, a API utiliza `postgres:5432`. Esses endereços correspondem a modos diferentes de execução. Para criar fotos, crie no console do Silo ([http://localhost:9001](http://localhost:9001)) um bucket chamado `fullhouse`, usando as credenciais definidas em `.env`.
 
 ## Prisma
 

@@ -11,7 +11,6 @@ import {
     ShoppingBasket,
     BedDouble,
     Settings,
-    UserRound,
     MessageCircle,
     ScrollText,
     CalendarDays,
@@ -53,7 +52,6 @@ const sections: { id: AppSection; label: string; href: string; icon: typeof Hous
     { id: "meetings", label: "Reuniões", href: "/meetings", icon: CalendarDays },
     { id: "rooms", label: "Quartos", href: "/rooms", icon: BedDouble },
     { id: "settings", label: "Configurações", href: "/settings", icon: Settings },
-    { id: "profile", label: "Perfil", href: "/profile", icon: UserRound },
 ];
 const implementedSections: AppSection[] = [
     "home",
@@ -66,7 +64,7 @@ const implementedSections: AppSection[] = [
     "rules",
     "meetings",
     "rooms",
-    "profile",
+    "settings",
 ];
 
 export function AppSidebar({
@@ -134,7 +132,7 @@ export function AppSidebar({
         (membership && membership.userId === userId ? membership.residenceName : undefined);
 
     return (
-        <aside className="flex shrink-0 flex-col border-b border-[#d9d0dc] bg-[#f8f4fa] px-3 py-3 md:min-h-screen md:w-[220px] md:border-b-0 md:border-r md:px-4 md:py-5">
+        <aside className="flex shrink-0 flex-col border-b border-[#d9d0dc] bg-[#f8f4fa] px-3 py-3 md:sticky md:top-0 md:h-screen md:min-h-0 md:w-[220px] md:self-start md:overflow-y-auto md:border-b-0 md:border-r md:px-4 md:py-5">
             <div className="mb-3 flex items-center gap-3 rounded-lg px-1 md:mb-7">
                 <span className="grid size-10 place-items-center rounded-xl bg-[#234a1b] text-white">
                     <House size={24} strokeWidth={2.4} />
@@ -154,7 +152,7 @@ export function AppSidebar({
             <nav aria-label="Navegação principal" className="grid grid-cols-4 gap-1 md:grid-cols-1">
                 {(hasNoResidence
                     ? sections.filter(
-                          ({ id }) => id === "home" || id === "rooms" || id === "profile"
+                          ({ id }) => id === "home" || id === "rooms" || id === "settings"
                       )
                     : sections.filter(({ id }) => id !== "rooms")
                 ).map(({ id, label, href, icon: Icon }) => {

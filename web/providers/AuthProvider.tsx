@@ -10,6 +10,7 @@ interface User {
     name?: string;
     nickname?: string;
     photo?: string;
+    avatarBackgroundColor?: string;
 }
 
 interface AuthContextData {

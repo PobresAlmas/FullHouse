@@ -12,6 +12,7 @@ export interface PantryMember {
 export interface PantryCategory {
     id: string;
     name: string;
+    itemCount?: number;
 }
 
 export interface PantryItem {

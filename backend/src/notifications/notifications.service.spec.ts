@@ -28,15 +28,18 @@ describe("NotificationsService", () => {
                 },
             ],
             unreadCount: 3,
+            nextCursor: "next-page",
         });
 
-        const { items, unreadCount } = await service.list("user-1");
+        const { items, unreadCount, nextCursor } = await service.list("user-1", 20);
 
         expect(items[0]).toMatchObject({
             negotiationId: "negotiation-1",
             convite: { id: "invitation-1", status: "PENDENTE", podeResponder: true },
         });
         expect(unreadCount).toBe(3);
+        expect(nextCursor).toBe("next-page");
+        expect(repository.listForUser).toHaveBeenCalledWith("user-1", 20, undefined, false);
     });
 
     it("delegates read marking with the authenticated user identity", async () => {
@@ -70,9 +73,10 @@ describe("NotificationsService", () => {
                 },
             ],
             unreadCount: 1,
+            nextCursor: null,
         });
 
-        const { items } = await service.list("owner-1");
+        const { items } = await service.list("owner-1", 20);
 
         expect(items[0].negotiationId).toBe("negotiation-1");
         expect(items[0].convite?.podeResponder).toBe(false);

@@ -13,6 +13,8 @@ import {
 } from "@/features/expenses/api/expenses.api";
 import type { Expense } from "@/features/expenses/api/expenses.api";
 import FinancePage from "../page";
+import { getResidencePreferences } from "@/features/settings/api/settings.api";
+import { selectSystemOption } from "@/test/utils/render";
 
 vi.mock("@/features/expenses/api/expenses.api", () => ({
     createExpenseSubgroup: vi.fn(),
@@ -27,6 +29,9 @@ vi.mock("@/features/expenses/api/expenses.api", () => ({
 
 vi.mock("@/features/auth/hooks/useAuth", () => ({
     useAuth: () => ({ user: null, loading: false }),
+}));
+vi.mock("@/features/settings/api/settings.api", () => ({
+    getResidencePreferences: vi.fn(),
 }));
 
 const subgroup = {
@@ -59,6 +64,22 @@ describe("FinancePage expense CRUD", () => {
         ]);
         vi.mocked(getExpenses).mockResolvedValue([]);
         vi.mocked(deleteExpense).mockResolvedValue(undefined);
+        vi.mocked(getResidencePreferences).mockResolvedValue({
+            notifications: {
+                newTasks: true,
+                newExpenses: true,
+                upcomingDueDates: true,
+                residentInvitations: true,
+                houseUpdates: false,
+            },
+            pantry: { expirationNoticeDays: 5, showExpired: true },
+            finance: { dueNoticeDays: 5, showOverdue: true },
+            pets: {
+                vaccineReminders: true,
+                dewormingReminders: true,
+                appointmentReminders: true,
+            },
+        });
     });
 
     it("creates a subgroup from active residents and updates the expense options immediately", async () => {
@@ -89,6 +110,7 @@ describe("FinancePage expense CRUD", () => {
         );
         expect(await screen.findByText("Subgrupo “Café” criado com sucesso.")).toBeInTheDocument();
         await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
+        await user.click(screen.getByRole("combobox", { name: "Subgrupo / Categoria (opcional)" }));
         expect(screen.getByRole("option", { name: "Café · Grifinória" })).toBeInTheDocument();
     }, 15000);
 
@@ -151,7 +173,7 @@ describe("FinancePage expense CRUD", () => {
 
         await screen.findByText("Nenhuma despesa cadastrada");
         await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
-        await user.selectOptions(screen.getByLabelText("Casa"), "other-home-id");
+        await selectSystemOption(user, screen.getByRole("combobox", { name: "Casa" }), "Corvinal");
         await user.type(screen.getByLabelText("Descrição"), "Internet");
         await user.type(screen.getByLabelText(/valor total da despesa/i), "120,00");
         fireEvent.change(screen.getByLabelText(/data de vencimento/i), {
@@ -233,7 +255,11 @@ describe("FinancePage expense CRUD", () => {
         render(<FinancePage />);
 
         await user.click(await screen.findByRole("button", { name: "Editar Internet" }));
-        await user.selectOptions(screen.getByLabelText("Status do pagamento"), "PAID");
+        await selectSystemOption(
+            user,
+            screen.getByRole("combobox", { name: "Status do pagamento" }),
+            "Pago"
+        );
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
 
         await waitFor(() =>

@@ -12,6 +12,8 @@ export interface TaskMember {
     id: string;
     name: string;
     role: "LIDER" | "ADMINISTRADOR" | "MORADOR";
+    photo?: string;
+    avatarBackgroundColor?: string;
 }
 
 export type TaskResidence = Residence;

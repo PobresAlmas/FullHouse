@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { initialForm } from "../../lib/tasks.utils";
 import { TaskModal } from "../TaskModal";
+import userEvent from "@testing-library/user-event";
+import { selectSystemOption } from "@/test/utils/render";
 
 describe("TaskModal", () => {
     it("renders personal mode without residence assignment controls", () => {
@@ -32,7 +34,8 @@ describe("TaskModal", () => {
         expect(onClose).toHaveBeenCalledOnce();
     });
 
-    it("exposes home assignment, recurrence, reminder, and submit actions", () => {
+    it("exposes home assignment, recurrence, reminder, and submit actions", async () => {
+        const user = userEvent.setup();
         const onChange = vi.fn();
         const onSubmit = vi.fn((event: FormEvent<HTMLFormElement>) => event.preventDefault());
         const form = {
@@ -57,18 +60,23 @@ describe("TaskModal", () => {
             />
         );
 
-        expect(screen.getByLabelText(/Ordem do rodízio/)).toBeInTheDocument();
+        const rotationSelect = screen.getByRole("combobox", { name: /Ordem do rodízio/ });
+        expect(rotationSelect).toBeInTheDocument();
+        await user.click(rotationSelect);
         expect(screen.getByRole("option", { name: "Ana" })).toBeInTheDocument();
         expect(screen.getByRole("option", { name: "Bruno" })).toBeInTheDocument();
-        fireEvent.change(screen.getByLabelText("Repetição"), { target: { value: "SEMANAL" } });
+        await user.click(screen.getByRole("option", { name: "Bruno" }));
+        expect(onChange).toHaveBeenCalledWith("assigneeIds", ["member-2"]);
+        await selectSystemOption(
+            user,
+            screen.getByRole("combobox", { name: "Repetição" }),
+            "Semanalmente"
+        );
         expect(onChange).toHaveBeenCalledWith("repeats", true);
         expect(onChange).toHaveBeenCalledWith("periodicity", "SEMANAL");
-
-        fireEvent.change(screen.getByLabelText(/Ordem do rodízio/), {
-            target: { value: "member-2" },
-        });
-        expect(onChange).toHaveBeenCalledWith("assigneeIds", ["member-2"]);
-        fireEvent.click(screen.getByRole("checkbox"));
+        await user.click(
+            screen.getByRole("switch", { name: "Notificar os responsáveis antes do prazo" })
+        );
         expect(onChange).toHaveBeenCalledWith("hasReminder", false);
 
         rerender(

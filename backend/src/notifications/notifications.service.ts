@@ -5,8 +5,13 @@ import { NotificationsRepository } from "./notifications.repository.js";
 export class NotificationsService {
     constructor(private readonly repository: NotificationsRepository) {}
 
-    async list(userId: string) {
-        const { items, unreadCount } = await this.repository.listForUser(userId);
+    async list(userId: string, limit: number, cursor?: string, unreadOnly = false) {
+        const { items, unreadCount, nextCursor } = await this.repository.listForUser(
+            userId,
+            limit,
+            cursor,
+            unreadOnly
+        );
         const now = Date.now();
         return {
             items: items.map((notification) => ({
@@ -34,6 +39,7 @@ export class NotificationsService {
                     : null,
             })),
             unreadCount,
+            nextCursor,
         };
     }
 

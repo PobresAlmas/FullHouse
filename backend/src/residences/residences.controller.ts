@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
     Param,
     ParseUUIDPipe,
@@ -14,6 +15,9 @@ import { UpdateResidencePermissionsDto } from "./dto/update-residence-permission
 import { ResidenceAccessService } from "./residence-access.service.js";
 import { CreateResidenceDto } from "./dto/create-residence.dto.js";
 import { ResidencesService } from "./residences.service.js";
+import { UpdateResidenceDto } from "./dto/update-residence.dto.js";
+import { UpdateResidencePreferencesDto } from "./dto/update-residence-preferences.dto.js";
+import { UpdateMemberAccessDto } from "./dto/update-member-access.dto.js";
 
 @Controller("residences")
 @UseGuards(JwtAuthGuard)
@@ -31,6 +35,15 @@ export class ResidencesController {
     @Get()
     list(@CurrentUser() user: { id: string }) {
         return this.residenceAccessService.listForUser(user.id);
+    }
+
+    @Patch(":residenceId")
+    update(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @Body() data: UpdateResidenceDto,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.residenceAccessService.updateResidenceName(residenceId, user.id, data.name);
     }
 
     @Get(":residenceId/settings/permissions")
@@ -52,5 +65,49 @@ export class ResidencesController {
             user.id,
             data.creationEditPolicy
         );
+    }
+
+    @Get(":residenceId/settings/preferences")
+    getPreferences(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.residenceAccessService.getPreferences(residenceId, user.id);
+    }
+
+    @Patch(":residenceId/settings/preferences")
+    updatePreferences(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @Body() data: UpdateResidencePreferencesDto,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.residenceAccessService.updatePreferences(residenceId, user.id, data);
+    }
+
+    @Get(":residenceId/settings/members")
+    getSettingsMembers(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.residenceAccessService.listSettingsMembers(residenceId, user.id);
+    }
+
+    @Patch(":residenceId/settings/members/:memberId/access")
+    updateMemberAccess(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @Param("memberId", new ParseUUIDPipe({ version: "4" })) memberId: string,
+        @Body() data: UpdateMemberAccessDto,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.residenceAccessService.updateMemberAccess(residenceId, memberId, user.id, data);
+    }
+
+    @Delete(":residenceId/members/:memberId")
+    removeMember(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @Param("memberId", new ParseUUIDPipe({ version: "4" })) memberId: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.residenceAccessService.removeMember(residenceId, memberId, user.id);
     }
 }

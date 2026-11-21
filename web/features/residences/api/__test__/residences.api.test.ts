@@ -4,7 +4,9 @@ import {
     createResidence,
     getResidences,
     getResidencePermissionSettings,
+    getResidenceMembers,
     updateResidencePermissionSettings,
+    updateResidenceName,
 } from "../residences.api";
 
 vi.mock("@/services/api", () => ({
@@ -42,5 +44,23 @@ describe("residences API client", () => {
         expect(api.patch).toHaveBeenCalledWith("/residences/home-1/settings/permissions", {
             creationEditPolicy: "LIDERES",
         });
+    });
+
+    it("loads public member DTOs and updates a residence name via the residence API", async () => {
+        const members = [{ id: "member-1", name: "Ana", role: "LIDER" as const }];
+        const residence = {
+            id: "home-1",
+            name: "Casa Nova",
+            city: null,
+            neighborhood: null,
+            status: "ATIVA",
+        };
+        vi.mocked(api.get).mockResolvedValue({ data: members });
+        vi.mocked(api.patch).mockResolvedValue({ data: residence });
+
+        await expect(getResidenceMembers("home-1")).resolves.toEqual(members);
+        expect(api.get).toHaveBeenCalledWith("/residences/home-1/settings/members");
+        await expect(updateResidenceName("home-1", "Casa Nova")).resolves.toEqual(residence);
+        expect(api.patch).toHaveBeenCalledWith("/residences/home-1", { name: "Casa Nova" });
     });
 });

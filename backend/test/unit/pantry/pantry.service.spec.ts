@@ -41,7 +41,11 @@ describe("PantryService", () => {
                 ]),
             findItems: vi.fn().mockResolvedValue([record()]),
             findItem: vi.fn().mockResolvedValue(record()),
-            findCategories: vi.fn().mockResolvedValue([{ id: "category-1", nome: "Grãos" }]),
+            findCategories: vi
+                .fn()
+                .mockResolvedValue([
+                    { id: "category-1", nome: "Grãos", _count: { item_despensa: 0 } },
+                ]),
             findCategory: vi.fn().mockResolvedValue({ id: "category-1", nome: "Grãos" }),
             createCategory: vi.fn().mockResolvedValue({ id: "category-2", nome: "Padaria" }),
             renameCategory: vi.fn().mockResolvedValue(true),
@@ -60,7 +64,9 @@ describe("PantryService", () => {
                 role: member.papel,
                 creationEditPolicy: "TODOS",
             }),
-            requireCreateEditPermission: vi.fn().mockResolvedValue({ memberId: member.id }),
+            requireCreateEditPermission: vi
+                .fn()
+                .mockResolvedValue({ memberId: member.id, role: member.papel }),
             requireActiveMember: vi.fn().mockResolvedValue({ id: "member-2" }),
         };
         service = new PantryService(repository as never, residenceAccess as never);
@@ -75,7 +81,7 @@ describe("PantryService", () => {
 
     it("lists categories only after residence membership is confirmed", async () => {
         await expect(service.findCategories("home-1", "user-1")).resolves.toEqual([
-            { id: "category-1", name: "Grãos" },
+            { id: "category-1", name: "Grãos", itemCount: 0 },
         ]);
         expect(repository.findCategories).toHaveBeenCalledWith("home-1");
 
@@ -217,6 +223,7 @@ describe("PantryService", () => {
 
     it("does not read or create pantry data for a user outside the residence", async () => {
         residenceAccess.requireMembership.mockRejectedValue(new NotFoundException());
+        residenceAccess.requireCreateEditPermission.mockRejectedValueOnce(new NotFoundException());
         await expect(service.findItems("home-1", "outsider")).rejects.toBeInstanceOf(
             NotFoundException
         );
@@ -513,7 +520,7 @@ describe("PantryService", () => {
     });
 
     it("allows the assigned owner to consume a specific-owner item", async () => {
-        residenceAccess.requireMembership.mockResolvedValue({
+        residenceAccess.requireCreateEditPermission.mockResolvedValueOnce({
             residenceId: "home-1",
             memberId: "member-2",
             role: "MORADOR",
@@ -575,7 +582,7 @@ describe("PantryService", () => {
         );
         expect(repository.deleteItem).not.toHaveBeenCalled();
 
-        residenceAccess.requireMembership.mockResolvedValue({
+        residenceAccess.requireCreateEditPermission.mockResolvedValueOnce({
             residenceId: "home-1",
             memberId: member.id,
             role: "ADMINISTRADOR",

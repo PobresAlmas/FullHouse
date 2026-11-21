@@ -4,7 +4,7 @@ import { AppPageHeader } from "../AppPageHeader";
 
 describe("AppPageHeader", () => {
     it("renders the shared house and settings icons with a residence selector slot", () => {
-        render(
+        const { container } = render(
             <AppPageHeader
                 greetingName="Ana Silva"
                 residenceName="Casa do Vale"
@@ -20,6 +20,9 @@ describe("AppPageHeader", () => {
             screen.getByRole("link", { name: "Configurações" }).querySelector("svg")
         ).toBeInTheDocument();
         expect(screen.getByLabelText("Notificações").querySelector("svg")).toBeInTheDocument();
+        const header = container.querySelector("header");
+        expect(header).toHaveClass("md:fixed", "md:left-[220px]", "z-40");
+        expect(container.querySelector("div[aria-hidden='true']")).toHaveClass("h-[72px]");
     });
 
     it.each([

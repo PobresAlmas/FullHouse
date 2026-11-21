@@ -398,94 +398,108 @@ export class RoomsRepository {
         });
     }
 
-    respondToNegotiationInvitation(
+    async respondToNegotiationInvitation(
         invitationId: string,
         userId: string,
         decision: "ACEITO" | "RECUSADO"
     ) {
-        return this.prisma.$transaction(async (transaction) => {
-            const invitation = await transaction.convite_casa.findUnique({
-                where: { id: invitationId },
-                select: {
-                    id: true,
-                    casa_id: true,
-                    negociacao_anuncio_id: true,
-                    usuario_convidado_id: true,
-                    convidado_por_participacao_id: true,
-                    status: true,
-                    expira_em: true,
-                },
-            });
-            if (!invitation) throw new NotFoundException("Convite não encontrado.");
-            if (invitation.usuario_convidado_id !== userId) {
-                throw new ForbiddenException("Somente a pessoa convidada pode responder.");
-            }
-            if (invitation.status !== "PENDENTE") {
-                throw new ConflictException("Este convite já foi respondido.");
-            }
+        try {
+            return await this.prisma.$transaction(async (transaction) => {
+                const invitation = await transaction.convite_casa.findUnique({
+                    where: { id: invitationId },
+                    select: {
+                        id: true,
+                        casa_id: true,
+                        negociacao_anuncio_id: true,
+                        usuario_convidado_id: true,
+                        convidado_por_participacao_id: true,
+                        status: true,
+                        expira_em: true,
+                    },
+                });
+                if (!invitation) throw new NotFoundException("Convite não encontrado.");
+                if (invitation.usuario_convidado_id !== userId) {
+                    throw new ForbiddenException("Somente a pessoa convidada pode responder.");
+                }
+                if (invitation.status !== "PENDENTE") {
+                    throw new ConflictException("Este convite já foi respondido.");
+                }
 
-            const pending = await transaction.$queryRaw<{ id: string }[]>`
+                const pending = await transaction.$queryRaw<{ id: string }[]>`
                 SELECT "id" FROM "convite_casa"
                 WHERE "id" = ${invitationId}::uuid AND "status" = 'PENDENTE'
                 FOR UPDATE
             `;
-            if (!pending.length) throw new ConflictException("Este convite já foi respondido.");
-            if (invitation.expira_em <= new Date()) {
+                if (!pending.length) throw new ConflictException("Este convite já foi respondido.");
+                if (invitation.expira_em <= new Date()) {
+                    await transaction.convite_casa.update({
+                        where: { id: invitationId },
+                        data: { status: "EXPIRADO" },
+                    });
+                    return { id: invitationId, status: "EXPIRADO", membershipId: null };
+                }
+
+                let membershipId: string | null = null;
+                if (decision === "ACEITO") {
+                    const activeMembership = await transaction.participacao.findFirst({
+                        where: {
+                            usuario_id: userId,
+                            data_saida: null,
+                        },
+                        select: { id: true, casa_id: true },
+                    });
+                    if (activeMembership && activeMembership.casa_id !== invitation.casa_id) {
+                        throw new ConflictException("Você já possui uma residência ativa.");
+                    }
+                    const membership =
+                        activeMembership ??
+                        (await transaction.participacao.create({
+                            data: {
+                                casa_id: invitation.casa_id,
+                                usuario_id: userId,
+                                papel: "MORADOR",
+                                convite_id: invitationId,
+                            },
+                            select: { id: true },
+                        }));
+                    membershipId = membership.id;
+                }
+
                 await transaction.convite_casa.update({
                     where: { id: invitationId },
-                    data: { status: "EXPIRADO" },
+                    data: { status: decision },
                 });
-                return { id: invitationId, status: "EXPIRADO", membershipId: null };
-            }
 
-            let membershipId: string | null = null;
-            if (decision === "ACEITO") {
-                const activeMembership = await transaction.participacao.findFirst({
-                    where: {
+                const inviter = await transaction.participacao.findUniqueOrThrow({
+                    where: { id: invitation.convidado_por_participacao_id },
+                    select: { usuario_id: true },
+                });
+                await transaction.notificacao.create({
+                    data: {
+                        usuario_id: inviter.usuario_id,
                         casa_id: invitation.casa_id,
-                        usuario_id: userId,
-                        data_saida: null,
+                        tipo: "SISTEMA",
+                        titulo: decision === "ACEITO" ? "Convite aceito" : "Convite recusado",
+                        mensagem:
+                            decision === "ACEITO"
+                                ? "A pessoa convidada agora faz parte da casa."
+                                : "A pessoa convidada recusou o convite.",
+                        entidade_tipo: "CONVITE_CASA",
+                        entidade_id: invitationId,
                     },
-                    select: { id: true },
                 });
-                const membership =
-                    activeMembership ??
-                    (await transaction.participacao.create({
-                        data: {
-                            casa_id: invitation.casa_id,
-                            usuario_id: userId,
-                            papel: "MORADOR",
-                            convite_id: invitationId,
-                        },
-                        select: { id: true },
-                    }));
-                membershipId = membership.id;
+                return { id: invitationId, status: decision, membershipId };
+            });
+        } catch (error) {
+            if (
+                typeof error === "object" &&
+                error !== null &&
+                "code" in error &&
+                error.code === "P2002"
+            ) {
+                throw new ConflictException("Você já possui uma residência ativa.");
             }
-
-            await transaction.convite_casa.update({
-                where: { id: invitationId },
-                data: { status: decision },
-            });
-
-            const inviter = await transaction.participacao.findUniqueOrThrow({
-                where: { id: invitation.convidado_por_participacao_id },
-                select: { usuario_id: true },
-            });
-            await transaction.notificacao.create({
-                data: {
-                    usuario_id: inviter.usuario_id,
-                    casa_id: invitation.casa_id,
-                    tipo: "SISTEMA",
-                    titulo: decision === "ACEITO" ? "Convite aceito" : "Convite recusado",
-                    mensagem:
-                        decision === "ACEITO"
-                            ? "A pessoa convidada agora faz parte da casa."
-                            : "A pessoa convidada recusou o convite.",
-                    entidade_tipo: "CONVITE_CASA",
-                    entidade_id: invitationId,
-                },
-            });
-            return { id: invitationId, status: decision, membershipId };
-        });
+            throw error;
+        }
     }
 }

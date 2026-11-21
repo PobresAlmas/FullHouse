@@ -263,8 +263,4 @@ describe("Expenses HTTP API (e2e)", () => {
             .send(payload)
             .expect(404);
     });
-
-    afterEach(async () => {
-        await app.close();
-    });
 });

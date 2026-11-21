@@ -29,7 +29,7 @@ describe("ForgotPasswordForm", () => {
         await user.type(screen.getByLabelText("E-mail"), "user@example.com");
         await user.click(screen.getByRole("button", { name: "Enviar código" }));
         await waitFor(() => expect(forgotPassword).toHaveBeenCalledWith("user@example.com"));
-        expect(push).toHaveBeenCalledWith("/verify-email?email=user@example.com");
+        expect(push).toHaveBeenCalledWith("/verify-email?email=user%40example.com");
     });
 
     it("does not submit an invalid email", async () => {

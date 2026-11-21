@@ -8,6 +8,7 @@ import DeleteExpenseDialog from "../DeleteExpenseDialog";
 import ExpenseModal from "../ExpenseModal";
 import ExpenseRow from "../ExpenseRow";
 import SummaryCard from "../SummaryCard";
+import { selectSystemOption } from "@/test/utils/render";
 
 const expense: Expense = {
     id: "expense-1",
@@ -109,11 +110,15 @@ describe("expense components", () => {
         );
 
         expect(screen.getByText(/Pago em/)).toBeInTheDocument();
-        await user.selectOptions(screen.getByLabelText("Casa"), "home-2");
+        await selectSystemOption(user, screen.getByRole("combobox", { name: "Casa" }), "Corvinal");
         expect(onChange).toHaveBeenCalledWith(
             expect.objectContaining({ homeId: "home-2", subgroupId: "" })
         );
-        await user.selectOptions(screen.getAllByRole("combobox")[1], "group-1");
+        await selectSystemOption(
+            user,
+            screen.getByRole("combobox", { name: "Subgrupo / Categoria (opcional)" }),
+            "Contas · Grifinória"
+        );
         expect(onChange).toHaveBeenCalledWith(
             expect.objectContaining({ homeId: "home-1", subgroupId: "group-1" })
         );
@@ -144,7 +149,11 @@ describe("expense components", () => {
             />
         );
         expect(screen.getByText("Participantes: Ana, Bia")).toBeInTheDocument();
-        await user.selectOptions(screen.getByLabelText("Status do pagamento"), "PAID");
+        await selectSystemOption(
+            user,
+            screen.getByRole("combobox", { name: "Status do pagamento" }),
+            "Pago"
+        );
         expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ paymentStatus: "PAID" }));
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
         expect(onSubmit).toHaveBeenCalledOnce();

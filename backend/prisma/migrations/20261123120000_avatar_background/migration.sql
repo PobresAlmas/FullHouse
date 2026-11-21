@@ -1,0 +1,1 @@
+ALTER TABLE "usuario" ADD COLUMN "cor_avatar" VARCHAR(7) NOT NULL DEFAULT '#e8f3e8';

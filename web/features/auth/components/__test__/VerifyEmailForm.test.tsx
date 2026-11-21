@@ -30,10 +30,13 @@ describe("VerifyEmailForm", () => {
         render(<VerifyEmailForm />);
         expect(screen.getByText("Verifique o seu email")).toBeInTheDocument();
         expect(screen.getAllByRole("textbox")).toHaveLength(6);
+        expect(
+            screen.getByText("Enviamos um código de 6 dígitos para user@example.com")
+        ).toBeInTheDocument();
         expect(screen.getByText("Reenviar código em")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Voltar" })).toHaveAttribute(
             "href",
-            "/Forgot-password"
+            "/forgot-password"
         );
     });
 

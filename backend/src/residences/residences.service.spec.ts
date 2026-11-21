@@ -17,6 +17,7 @@ describe("residence creation", () => {
                 }),
             },
             participacao: {
+                findFirst: vi.fn().mockResolvedValue(null),
                 create: vi.fn().mockResolvedValue({ id: "member-1", papel: "LIDER" }),
             },
             categoria_despensa: { createMany: vi.fn().mockResolvedValue({ count: 8 }) },
@@ -45,6 +46,10 @@ describe("residence creation", () => {
             data: { casa_id: "residence-1", usuario_id: "user-1", papel: "LIDER" },
             select: { id: true, papel: true },
         });
+        expect(transaction.participacao.findFirst).toHaveBeenCalledWith({
+            where: { usuario_id: "user-1", data_saida: null },
+            select: { id: true },
+        });
         expect(transaction.categoria_despensa.createMany).toHaveBeenCalledWith({
             data: expect.arrayContaining([
                 { casa_id: "residence-1", nome: "Bebidas", nome_normalizado: "bebidas" },
@@ -58,7 +63,10 @@ describe("residence creation", () => {
         const failure = new Error("membership insert failed");
         const transaction = {
             casa: { create: vi.fn().mockResolvedValue({ id: "residence-1" }) },
-            participacao: { create: vi.fn().mockRejectedValue(failure) },
+            participacao: {
+                findFirst: vi.fn().mockResolvedValue(null),
+                create: vi.fn().mockRejectedValue(failure),
+            },
             categoria_despensa: { createMany: vi.fn() },
         };
         const prisma = {
@@ -70,6 +78,26 @@ describe("residence creation", () => {
 
         await expect(repository.create("Casa", "user-1")).rejects.toBe(failure);
         expect(prisma.$transaction).toHaveBeenCalledOnce();
+    });
+
+    it("rejects creating a second active residence for the same user", async () => {
+        const transaction = {
+            casa: { create: vi.fn() },
+            participacao: {
+                findFirst: vi.fn().mockResolvedValue({ id: "membership-1" }),
+                create: vi.fn(),
+            },
+            categoria_despensa: { createMany: vi.fn() },
+        };
+        const prisma = {
+            $transaction: vi.fn((work: (tx: typeof transaction) => unknown) => work(transaction)),
+        };
+        const repository = new ResidencesRepository(prisma as never);
+
+        await expect(repository.create("Outra casa", "user-1")).rejects.toThrow(
+            "Você já possui uma residência ativa."
+        );
+        expect(transaction.casa.create).not.toHaveBeenCalled();
     });
 
     it.each(["", "   ", "a".repeat(151)])("rejects invalid residence name %j", async (name) => {

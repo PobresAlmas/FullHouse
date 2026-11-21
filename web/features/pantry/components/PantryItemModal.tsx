@@ -1,3 +1,4 @@
+import { SystemSelect } from "@/components/ui/system-select";
 import type { Dispatch, FormEvent, SetStateAction } from "react";
 import { X } from "lucide-react";
 import type { PantryCategory, PantryMember, PantryUnit } from "../api/pantry.api";
@@ -79,7 +80,7 @@ export function PantryItemModal({
                             </FormField>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <FormField label="Categoria">
-                                    <select
+                                    <SystemSelect
                                         required
                                         value={form.categoryId}
                                         onChange={(event) =>
@@ -93,7 +94,7 @@ export function PantryItemModal({
                                                 {category.name}
                                             </option>
                                         ))}
-                                    </select>
+                                    </SystemSelect>
                                 </FormField>
                                 <fieldset className="grid gap-2 sm:col-span-2">
                                     <legend className="mb-2 text-xs font-medium">
@@ -146,7 +147,7 @@ export function PantryItemModal({
                             </div>
                             {form.property === "DONO_ESPECIFICO" && (
                                 <FormField label="Responsável">
-                                    <select
+                                    <SystemSelect
                                         required
                                         value={form.ownerMemberId}
                                         onChange={(event) =>
@@ -159,7 +160,7 @@ export function PantryItemModal({
                                                 {member.name}
                                             </option>
                                         ))}
-                                    </select>
+                                    </SystemSelect>
                                 </FormField>
                             )}
                             <div className="grid gap-4 sm:grid-cols-2">
@@ -189,7 +190,7 @@ export function PantryItemModal({
                                             className="h-10 min-w-0 flex-1 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f] disabled:bg-[#f5f2f6]"
                                             placeholder="0"
                                         />
-                                        <select
+                                        <SystemSelect
                                             value={form.unit}
                                             onChange={(event) =>
                                                 setForm({
@@ -204,7 +205,7 @@ export function PantryItemModal({
                                                     {label}
                                                 </option>
                                             ))}
-                                        </select>
+                                        </SystemSelect>
                                     </div>
                                 </FormField>
                                 <FormField label="Quantidade mínima (opcional)">

@@ -1,4 +1,5 @@
 "use client";
+import { SystemSelect } from "@/components/ui/system-select";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
@@ -335,7 +336,7 @@ export default function PetsPage() {
                         residences.length > 1 ? (
                             <label className="flex items-center gap-2 rounded-xl bg-[#e8e5e9] p-1 text-xs">
                                 <span className="sr-only">Trocar residência</span>
-                                <select
+                                <SystemSelect
                                     value={residenceId}
                                     onChange={(event) => void changeResidence(event.target.value)}
                                     className="max-w-56 rounded-lg border-0 bg-[#4e812f] px-4 py-2 text-white outline-none"
@@ -349,7 +350,7 @@ export default function PetsPage() {
                                             {item.name}
                                         </option>
                                     ))}
-                                </select>
+                                </SystemSelect>
                             </label>
                         ) : null
                     }
@@ -422,7 +423,7 @@ export default function PetsPage() {
                                             />
                                         </FormField>
                                         <FormField label="Espécie" required>
-                                            <select
+                                            <SystemSelect
                                                 required
                                                 value={form.species}
                                                 onChange={(event) =>
@@ -438,7 +439,7 @@ export default function PetsPage() {
                                                 <option value="Gato">Gato</option>
                                                 <option value="Pássaro">Pássaro</option>
                                                 <option value="Outro">Outro</option>
-                                            </select>
+                                            </SystemSelect>
                                         </FormField>
                                         <FormField label="Raça">
                                             <input
@@ -690,7 +691,7 @@ export default function PetsPage() {
                                             className="mb-5 grid gap-3 rounded-xl border border-[#d9d1dc] bg-[#faf7fb] p-4 md:grid-cols-2 xl:grid-cols-4"
                                         >
                                             <FormField label="Tipo" required>
-                                                <select
+                                                <SystemSelect
                                                     required
                                                     value={careForm.type}
                                                     onChange={(event) =>
@@ -706,7 +707,7 @@ export default function PetsPage() {
                                                             {type.label}
                                                         </option>
                                                     ))}
-                                                </select>
+                                                </SystemSelect>
                                             </FormField>
                                             <FormField label="Título" required>
                                                 <input
@@ -757,7 +758,7 @@ export default function PetsPage() {
                                                 />
                                             </FormField>
                                             <FormField label="Pagador/realizador">
-                                                <select
+                                                <SystemSelect
                                                     value={careForm.paidById ?? ""}
                                                     onChange={(event) =>
                                                         setCareForm({
@@ -773,10 +774,10 @@ export default function PetsPage() {
                                                             {member.name}
                                                         </option>
                                                     ))}
-                                                </select>
+                                                </SystemSelect>
                                             </FormField>
                                             <FormField label="Despesa vinculada (opcional)">
-                                                <select
+                                                <SystemSelect
                                                     value={careForm.expenseId ?? ""}
                                                     onChange={(event) =>
                                                         setCareForm({
@@ -795,7 +796,7 @@ export default function PetsPage() {
                                                             )}
                                                         </option>
                                                     ))}
-                                                </select>
+                                                </SystemSelect>
                                             </FormField>
                                             <FormField label="Descrição" className="md:col-span-2">
                                                 <textarea
@@ -914,8 +915,14 @@ function FormField({
 }) {
     return (
         <label className={"grid gap-2 text-xs font-medium " + className}>
-            {label}
-            {required && <span className="text-red-600"> *</span>}
+            <span className="inline-flex items-center gap-1">
+                {label}
+                {required && (
+                    <span aria-hidden="true" title="Campo obrigatório" className="text-red-600">
+                        *
+                    </span>
+                )}
+            </span>
             {children}
         </label>
     );

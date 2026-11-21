@@ -8,6 +8,7 @@ describe("toUserResponse", () => {
         apelido: string | null;
         email: string;
         foto_url: string | null;
+        cor_avatar: string;
         status_moradia: string;
         senha_hash: string;
         anonimizado_em: null;
@@ -19,6 +20,7 @@ describe("toUserResponse", () => {
         apelido: null,
         email: "a@example.com",
         foto_url: null,
+        cor_avatar: "#5b9635",
         status_moradia: "PROCURANDO",
         senha_hash: "secret",
         anonimizado_em: null,
@@ -33,6 +35,7 @@ describe("toUserResponse", () => {
             nickname: undefined,
             email: "a@example.com",
             photo: undefined,
+            avatarBackgroundColor: "#5b9635",
             housingStatus: "PROCURANDO",
         });
         expect(toUserResponse(user)).not.toHaveProperty("senha_hash");
@@ -42,5 +45,11 @@ describe("toUserResponse", () => {
         expect(
             toUserResponse({ ...user, apelido: "Nina", foto_url: "https://cdn/photo.png" })
         ).toMatchObject({ nickname: "Nina", photo: "https://cdn/photo.png" });
+    });
+
+    it("maps the selected avatar color while preserving a profile photo", () => {
+        expect(
+            toUserResponse({ ...user, foto_url: "https://cdn/photo.png", cor_avatar: "#2f7f6f" })
+        ).toMatchObject({ photo: "https://cdn/photo.png", avatarBackgroundColor: "#2f7f6f" });
     });
 });
