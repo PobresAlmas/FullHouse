@@ -615,7 +615,7 @@ export default function TasksPage() {
                 />
 
                 <main className="mx-auto max-w-[1600px] p-5 md:p-6">
-                    {error && (
+                    {error && !showForm && (
                         <div
                             role="alert"
                             className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
@@ -854,6 +854,9 @@ function TagFilter({
     return (
         <button
             type="button"
+            aria-pressed={active}
+            data-slot="task-tag-filter"
+            data-active={active}
             onClick={onClick}
             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#356a22] ${active ? "border-[#8bb876] bg-[#dcebd5] text-[#263922]" : "border-[#ded7e1] bg-white text-[#3f3944] hover:bg-[#f6f2f7]"}`}
         >
@@ -1139,7 +1142,7 @@ function TaskRow({
                                     setSelectedRecipientId("");
                                     setPreferredTaskId("");
                                 }}
-                                className="grid size-8 place-items-center rounded-full border border-[#cfc7d3] text-[#356a22] hover:bg-[#eff7eb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
+                                className="grid size-8 cursor-pointer place-items-center rounded-full border border-[#cfc7d3] text-[#356a22] hover:bg-[#eff7eb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
                             >
                                 <Repeat2 size={15} />
                             </button>

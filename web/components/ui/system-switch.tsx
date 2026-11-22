@@ -30,6 +30,7 @@ export function SystemSwitch({
         >
             <span
                 aria-hidden="true"
+                data-slot="system-switch-thumb"
                 className="absolute left-[3px] top-[3px] block size-[22px] rounded-full bg-white shadow-sm transition-transform duration-200 ease-out"
                 style={{ transform: checked ? "translateX(24px)" : "translateX(0)" }}
             />

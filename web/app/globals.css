@@ -273,6 +273,12 @@ html.dark [class*="text-[#356a22]"] {
     color: #9bd47c !important;
 }
 
+html.dark [data-slot="task-tag-filter"][data-active="true"] {
+    background-color: #35482f !important;
+    border-color: #8bb876 !important;
+    color: #f1f7ee !important;
+}
+
 @layer base {
     * {
         @apply border-border outline-ring/50;
@@ -344,6 +350,10 @@ html.dark .system-select-option[aria-selected="true"] {
 html.dark .system-select-option[aria-selected="true"]:hover,
 html.dark .system-select-option[aria-selected="true"]:focus-visible {
     background-color: #3b5435 !important;
+}
+
+html.dark [data-slot="system-switch-thumb"] {
+    background-color: #ffffff !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
