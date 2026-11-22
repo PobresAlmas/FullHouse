@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
     completePersonalTask,
     createPersonalTask,
+    createTaskExchangeRequest,
     deletePersonalTask,
     getPersonalTasks,
     getTaskExchangeRequests,
@@ -13,6 +14,7 @@ import {
     getTasks,
 } from "../../api/tasks.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { createResidenceFixture } from "@/test/fixtures/residence";
 import type { Task } from "../../api/tasks.api";
 import TasksPage from "../TasksPage";
 
@@ -76,6 +78,19 @@ const task: Task = {
     reminderAt: null,
     status: "PENDENTE",
     completedAt: null,
+};
+
+const residence = createResidenceFixture();
+const ana = { id: "member-1", name: "Ana Silva", role: "ADMINISTRADOR" } as const;
+const bruno = { id: "member-2", name: "Bruno Lima", role: "MORADOR" } as const;
+const residenceTask: Task = {
+    ...task,
+    id: "residence-task-1",
+    title: "Limpar a cozinha",
+    scope: "CASA",
+    visibility: "PUBLICA",
+    residenceId: residence.id,
+    assignee: { id: ana.id, name: ana.name },
 };
 
 describe("TasksPage", () => {
@@ -182,5 +197,92 @@ describe("TasksPage", () => {
         await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
         expect(await screen.findByText("Nenhuma tarefa pessoal ainda.")).toBeInTheDocument();
         expect(getPersonalTasks).toHaveBeenCalledTimes(2);
+    });
+
+    it("lists completed residence tasks under all and applies each status filter", async () => {
+        const user = userEvent.setup();
+        const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const pending = { ...residenceTask, dueAt: futureDate };
+        const overdue: Task = {
+            ...residenceTask,
+            id: "residence-task-2",
+            title: "Levar o lixo",
+            dueAt: "2020-01-01T12:00:00.000Z",
+            status: "ATRASADA",
+        };
+        const completed: Task = {
+            ...residenceTask,
+            id: "residence-task-3",
+            title: "Regar as plantas",
+            dueAt: futureDate,
+            status: "CONCLUIDA",
+            completedAt: new Date().toISOString(),
+        };
+        vi.mocked(getTaskResidences).mockResolvedValue([residence]);
+        vi.mocked(getTaskMembers).mockResolvedValue([ana]);
+        vi.mocked(getTasks).mockResolvedValue([pending, overdue, completed]);
+
+        render(<TasksPage />);
+
+        const filters = within(screen.getByRole("group", { name: "Filtrar por status" }));
+        await screen.findByRole("heading", { name: completed.title });
+        expect(filters.getByRole("button", { name: "Todas", pressed: true })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: pending.title })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: overdue.title })).toBeInTheDocument();
+
+        await user.click(filters.getByRole("button", { name: "Atrasadas" }));
+        expect(screen.getByRole("heading", { name: overdue.title })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: pending.title })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: completed.title })).not.toBeInTheDocument();
+
+        await user.click(filters.getByRole("button", { name: "Pendentes" }));
+        expect(screen.getByRole("heading", { name: pending.title })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: completed.title })).not.toBeInTheDocument();
+
+        await user.click(filters.getByRole("button", { name: "Concluídas" }));
+        expect(screen.getByRole("heading", { name: completed.title })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: overdue.title })).not.toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: pending.title })).not.toBeInTheDocument();
+    });
+
+    it("sends an exchange from an assigned residence task with an optional suggestion", async () => {
+        const user = userEvent.setup();
+        const suggested: Task = {
+            ...residenceTask,
+            id: "residence-task-2",
+            title: "Organizar a sala",
+            assignee: { id: bruno.id, name: bruno.name },
+        };
+        vi.mocked(getTaskResidences).mockResolvedValue([residence]);
+        vi.mocked(getTaskMembers).mockResolvedValue([ana, bruno]);
+        vi.mocked(getTasks).mockResolvedValue([residenceTask, suggested]);
+        vi.mocked(createTaskExchangeRequest).mockResolvedValue(undefined);
+
+        render(<TasksPage />);
+
+        await user.click(
+            await screen.findByRole("button", {
+                name: `Solicitar troca da tarefa ${residenceTask.title}`,
+            })
+        );
+        expect(
+            screen.queryByRole("button", { name: `Solicitar troca da tarefa ${suggested.title}` })
+        ).not.toBeInTheDocument();
+        const exchange = within(screen.getByRole("dialog", { name: "Solicitar troca" }));
+        await user.click(exchange.getByRole("button", { name: bruno.name }));
+        await user.click(
+            exchange.getByRole("combobox", { name: `Tarefa desejada de ${bruno.name}` })
+        );
+        await user.click(exchange.getByRole("option", { name: suggested.title }));
+        await user.click(exchange.getByRole("button", { name: "Enviar pedido" }));
+
+        expect(await screen.findByText("Pedido de troca enviado.")).toBeInTheDocument();
+        expect(createTaskExchangeRequest).toHaveBeenCalledOnce();
+        expect(createTaskExchangeRequest).toHaveBeenCalledWith(
+            residence.id,
+            residenceTask.id,
+            bruno.id,
+            suggested.id
+        );
     });
 });
