@@ -544,14 +544,6 @@ export function RoomsPage() {
                             </label>
                         ) : undefined
                     }
-                    profile={
-                        <span
-                            className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white"
-                            aria-label="Perfil"
-                        >
-                            {memberName.slice(0, 1).toUpperCase()}
-                        </span>
-                    }
                 />
                 <main className="mx-auto max-w-[1480px] p-5 md:p-10">
                     <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border-b border-[#dedee4]">

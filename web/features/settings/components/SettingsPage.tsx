@@ -491,30 +491,32 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
                     settingsHref="/settings?section=house"
                 />
                 <main className="mx-auto max-w-[1500px] p-4 md:p-6 lg:p-7">
-                    <div className="grid gap-5 lg:grid-cols-[350px_minmax(0,1fr)] lg:gap-8">
-                        <nav
-                            aria-label="Configurações do perfil"
-                            className="rounded-xl border border-[#d9d0dc] bg-[#fffaff] p-3 md:p-4 lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:self-start lg:overflow-y-auto lg:p-4"
-                        >
-                            <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1">
-                                {subnav.map(({ id, label, icon: Icon }) => (
-                                    <li key={id}>
-                                        <Link
-                                            href={sectionHref(id)}
-                                            aria-current={id === section ? "page" : undefined}
-                                            className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f] ${
-                                                id === section
-                                                    ? "settings-nav-active bg-[#eadff6] font-bold text-[#26232a]"
-                                                    : "font-medium text-[#514c56] hover:bg-[#f3edf7]"
-                                            }`}
-                                        >
-                                            <Icon size={18} aria-hidden="true" />
-                                            {label}
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </nav>
+                    <div className="grid gap-5 lg:min-h-screen lg:grid-cols-[350px_minmax(0,1fr)] lg:gap-8">
+                        <div className="lg:min-h-[calc(100vh-120px)]">
+                            <nav
+                                aria-label="Configurações do perfil"
+                                className="rounded-xl border border-[#d9d0dc] bg-[#fffaff] p-3 md:p-4 lg:fixed lg:bottom-6 lg:left-[calc(220px+1.75rem)] lg:top-[88px] lg:z-30 lg:w-[350px] lg:overflow-y-auto lg:p-4"
+                            >
+                                <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1">
+                                    {subnav.map(({ id, label, icon: Icon }) => (
+                                        <li key={id}>
+                                            <Link
+                                                href={sectionHref(id)}
+                                                aria-current={id === section ? "page" : undefined}
+                                                className={`settings-nav flex min-h-11 items-center gap-3 rounded-lg px-3 py-2 text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f] ${
+                                                    id === section
+                                                        ? "settings-nav-active bg-[#e9defa] font-medium text-[#4b2b9b]"
+                                                        : "font-medium text-[#514c56] hover:bg-[#f3edf7]"
+                                                }`}
+                                            >
+                                                <Icon size={18} aria-hidden="true" />
+                                                {label}
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </nav>
+                        </div>
 
                         <section className="min-w-0" aria-labelledby="settings-heading">
                             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">

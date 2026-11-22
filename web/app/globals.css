@@ -313,6 +313,11 @@ html.tasks-hide-page-scrollbar body::-webkit-scrollbar {
     animation: settings-notice-enter 220ms ease-out both;
 }
 
+.settings-nav {
+    font-family: var(--font-roboto), sans-serif;
+    font-weight: 500;
+}
+
 html.dark .settings-nav-active,
 html.dark .settings-tab-active {
     background-color: #393342 !important;

@@ -407,14 +407,6 @@ export default function ShoppingListPage() {
                             </label>
                         ) : null
                     }
-                    profile={
-                        <span
-                            className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white"
-                            aria-label="Perfil"
-                        >
-                            {memberName.slice(0, 1).toUpperCase()}
-                        </span>
-                    }
                 />
 
                 <main className="mx-auto max-w-4xl p-4 md:p-6">
