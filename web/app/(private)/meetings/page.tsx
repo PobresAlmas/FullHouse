@@ -123,13 +123,15 @@ export default function MeetingsPage() {
                     greetingName={user?.name ?? "Morador"}
                     residenceName={residence?.name}
                     subtitle="Organize encontros e acompanhe as confirmações dos moradores."
+                    residenceControl={
+                        <ResidenceSelector
+                            residences={residences}
+                            value={residenceId}
+                            onChange={changeResidence}
+                        />
+                    }
                 />
                 <h1 className="my-5 text-2xl font-bold">Reuniões</h1>
-                <ResidenceSelector
-                    residences={residences}
-                    value={residenceId}
-                    onChange={changeResidence}
-                />
                 {error && (
                     <p role="alert" className="my-3 text-sm text-red-700">
                         {error}

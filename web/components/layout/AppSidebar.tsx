@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
     CheckSquare,
     DollarSign,
@@ -15,12 +15,14 @@ import {
     MessageCircle,
     ScrollText,
     CalendarDays,
+    LogOut,
 } from "lucide-react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import {
     getResidences,
     RESIDENCE_MEMBERSHIP_CHANGED_EVENT,
 } from "@/features/residences/api/residences.api";
+import { AppShellContext } from "./AppShellContext";
 
 export type AppSection =
     | "home"
@@ -72,12 +74,15 @@ export function AppSidebar({
     activeSection,
     residenceName,
     noResidence,
+    global = false,
 }: {
     activeSection: AppSection;
     residenceName?: string | null;
     noResidence?: boolean;
+    global?: boolean;
 }) {
-    const { user, loading: authLoading } = useAuth();
+    const insideShell = useContext(AppShellContext);
+    const { user, loading: authLoading, logout } = useAuth();
     const userId = user?.id;
     const [membership, setMembership] = useState<{
         userId: string;
@@ -131,6 +136,8 @@ export function AppSidebar({
     const displayedResidenceName =
         residenceName ??
         (membership && membership.userId === userId ? membership.residenceName : undefined);
+
+    if (insideShell && !global) return null;
 
     return (
         <aside className="flex shrink-0 flex-col border-b border-[#d9d0dc] bg-[#f8f4fa] px-3 py-3 md:sticky md:top-0 md:h-screen md:min-h-0 md:w-[220px] md:self-start md:overflow-y-auto md:border-b-0 md:border-r md:px-4 md:py-5">
@@ -190,6 +197,14 @@ export function AppSidebar({
                     );
                 })}
             </nav>
+            <button
+                type="button"
+                onClick={() => void logout()}
+                className="mt-3 flex min-h-11 cursor-pointer items-center justify-center gap-3 rounded-xl px-3 text-xs text-[#a14d55] transition-colors hover:bg-[#f8e9eb] hover:text-[#8e3540] md:mt-auto md:justify-start md:text-sm"
+            >
+                <LogOut size={17} />
+                <span>Sair</span>
+            </button>
             {membershipError && membershipError.userId === userId && (
                 <p role="alert" className="mt-2 px-2 text-xs text-red-700">
                     {membershipError.message}

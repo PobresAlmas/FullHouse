@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { House, Settings } from "lucide-react";
+import { House } from "lucide-react";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { SettingsLink } from "./SettingsLink";
+import { useContext } from "react";
+import { AppShellContext } from "./AppShellContext";
 
 export function AppPageHeader({
     greetingName,
@@ -9,7 +13,10 @@ export function AppPageHeader({
     subtitle,
     residenceControl,
     profile,
-    settingsHref,
+    global = false,
+    profileName,
+    profilePhoto,
+    profileBackgroundColor,
 }: {
     greetingName: string;
     residenceName?: string | null;
@@ -17,8 +24,15 @@ export function AppPageHeader({
     residenceControl?: ReactNode;
     profile?: ReactNode;
     settingsHref?: string;
+    global?: boolean;
+    profileName?: string;
+    profilePhoto?: string;
+    profileBackgroundColor?: string;
 }) {
+    const insideShell = useContext(AppShellContext);
     const firstName = greetingName.trim().split(/\s+/)[0] || "Morador";
+
+    if (insideShell && !global) return null;
 
     return (
         <>
@@ -34,26 +48,24 @@ export function AppPageHeader({
                         subtitle && <div className="text-xs text-[#96909a]">{subtitle}</div>
                     )}
                 </div>
-                {residenceControl}
+                {residenceControl && <div className="shrink-0">{residenceControl}</div>}
                 <div className="flex items-center gap-3 text-[#514c56]">
                     <NotificationBell />
-                    {settingsHref ? (
+                    <SettingsLink />
+                    {profile ?? (
                         <Link
-                            href={settingsHref}
-                            aria-label="Configurações"
-                            className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
+                            href="/settings?section=account"
+                            aria-label="Abrir configurações da conta"
+                            className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4e812f]"
                         >
-                            <Settings size={19} />
+                            <UserAvatar
+                                name={profileName || greetingName}
+                                photo={profilePhoto}
+                                backgroundColor={profileBackgroundColor}
+                                shape="circle"
+                            />
                         </Link>
-                    ) : (
-                        <span
-                            aria-label="Configurações"
-                            className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
-                        >
-                            <Settings size={19} />
-                        </span>
                     )}
-                    {profile}
                 </div>
             </header>
             <div aria-hidden="true" className="hidden h-[72px] shrink-0 md:block" />
