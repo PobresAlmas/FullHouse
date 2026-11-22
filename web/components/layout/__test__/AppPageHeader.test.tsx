@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AppPageHeader } from "../AppPageHeader";
+import { AppShellContext } from "../AppShellContext";
 
 describe("AppPageHeader", () => {
     it("renders the shared house and settings icons with a residence selector slot", () => {
@@ -33,5 +34,23 @@ describe("AppPageHeader", () => {
         render(<AppPageHeader greetingName={greetingName} />);
 
         expect(screen.getByRole("heading", { name: `Bom dia, ${firstName}` })).toBeInTheDocument();
+    });
+
+    it("always renders a working, pointer-enabled settings link", () => {
+        render(<AppPageHeader greetingName="Ana" />);
+
+        const settings = screen.getByRole("link", { name: "Configurações" });
+        expect(settings).toHaveAttribute("href", "/settings");
+        expect(settings).toHaveClass("cursor-pointer");
+    });
+
+    it("does not render a page-specific header inside the shared app shell", () => {
+        render(
+            <AppShellContext.Provider value>
+                <AppPageHeader greetingName="Ana" />
+            </AppShellContext.Provider>
+        );
+
+        expect(screen.queryByRole("banner")).not.toBeInTheDocument();
     });
 });
