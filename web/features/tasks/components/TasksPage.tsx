@@ -1,7 +1,7 @@
 "use client";
 import { SystemSelect } from "@/components/ui/system-select";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import {
     Bell,
@@ -10,7 +10,6 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock3,
-    LogOut,
     Plus,
     Repeat2,
     Trash2,
@@ -36,7 +35,6 @@ import {
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
-import { UserAvatar } from "@/components/ui/user-avatar";
 import type {
     Task,
     TaskAssignmentType,
@@ -187,7 +185,7 @@ function isPersonalTask(task: Task) {
 }
 
 export default function TasksPage() {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const [residences, setResidences] = useState<TaskResidence[]>([]);
     const [residenceId, setResidenceId] = useState("");
     const [members, setMembers] = useState<TaskMember[]>([]);
@@ -210,15 +208,10 @@ export default function TasksPage() {
     const [dataError, setDataError] = useState("");
     const [notice, setNotice] = useState("");
     const [exchangeRequests, setExchangeRequests] = useState<TaskExchangeRequest[]>([]);
-    const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-    const [loggingOut, setLoggingOut] = useState(false);
-    const [logoutError, setLogoutError] = useState("");
-    const profileMenuRef = useRef<HTMLDivElement>(null);
 
     const residence = residences.find((item) => item.id === residenceId) ?? null;
     const myMemberId = residence?.membership?.id ?? "";
     const userName = user?.name?.trim() || user?.email?.split("@")[0] || "Minha conta";
-    const avatarName = user?.nickname?.trim() || user?.name?.trim() || user?.email?.trim() || "?";
     const canEditHouseTasks = canCreateOrEditResidenceContent(
         residence?.membership?.role,
         residence?.creationEditPolicy
@@ -300,24 +293,6 @@ export default function TasksPage() {
         window.addEventListener("keydown", closeOnEscape);
         return () => window.removeEventListener("keydown", closeOnEscape);
     }, [showForm]);
-
-    useEffect(() => {
-        if (!profileMenuOpen) return;
-        function closeMenu(event: PointerEvent) {
-            if (event.target instanceof Node && !profileMenuRef.current?.contains(event.target)) {
-                setProfileMenuOpen(false);
-            }
-        }
-        function closeOnEscape(event: KeyboardEvent) {
-            if (event.key === "Escape") setProfileMenuOpen(false);
-        }
-        document.addEventListener("pointerdown", closeMenu);
-        document.addEventListener("keydown", closeOnEscape);
-        return () => {
-            document.removeEventListener("pointerdown", closeMenu);
-            document.removeEventListener("keydown", closeOnEscape);
-        };
-    }, [profileMenuOpen]);
 
     const contextualTasks = tasks;
     const categories = useMemo(
@@ -582,17 +557,6 @@ export default function TasksPage() {
         }
     }
 
-    async function handleLogout() {
-        setLoggingOut(true);
-        setLogoutError("");
-        try {
-            await logout();
-        } catch (logoutFailure: unknown) {
-            setLogoutError(getErrorMessage(logoutFailure));
-            setLoggingOut(false);
-        }
-    }
-
     return (
         <div className="min-h-screen bg-[#f8f4fa] text-[#29252d] md:flex">
             <AppSidebar activeSection="tasks" residenceName={residence?.name} />
@@ -648,58 +612,6 @@ export default function TasksPage() {
                         ) : null
                     }
                     settingsHref="/settings"
-                    profile={
-                        <div className="relative" ref={profileMenuRef}>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setProfileMenuOpen((open) => !open);
-                                    setLogoutError("");
-                                }}
-                                aria-label={`Abrir menu da conta de ${userName}`}
-                                aria-haspopup="menu"
-                                aria-expanded={profileMenuOpen}
-                                className="grid size-10 place-items-center rounded-xl transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
-                            >
-                                <UserAvatar
-                                    name={avatarName}
-                                    photo={user?.photo}
-                                    backgroundColor={user?.avatarBackgroundColor}
-                                />
-                            </button>
-                            {profileMenuOpen && (
-                                <div
-                                    role="menu"
-                                    aria-label="Menu da conta"
-                                    className="absolute right-0 top-12 z-30 w-64 rounded-xl border border-[#d2c8d5] bg-white p-3 text-[#302a32] shadow-lg"
-                                >
-                                    <div className="border-b border-[#eee8ef] px-2 pb-3">
-                                        <p className="truncate text-sm font-semibold">{userName}</p>
-                                        {user?.email && (
-                                            <p className="truncate text-xs text-[#77717a]">
-                                                {user.email}
-                                            </p>
-                                        )}
-                                    </div>
-                                    {logoutError && (
-                                        <p role="alert" className="px-2 pt-2 text-xs text-red-700">
-                                            Não foi possível sair: {logoutError}
-                                        </p>
-                                    )}
-                                    <button
-                                        type="button"
-                                        role="menuitem"
-                                        onClick={() => void handleLogout()}
-                                        disabled={loggingOut}
-                                        className="mt-2 flex min-h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-sm text-[#514c56] transition hover:bg-[#f7f2fa] disabled:cursor-wait disabled:opacity-60"
-                                    >
-                                        <LogOut size={16} />
-                                        {loggingOut ? "Saindo…" : "Sair"}
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    }
                 />
 
                 <main className="mx-auto max-w-[1600px] p-5 md:p-6">

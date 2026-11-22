@@ -194,15 +194,6 @@ export function RoomNegotiationPage() {
                     greetingName={name}
                     subtitle="Negociação de quarto"
                     settingsHref="/settings"
-                    profile={
-                        <Link
-                            href="/settings?section=account"
-                            aria-label="Perfil"
-                            className="grid size-10 place-items-center rounded-full bg-[#4f7f63] font-semibold text-white"
-                        >
-                            {name.slice(0, 1).toUpperCase()}
-                        </Link>
-                    }
                 />
                 <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col p-5 md:overflow-hidden md:p-8">
                     <Link href="/rooms" className="text-sm text-[#315f35] underline">

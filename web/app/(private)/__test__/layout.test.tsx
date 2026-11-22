@@ -5,6 +5,9 @@ vi.mock("@/components/auth/ProtectedRoute", () => ({
         <section data-testid="protected">{children}</section>
     ),
 }));
+vi.mock("@/components/layout/AppShell", () => ({
+    AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 import PrivateLayout from "../layout";
 
 describe("PrivateLayout", () => {

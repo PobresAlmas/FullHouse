@@ -122,14 +122,16 @@ export default function ChatPage() {
                     greetingName={user?.name ?? "Morador"}
                     residenceName={residences.find((item) => item.id === residenceId)?.name}
                     subtitle="Converse com os moradores da residência."
+                    residenceControl={
+                        <ResidenceSelector
+                            residences={residences}
+                            value={residenceId}
+                            onChange={changeResidence}
+                        />
+                    }
                 />
                 <h1 className="my-5 text-2xl font-bold">Chat da casa</h1>
-                <div className="mb-4 flex items-center justify-between gap-3">
-                    <ResidenceSelector
-                        residences={residences}
-                        value={residenceId}
-                        onChange={changeResidence}
-                    />
+                <div className="mb-4 flex items-center justify-end gap-3">
                     <span role="status" className="text-sm text-slate-600">
                         {connected ? "Conectado" : "Reconectando…"}
                     </span>

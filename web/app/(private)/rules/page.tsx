@@ -94,13 +94,15 @@ export default function HouseRulesPage() {
                     greetingName={user?.name ?? "Morador"}
                     residenceName={residences.find((item) => item.id === residenceId)?.name}
                     subtitle="Regras da residência"
+                    residenceControl={
+                        <ResidenceSelector
+                            residences={residences}
+                            value={residenceId}
+                            onChange={changeResidence}
+                        />
+                    }
                 />
                 <h1 className="my-5 text-2xl font-bold">Regras da casa</h1>
-                <ResidenceSelector
-                    residences={residences}
-                    value={residenceId}
-                    onChange={changeResidence}
-                />
                 {error && (
                     <p role="alert" className="my-3 text-sm text-red-700">
                         {error}

@@ -79,13 +79,10 @@ const task: Task = {
 };
 
 describe("TasksPage", () => {
-    const logout = vi.fn();
-
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(useAuth).mockReturnValue({
             user: { id: "user-1", name: "Ana Silva", email: "ana@example.com" },
-            logout,
         } as never);
         vi.mocked(getTaskResidences).mockResolvedValue([]);
         vi.mocked(getPersonalTasks).mockResolvedValue([]);
@@ -99,7 +96,6 @@ describe("TasksPage", () => {
             completedAt: new Date().toISOString(),
         });
         vi.mocked(deletePersonalTask).mockResolvedValue(undefined);
-        logout.mockResolvedValue(undefined);
     });
 
     it("loads personal tasks when the user has no residence and shows the empty state", async () => {
@@ -186,16 +182,5 @@ describe("TasksPage", () => {
         await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
         expect(await screen.findByText("Nenhuma tarefa pessoal ainda.")).toBeInTheDocument();
         expect(getPersonalTasks).toHaveBeenCalledTimes(2);
-    });
-
-    it("calls logout from the account menu", async () => {
-        const user = userEvent.setup();
-        render(<TasksPage />);
-
-        await screen.findByText("Nenhuma tarefa pessoal ainda.");
-        await user.click(screen.getByRole("button", { name: "Abrir menu da conta de Ana Silva" }));
-        await user.click(screen.getByRole("menuitem", { name: "Sair" }));
-
-        await waitFor(() => expect(logout).toHaveBeenCalledOnce());
     });
 });

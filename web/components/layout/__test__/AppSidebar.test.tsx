@@ -1,10 +1,11 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "../AppSidebar";
 
 const authState = vi.hoisted(() => ({
     user: null as { id: string } | null,
     loading: false,
+    logout: vi.fn(),
 }));
 const getResidences = vi.hoisted(() => vi.fn());
 
@@ -18,6 +19,7 @@ describe("AppSidebar", () => {
     beforeEach(() => {
         authState.user = null;
         authState.loading = false;
+        authState.logout.mockReset();
         getResidences.mockReset();
     });
 
@@ -48,6 +50,15 @@ describe("AppSidebar", () => {
         expect(screen.queryByRole("link", { name: "Quartos" })).not.toBeInTheDocument();
         expect(screen.queryByRole("link", { name: "Perfil" })).not.toBeInTheDocument();
         expect(screen.getByText("Nenhuma casa associada")).toBeInTheDocument();
+    });
+
+    it("logs out from the understated bottom menu item", () => {
+        render(<AppSidebar activeSection="home" noResidence={false} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Sair" }));
+
+        expect(authState.logout).toHaveBeenCalledOnce();
+        expect(screen.getByRole("button", { name: "Sair" })).toHaveClass("text-[#a14d55]");
     });
 
     it("shows home, room search, and settings navigation when no residence is linked", () => {
