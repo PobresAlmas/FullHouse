@@ -2,17 +2,17 @@
 
 São nove capturas **enviadas pelo usuário**. Trate-as como referência de hierarquia, tipografia, densidade, cores, espaçamento, estados e organização. Não recriar layout genérico de “dashboard de configurações”.
 
-| Captura | UI a respeitar | Observações |
-|---|---|---|
-| `Perfil - Casa.png` | Informações da casa e moradores | Nome e data da casa, lista de moradores |
-| `Perfil - Moradores.png` | Lista de moradores | Nome, email, função e menu contextual |
-| `Perfil - Permissões.png` | Permissões individuais | Atenção: backend tem **política global**, não os três níveis visuais por pessoa |
-| `Perfil - Notificações.png` | Histórico/centro de notificações | Backend existente lista só parte dos resultados; verificar paginação |
-| `Perfil - Preferências _ Geral.png` | Geral | Nome da casa, data de criação, aparência e tipos de notificação |
-| `Perfil - Preferências _ Categorias.png` | Categorias | CRUD de categorias da despensa: reaproveitar API existente |
-| `Perfil - Preferências _ Despensa.png` | Despensa | Antecedência de validade e exibição de vencidos |
-| `Perfil - Preferências _ Financeiro.png` | Financeiro | Antecedência de vencimento e exibição de atrasadas |
-| `Perfil - Preferências _ Pets.png` | Pets | Preferências para lembretes de vacinas, vermífugo e consultas |
+| Captura                                  | UI a respeitar                   | Observações                                                                     |
+| ---------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------- |
+| `Perfil - Casa.png`                      | Informações da casa e moradores  | Nome e data da casa, lista de moradores                                         |
+| `Perfil - Moradores.png`                 | Lista de moradores               | Nome, email, função e menu contextual                                           |
+| `Perfil - Permissões.png`                | Permissões individuais           | Atenção: backend tem **política global**, não os três níveis visuais por pessoa |
+| `Perfil - Notificações.png`              | Histórico/centro de notificações | Backend existente lista só parte dos resultados; verificar paginação            |
+| `Perfil - Preferências _ Geral.png`      | Geral                            | Nome da casa, data de criação, aparência e tipos de notificação                 |
+| `Perfil - Preferências _ Categorias.png` | Categorias                       | CRUD de categorias da despensa: reaproveitar API existente                      |
+| `Perfil - Preferências _ Despensa.png`   | Despensa                         | Antecedência de validade e exibição de vencidos                                 |
+| `Perfil - Preferências _ Financeiro.png` | Financeiro                       | Antecedência de vencimento e exibição de atrasadas                              |
+| `Perfil - Preferências _ Pets.png`       | Pets                             | Preferências para lembretes de vacinas, vermífugo e consultas                   |
 
 ## Diretrizes de fidelidade
 
