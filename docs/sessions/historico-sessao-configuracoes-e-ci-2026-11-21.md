@@ -8,16 +8,16 @@ Este documento conserva **literalmente todo o texto presente no arquivo `Texto c
 
 ## Índice cronológico
 
-| Horário exibido | Assunto presente na transcrição |
-| --- | --- |
-| 10:26–10:27 | Fidelidade às telas de `docs/design-references` e primeira implementação |
-| 10:48–10:53 | Execução com Docker, backend fora do Docker e erro `ERR_MODULE_NOT_FOUND` |
-| 11:08 | Ajustes de permissões, moradores, casa e preferências |
-| 14:30–14:39 | Desempenho e cobertura de testes |
-| 14:59–15:00 | Integração HTTP e limitações dos testes com serviços simulados |
-| 15:04–15:08 | Commit e falhas de testes no CI/CD |
-| 15:14–15:43 | Correção dos testes, lint, formatação, build e Husky |
-| 15:53–16:04 | Solicitações de documentação integral e limites da transcrição anterior |
+| Horário exibido | Assunto presente na transcrição                                           |
+| --------------- | ------------------------------------------------------------------------- |
+| 10:26–10:27     | Fidelidade às telas de `docs/design-references` e primeira implementação  |
+| 10:48–10:53     | Execução com Docker, backend fora do Docker e erro `ERR_MODULE_NOT_FOUND` |
+| 11:08           | Ajustes de permissões, moradores, casa e preferências                     |
+| 14:30–14:39     | Desempenho e cobertura de testes                                          |
+| 14:59–15:00     | Integração HTTP e limitações dos testes com serviços simulados            |
+| 15:04–15:08     | Commit e falhas de testes no CI/CD                                        |
+| 15:14–15:43     | Correção dos testes, lint, formatação, build e Husky                      |
+| 15:53–16:04     | Solicitações de documentação integral e limites da transcrição anterior   |
 
 > Os horários e as referências temáticas acima são apenas um índice. **O registro original completo, sem edição, vem abaixo.**
 
@@ -68,7 +68,7 @@ README.mdREADME.md+5-6
 docker-compose.ymldocker-compose.yml+2-0
 
 a tela de permissões não está NADA parecida!
-A tela de moradores até parece, mas eu quero que seja estritamente igual, com o formato de tabela, com as badges e com os três botões com as opções de remover morador para o admin nos 3 potnos. 
+A tela de moradores até parece, mas eu quero que seja estritamente igual, com o formato de tabela, com as badges e com os três botões com as opções de remover morador para o admin nos 3 potnos.
 Na parte de casa, não aparece os moradores como na imagem de referência
 A parte de preferência tb nao ta com os botoes de liga-desliga iguais
 ta tudo uma porcaria eu quero IGUAL. "ain, mas precisa de um serviço que não ta implementado" eu lhe dou total autorização de implementar
@@ -183,4 +183,3 @@ Não consigo reproduzir letra por letra as respostas antigas do assistente: elas
 
 4:04 PM
 ```
-

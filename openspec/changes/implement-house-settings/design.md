@@ -29,15 +29,15 @@ Não há tokens do Figma estruturados; medidas exatas além da resolução das i
 
 ## 4. Contratos existentes — usar antes de criar código novo
 
-| Ação | API | Observação |
-|---|---|---|
-| Listar residências e papel atual | `GET /residences` | inclui `membership.role`, `creationEditPolicy` |
-| Ler política | `GET /residences/:id/settings/permissions` | retorna `residenceId`, `creationEditPolicy`, `canManage` |
-| Alterar política global | `PATCH /residences/:id/settings/permissions` `{creationEditPolicy: "TODOS"|"LIDERES"}` | somente líder/admin autorizado no backend |
-| Listar membros | `GET /residences/:id/members` | verificar formato/resposta; endpoint vive em PetsController |
-| Categorias | `GET/POST/PATCH/DELETE /residences/:id/pantry/categories` | CRUD existente e restrição de categoria em uso |
-| Notificações pessoais | `GET /notifications?limit=20&cursor=...`, `PATCH /notifications/:id/read` | GET será paginado; cursor opaco por ID, leitura sempre filtrada por usuário |
-| Perfil pessoal | `PATCH /users/me`, `POST /users/me/avatar` | já usados por `/profile`, não duplicar |
+| Ação                             | API                                                                        | Observação                                                                  |
+| -------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Listar residências e papel atual | `GET /residences`                                                          | inclui `membership.role`, `creationEditPolicy`                              |
+| Ler política                     | `GET /residences/:id/settings/permissions`                                 | retorna `residenceId`, `creationEditPolicy`, `canManage`                    |
+| Alterar política global          | `PATCH /residences/:id/settings/permissions` `{creationEditPolicy: "TODOS" | "LIDERES"}`                                                                 | somente líder/admin autorizado no backend |
+| Listar membros                   | `GET /residences/:id/members`                                              | verificar formato/resposta; endpoint vive em PetsController                 |
+| Categorias                       | `GET/POST/PATCH/DELETE /residences/:id/pantry/categories`                  | CRUD existente e restrição de categoria em uso                              |
+| Notificações pessoais            | `GET /notifications?limit=20&cursor=...`, `PATCH /notifications/:id/read`  | GET será paginado; cursor opaco por ID, leitura sempre filtrada por usuário |
+| Perfil pessoal                   | `PATCH /users/me`, `POST /users/me/avatar`                                 | já usados por `/profile`, não duplicar                                      |
 
 ## 5. Contratos propostos (não presentes no backend analisado)
 
@@ -53,6 +53,7 @@ Os novos DTOs são propostas. Auditar `schema.prisma` antes de escolher modelage
 O protótipo mostra `Administrador`, `Pode editar`, `Somente leitura` por pessoa. O backend atual mantém papéis `LIDER/ADMINISTRADOR/MORADOR` e **uma política global** `TODOS/LIDERES`; esses conceitos NÃO são equivalentes.
 
 Decisão proposta: conservar o papel estrutural (`role`) e a política global existentes; introduzir **um override individual de edição** para moradores (`canEditContent: boolean | null`, null = herdar política global). Na UI de permissões:
+
 - `Administrador` apenas quando `role` é `LIDER` ou `ADMINISTRADOR` (não permitir atribuir essa função pelo seletor sem operação de transferência de papel aprovada separadamente).
 - `Pode editar` para morador com permissão efetiva de edição.
 - `Somente leitura` para morador com permissão efetiva de leitura.
@@ -75,7 +76,11 @@ Proposta: `GET /residences/:id/settings/preferences` e `PATCH /residences/:id/se
   },
   "pantry": { "expirationNoticeDays": 5, "showExpired": true },
   "finance": { "dueNoticeDays": 5, "showOverdue": true },
-  "pets": { "vaccineReminders": true, "dewormingReminders": true, "appointmentReminders": true }
+  "pets": {
+    "vaccineReminders": true,
+    "dewormingReminders": true,
+    "appointmentReminders": true
+  }
 }
 ```
 
