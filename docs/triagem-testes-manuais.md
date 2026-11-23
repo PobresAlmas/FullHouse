@@ -72,26 +72,23 @@ mudar o comportamento esperado do fluxo, por exemplo novos requisitos de foto.
 `web/features/tasks/components/TasksPage.tsx`, `web/features/tasks/api/` e
 `backend/src/tasks/`, incluindo `backend/src/tasks/task-exchange.service.ts`.
 
-**Destino** — a [SPEC-006](../openspec02/spec/006-contextos-home-tarefas/requirements.md)
-registra a implementação e os critérios de G02. Os itens abaixo ficam como
-roteiro de reteste manual. Os [comandos de verificação](../openspec02/spec/006-contextos-home-tarefas/tasks.md)
-estão no checklist da spec.
+**Destino** — registrar na spec da Home ou de Tarefas durante sua migração para a
+OpenSpec 02. Referências atuais: [implement-home-dashboard](../openspec01/changes/implement-home-dashboard/proposal.md) e
+[implement-tasks-dashboard](../openspec01/changes/implement-tasks-dashboard/proposal.md). Correções pontuais podem
+ficar como tarefas vinculadas a essas referências.
 
 - [ ] **G02.1** — Atrasos na Home. C viu “Você tem tarefa atrasada” para uma tarefa de B.
   Repetir no modo Casa e no Pessoal. Se o cartão usa dados da casa, indicar
   que o atraso é da casa. Se for um resumo pessoal, contar somente as
   tarefas que pertencem ao contexto de C. Conferir com as duas sessões.
 - [ ] **G02.2** — Tarefa privada. Depois de B criar uma tarefa privada, a parte privada
-  sumiu no teste. Conferir se B encontra a tarefa em Casa e Pessoal após salvar
-  e recarregar. A e C não devem vê-la nessas listas. Se B transferir a tarefa
-  para C e C aceitar, repetir o teste com as duas contas e conferir se a tarefa
-  passou a aparecer somente para C.
+  sumiu no teste. Conferir em qual contexto e filtro a tarefa foi criada
+  e em qual ela reaparece após salvar e recarregar. B precisa encontrar
+  sua tarefa autorizada. A e C devem continuar sem vê-la na lista geral.
 - [ ] **G02.3** — Modo Pessoal. O teste registrou “falta tarefas pessoais”, mas o código
-  já tem um contexto Pessoal e uma API própria. Validar acesso com e sem casa,
-  criação individual e recarga. Quando houver tarefas da casa, conferir se a
-  lista inclui as atribuídas à conta e se elas podem ser concluídas ali.
-  Alternar Casa e Pessoal nos temas claro e escuro e conferir a posição dos
-  botões e o contraste dos avatares.
+  já tem um contexto Pessoal e uma API própria. Validar se a entrada fica
+  acessível com e sem casa e se criação, lista e recarga funcionam.
+  Corrigir a lacuna que for reproduzida.
 - [ ] **G02.4** — Troca com contraproposta. C conseguiu escolher outra tarefa ao
   aceitar o pedido de B e faltou aviso. O fluxo de Tarefas já permite
   substituir a sugestão. Conferir se o par final fica claro antes do
