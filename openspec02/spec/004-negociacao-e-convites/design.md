@@ -49,7 +49,7 @@
 
 - A [migração de negociações](../../../backend/prisma/migrations/20261115100000_add_room_negotiations/migration.sql) introduz `negociacao_anuncio`, `mensagem_negociacao_anuncio` e a relação de `convite_casa` com a negociação. Preserva registros preexistentes de interesses, mensagens da casa, convites e avisos.
 - A conversa é única por `interesse_anuncio`. Estado do interesse, conteúdo da conversa e estado do convite persistem separadamente. Unicidade, transações e atualizações condicionais protegem operações concorrentes.
-- Notificações usam `notificacao` e referências de entidade para a conversa ou convite. O desenho original recuperava os avisos na abertura ou atualização do sino. A entrega em tempo real foi tratada separadamente.
+- Notificações usam `notificacao` e referências de entidade para a conversa ou convite. A listagem atual usa `limit`, `cursor` e `unreadOnly` com a conta da sessão. A resposta contém `items`, `unreadCount` e `nextCursor`. A atualização do sino por SSE integra a [SPEC-003](../003-configuracoes-da-casa/design.md).
 - Na implantação, aplicar a migração, disponibilizar as APIs e então integrar a interface. Conferir interesses aceitos antigos e registros novos. Uma reversão deve tratar os dados dependentes antes de retirar as novas relações e preservar interesses, conversas e vínculos anteriores.
 
 ## Estados da interface

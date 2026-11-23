@@ -38,3 +38,9 @@ Use este checklist como pedido de implementação. Consulte [requirements.md](re
 ## Verificação registrada
 
 O checklist de origem registra como concluídos os testes focados de backend, HTTP e frontend, os builds e a validação estrita da change. Os contratos podem ser consultados no [README de Quartos](../../../backend/src/rooms/README.md) e a migração tem [suíte própria](../../../backend/test/integration/room-negotiations-migration.integration.test.ts).
+
+## Sprint 03 — Validação do contrato atual
+
+- [x] **T16 — Atualizar o teste HTTP dos avisos.** Conferir a sessão e a resposta paginada de `GET /notifications` com os parâmetros atuais. **Refs:** RF06, CA07–CA09.
+
+A revisão passou em 31 testes web, 96 unitários e 17 HTTP de Quartos e Notificações. Os comandos e as evidências estão no [registro do Emilson na Sprint 03](../../../docs/sprints/sprint03/Emilson/negociacao-e-convites/testes.md).

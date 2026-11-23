@@ -11,7 +11,7 @@ Reunir a gestão da residência e as preferências do usuário em `/settings`, c
 
 Como morador, quero consultar os dados da minha casa e ajustar minhas preferências. Como gestor, quero atualizar o nome da residência e controlar quem pode editar o conteúdo da casa.
 
-**Referências do projeto:** RF023, RN001 e RN002 para autorização e isolamento, RF022 para categorias e RF017/RNF005 para a evolução de alertas. Consultar as [nove imagens de referência](../../../docs/design-references/design-references/settings/README.md). Os identificadores RF, RNF e CA abaixo são locais à SPEC-003.
+**Referências do projeto:** [Documento de Especificação de Requisitos — FullHouse](<../../../docs/Documento de Especificação de Requisitos - FullHouse.pdf>). RF023/US021, RN001 e RN002 tratam de autorização e isolamento. RF022/US020 contextualiza as categorias. RF017/US015 e RNF005 orientam a evolução de alertas. Consultar as [nove imagens de referência](../../../docs/design-references/design-references/settings/README.md). Os identificadores RF, RNF e CA abaixo são locais à SPEC-003.
 
 ## Pré-condições
 

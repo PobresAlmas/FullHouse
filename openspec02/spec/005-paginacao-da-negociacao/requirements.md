@@ -11,7 +11,7 @@ Carregar primeiro as mensagens recentes de uma negociação e permitir consultar
 
 Como participante de uma negociação de quarto, quero consultar as mensagens mais antigas conforme preciso, para continuar lendo conversas longas sem perder minha posição.
 
-**Referências do projeto:** [SPEC-004 — Negociação de quartos e convites](../004-negociacao-e-convites/requirements.md). Os identificadores RF, RNF e CA abaixo são locais à SPEC-005.
+**Referências do projeto:** [Documento de Especificação de Requisitos — FullHouse](<../../../docs/Documento de Especificação de Requisitos - FullHouse.pdf>) e [SPEC-004 — Negociação de quartos e convites](../004-negociacao-e-convites/requirements.md). RF015/US013 contextualiza a busca de quartos e RNF003 orienta a responsividade. O cursor, os limites e o comportamento da rolagem são definidos nesta spec. Os identificadores RF, RNF e CA abaixo são locais à SPEC-005.
 
 ## Pré-condições
 

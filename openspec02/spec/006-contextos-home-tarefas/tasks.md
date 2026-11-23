@@ -5,7 +5,7 @@
 - [x] **T03 — Expor e preservar o modo Pessoal.** Integrar o acesso pela Home e pelo menu, manter a seleção na URL e ignorar respostas antigas. Incluir as tarefas da casa atribuídas à conta. **Refs:** RF03, RNF01–RNF02, CA03.
 - [x] **T04 — Confirmar a tarefa final da troca.** Mostrar a prévia ao destinatário e gravar o aviso do solicitante na transação. **Refs:** RF04, RNF01–RNF02, CA04.
 - [x] **T05 — Tornar o feedback visível.** Fixar a mensagem de ação na área visível. Focar o erro de validação no formulário. **Refs:** RF05, RNF03, CA05.
-- [ ] **T06 — Retestar no navegador.** Usar as contas A, B e C do cenário inicial. Conferir privacidade, recarga, sino e ações com teclado em tela estreita. Alternar Casa e Pessoal e verificar os avatares nos temas claro e escuro. **Refs:** CA01–CA05, RNF03.
+- [x] **T06 — Retestar no navegador.** Usar as contas A, B e C do cenário inicial. Conferir privacidade, recarga, sino e ações com teclado em tela estreita. Alternar Casa e Pessoal e verificar os avatares nos temas claro e escuro. **Refs:** CA01–CA05, RNF03.
 - [x] **T07 — Padronizar o seletor e os avatares em Tarefas.** Manter a geometria do seletor entre os contextos e usar a foto ou a inicial sobre uma cor com contraste. **Refs:** RNF03.
 
 ## Verificação automatizada
@@ -25,3 +25,5 @@ Com `TEST_DATABASE_URL` apontando para o PostgreSQL de testes com as migrations 
 ```powershell
 pnpm.cmd --dir backend run test:integration:sprint02-migrations test/integration/task-exchange.integration.test.ts -t 'current assignee'
 ```
+
+Na revisão da Sprint 03, passaram 66 testes web, 94 unitários, 17 HTTP e o cenário de integração da tarefa privada. O Chrome a 390 px confirmou a mudança de contexto, a recarga, o foco de erro por teclado, os avatares, a escolha final da troca, o aviso no sino e o acesso sem casa. Consulte os [comandos em Bash e o roteiro de evidências do Denilso](../../../docs/sprints/sprint03/Denilso/contextos-home-tarefas/testes.md).
