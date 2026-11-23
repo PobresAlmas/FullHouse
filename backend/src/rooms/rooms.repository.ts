@@ -90,6 +90,23 @@ export class RoomsRepository {
         });
     }
 
+    findForHouse(residenceId: string) {
+        return this.prisma.anuncio_quarto.findMany({
+            where: { casa_id: residenceId },
+            include: {
+                participacao: {
+                    select: {
+                        usuario_id: true,
+                        data_saida: true,
+                        usuario: { select: { nome: true, apelido: true } },
+                    },
+                },
+                _count: { select: { interesse_anuncio: { where: { status: "PENDENTE" } } } },
+            },
+            orderBy: [{ criadoEm: "desc" }, { id: "asc" }],
+        });
+    }
+
     update(id: string, data: UpdateRoomListingDto) {
         return this.prisma.anuncio_quarto.update({
             where: { id },
@@ -136,13 +153,16 @@ export class RoomsRepository {
 
     createInterest(anuncioId: string, userId: string, message?: string) {
         return this.prisma.$transaction(async (transaction) => {
-            const openListing = await transaction.$queryRaw<{ id: string }[]>`
-                SELECT "id" FROM "anuncio_quarto"
-                WHERE "id" = ${anuncioId}::uuid AND "status" = 'ABERTO'
-                FOR UPDATE
+            const [listing] = await transaction.$queryRaw<
+                { casa_id: string; titulo: string; usuario_id: string }[]
+            >`
+                SELECT anuncio."casa_id", anuncio."titulo", autor."usuario_id"
+                FROM "anuncio_quarto" anuncio
+                JOIN "participacao" autor ON autor."id" = anuncio."criado_por_participacao_id"
+                WHERE anuncio."id" = ${anuncioId}::uuid AND anuncio."status" = 'ABERTO'
+                FOR UPDATE OF anuncio
             `;
-            if (!openListing.length)
-                throw new NotFoundException("Anúncio não encontrado ou fechado.");
+            if (!listing) throw new NotFoundException("Anúncio não encontrado ou fechado.");
             const existing = await transaction.interesse_anuncio.findFirst({
                 where: {
                     anuncio_id: anuncioId,
@@ -155,19 +175,30 @@ export class RoomsRepository {
             const declined = await transaction.interesse_anuncio.findFirst({
                 where: { anuncio_id: anuncioId, usuario_id: userId, status: "RECUSADO" },
             });
-            if (declined) {
-                return transaction.interesse_anuncio.update({
-                    where: { id: declined.id },
-                    data: { status: "PENDENTE", mensagem: message?.trim() || null },
-                });
-            }
-            return transaction.interesse_anuncio.create({
+            const interest = declined
+                ? await transaction.interesse_anuncio.update({
+                      where: { id: declined.id },
+                      data: { status: "PENDENTE", mensagem: message?.trim() || null },
+                  })
+                : await transaction.interesse_anuncio.create({
+                      data: {
+                          anuncio_id: anuncioId,
+                          usuario_id: userId,
+                          mensagem: message?.trim() || null,
+                      },
+                  });
+            await transaction.notificacao.create({
                 data: {
-                    anuncio_id: anuncioId,
-                    usuario_id: userId,
-                    mensagem: message?.trim() || null,
+                    usuario_id: listing.usuario_id,
+                    casa_id: listing.casa_id,
+                    tipo: "SISTEMA",
+                    titulo: "Novo interesse em um quarto",
+                    mensagem: `Alguém se interessou pelo anúncio “${listing.titulo}”.`,
+                    entidade_tipo: "INTERESSE_QUARTO",
+                    entidade_id: anuncioId,
                 },
             });
+            return interest;
         });
     }
 
@@ -206,6 +237,11 @@ export class RoomsRepository {
         return this.prisma.negociacao_anuncio.findUnique({
             where: { id },
             include: {
+                convite_casa: {
+                    orderBy: [{ expira_em: "desc" }, { id: "desc" }],
+                    take: 1,
+                    select: { id: true, status: true, expira_em: true, usuario_convidado_id: true },
+                },
                 interesse_anuncio: {
                     include: {
                         usuario: { select: { id: true } },
@@ -415,6 +451,7 @@ export class RoomsRepository {
                         convidado_por_participacao_id: true,
                         status: true,
                         expira_em: true,
+                        casa: { select: { status: true, excluido_em: true } },
                     },
                 });
                 if (!invitation) throw new NotFoundException("Convite não encontrado.");
@@ -441,6 +478,12 @@ export class RoomsRepository {
 
                 let membershipId: string | null = null;
                 if (decision === "ACEITO") {
+                    if (
+                        invitation.casa.status !== "ATIVA" ||
+                        invitation.casa.excluido_em !== null
+                    ) {
+                        throw new ConflictException("A casa deste convite não está mais ativa.");
+                    }
                     const activeMembership = await transaction.participacao.findFirst({
                         where: {
                             usuario_id: userId,
@@ -463,6 +506,10 @@ export class RoomsRepository {
                             select: { id: true },
                         }));
                     membershipId = membership.id;
+                    await transaction.usuario.update({
+                        where: { id: userId },
+                        data: { status_moradia: "MORANDO" },
+                    });
                 }
 
                 await transaction.convite_casa.update({

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { BedDouble, ChevronDown, Filter, MapPin, PawPrint, Plus, Search, X } from "lucide-react";
+import { BedDouble, ChevronDown, Filter, Plus, Search, X } from "lucide-react";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Button } from "@/components/ui/button";
@@ -35,12 +35,9 @@ import type {
     RoomListingInput,
     RoomType,
 } from "../api/rooms.api";
+import { RoomListingCard } from "./RoomListingCard";
+import { readRoomListingInput, RoomListingFields, typeLabels } from "./RoomListingForm";
 
-const typeLabels: Record<RoomType, string> = {
-    QUARTO_INDIVIDUAL: "Quarto individual",
-    VAGA_COMPARTILHADA: "Vaga compartilhada",
-    REPUBLICA: "República",
-};
 const greenButton =
     "rounded-lg bg-[#2f6034] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#244d29] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]";
 const inputClass =
@@ -58,16 +55,6 @@ function getMyInterestForListing(interests: MyRoomInterest[], listingId: string)
         listingInterests.find((interest) => interest.status === "PENDENTE") ??
         listingInterests[0]
     );
-}
-
-function formatBrazilianMobilePhone(value: string) {
-    const digits = value.replace(/\D/g, "").slice(0, 11);
-    if (digits.length <= 2) return digits ? `(${digits}` : "";
-
-    const areaCode = digits.slice(0, 2);
-    const number = digits.slice(2);
-    if (number.length <= 5) return `(${areaCode}) ${number}`;
-    return `(${areaCode}) ${number.slice(0, 5)}-${number.slice(5)}`;
 }
 
 export function RoomsPage() {
@@ -361,22 +348,7 @@ export function RoomsPage() {
                     files.slice(0, 8).map((file) => uploadRoomPhoto(residenceId, file))
                 )),
             ].slice(0, 8);
-            const payload: RoomListingInput = {
-                casaId: residenceId,
-                titulo: String(form.get("titulo") ?? "").trim(),
-                descricao: String(form.get("descricao") ?? "").trim(),
-                preco: Number(form.get("preco")),
-                cidade: String(form.get("cidade") ?? "").trim(),
-                bairro: String(form.get("bairro") ?? "").trim(),
-                enderecoCompleto: String(form.get("enderecoCompleto") ?? "").trim(),
-                exibeEnderecoCompleto: form.get("exibeEnderecoCompleto") === "on",
-                contato: String(form.get("contato") ?? "").trim(),
-                exibeContato: form.get("exibeContato") === "on",
-                perfilConvivencia: String(form.get("perfilConvivencia") ?? "").trim(),
-                tipoMoradia: String(form.get("tipoMoradia") ?? "QUARTO_INDIVIDUAL") as RoomType,
-                aceitaPets: form.get("aceitaPets") === "on",
-                fotos,
-            };
+            const payload = readRoomListingInput(form, residenceId, fotos);
             if (editing) {
                 const update = Object.fromEntries(
                     Object.entries(payload).filter(([key]) => key !== "casaId")
@@ -789,120 +761,7 @@ export function RoomsPage() {
                                         {error}
                                     </p>
                                 )}
-                                <label className="text-sm">
-                                    Título
-                                    <input
-                                        name="titulo"
-                                        required
-                                        maxLength={150}
-                                        defaultValue={editing?.titulo ?? ""}
-                                        autoFocus
-                                        className={`${inputClass} mt-1`}
-                                    />
-                                </label>
-                                <label className="text-sm">
-                                    Preço mensal (R$)
-                                    <input
-                                        name="preco"
-                                        type="number"
-                                        min="0.01"
-                                        step="0.01"
-                                        required
-                                        defaultValue={editing?.preco ?? ""}
-                                        className={`${inputClass} mt-1`}
-                                    />
-                                </label>
-                                <label className="text-sm">
-                                    Cidade
-                                    <input
-                                        name="cidade"
-                                        required
-                                        maxLength={100}
-                                        defaultValue={editing?.cidade ?? residence?.city ?? ""}
-                                        className={`${inputClass} mt-1`}
-                                    />
-                                </label>
-                                <label className="text-sm">
-                                    Bairro
-                                    <input
-                                        name="bairro"
-                                        maxLength={100}
-                                        defaultValue={
-                                            editing?.bairro ?? residence?.neighborhood ?? ""
-                                        }
-                                        className={`${inputClass} mt-1`}
-                                    />
-                                </label>
-                                <label className="text-sm md:col-span-2">
-                                    Descrição
-                                    <textarea
-                                        name="descricao"
-                                        maxLength={5000}
-                                        rows={3}
-                                        defaultValue={editing?.descricao ?? ""}
-                                        className={`${inputClass} mt-1 h-auto py-2`}
-                                    />
-                                </label>
-                                <label className="text-sm">
-                                    Tipo
-                                    <SystemSelect
-                                        name="tipoMoradia"
-                                        defaultValue={editing?.tipoMoradia ?? "QUARTO_INDIVIDUAL"}
-                                        className={`${inputClass} mt-1`}
-                                    >
-                                        {Object.entries(typeLabels).map(([key, value]) => (
-                                            <option key={key} value={key}>
-                                                {value}
-                                            </option>
-                                        ))}
-                                    </SystemSelect>
-                                </label>
-                                <label className="text-sm">
-                                    Contato
-                                    <input
-                                        name="contato"
-                                        required
-                                        type="tel"
-                                        inputMode="tel"
-                                        autoComplete="tel"
-                                        placeholder="(99) 99999-9999"
-                                        maxLength={16}
-                                        defaultValue={editing?.contato ?? ""}
-                                        onChange={(event) => {
-                                            event.currentTarget.value = formatBrazilianMobilePhone(
-                                                event.currentTarget.value
-                                            );
-                                        }}
-                                        className={`${inputClass} mt-1`}
-                                    />
-                                </label>
-                                <label className="text-sm md:col-span-2">
-                                    Endereço completo
-                                    <input
-                                        name="enderecoCompleto"
-                                        maxLength={255}
-                                        defaultValue={editing?.enderecoCompleto ?? ""}
-                                        className={`${inputClass} mt-1`}
-                                    />
-                                </label>
-                                <label className="flex items-start gap-2 text-sm">
-                                    <input
-                                        name="exibeEnderecoCompleto"
-                                        type="checkbox"
-                                        defaultChecked={editing?.exibeEnderecoCompleto ?? false}
-                                        className="mt-1"
-                                    />{" "}
-                                    Exibir endereço completo publicamente
-                                </label>
-                                <label className="flex items-start gap-2 text-sm">
-                                    <input
-                                        name="exibeContato"
-                                        type="checkbox"
-                                        defaultChecked={editing?.exibeContato ?? false}
-                                        className="mt-1"
-                                    />{" "}
-                                    Exibir contato publicamente
-                                </label>
+                                <RoomListingFields residence={residence} editing={editing} />
                                 <label className="text-sm md:col-span-2">
                                     Regras e perfil de convivência
                                     <textarea
@@ -1058,143 +917,85 @@ export function RoomsPage() {
                             {listings.map((listing) => {
                                 const interest = getMyInterestForListing(myInterests, listing.id);
                                 return (
-                                    <article
-                                        key={listing.id}
-                                        className="overflow-hidden rounded-xl border border-[#d7d8de] bg-white shadow-sm"
-                                    >
-                                        <div className="relative h-48 bg-gradient-to-br from-[#e4e2dc] to-[#c7ccc6]">
-                                            {listing.fotos[0] ? (
-                                                <Image
-                                                    src={listing.fotos[0]}
-                                                    alt={`Foto do anúncio ${listing.titulo}`}
-                                                    fill
-                                                    unoptimized
-                                                    className="object-cover"
-                                                />
-                                            ) : (
-                                                <div className="grid h-full place-items-center text-[#788076]">
-                                                    <BedDouble size={48} aria-hidden="true" />
-                                                    <span className="sr-only">
-                                                        Anúncio sem foto
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-sm font-semibold">
-                                                {listing.status === "ABERTO"
-                                                    ? "Disponível"
-                                                    : "Fechado"}
-                                            </span>
-                                        </div>
-                                        <div className="p-4">
-                                            <h3 className="font-bold">{listing.titulo}</h3>
-                                            <p className="mt-2 flex items-center gap-1 text-xs text-[#77717c]">
-                                                <MapPin size={13} className="text-red-500" />
-                                                {[listing.bairro, listing.cidade]
-                                                    .filter(Boolean)
-                                                    .join(", ")}
-                                            </p>
-                                            <p className="mt-3 text-xl font-bold text-[#315f35]">
-                                                R${" "}
-                                                {listing.preco.toLocaleString("pt-BR", {
-                                                    minimumFractionDigits: 2,
-                                                })}
-                                                <span className="ml-1 text-xs font-normal text-[#77717c]">
-                                                    /mês
-                                                </span>
-                                            </p>
-                                            <div className="my-3 flex flex-wrap gap-2">
-                                                {listing.aceitaPets && (
-                                                    <span className="rounded bg-[#f0f1f3] px-2 py-1 text-xs">
-                                                        <PawPrint
-                                                            size={12}
-                                                            className="mr-1 inline"
-                                                        />
-                                                        Aceita Pets
-                                                    </span>
-                                                )}
-                                                <span className="rounded bg-[#f0f1f3] px-2 py-1 text-xs">
-                                                    {typeLabels[listing.tipoMoradia]}
-                                                </span>
-                                            </div>
-                                            {interest?.status === "PENDENTE" && (
-                                                <p
-                                                    role="status"
-                                                    className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                                                >
-                                                    Interesse enviado · aguardando anunciante
-                                                </p>
-                                            )}
-                                            {interest?.status === "RECUSADO" && (
-                                                <p className="mb-3 rounded-lg bg-[#fcebec] px-3 py-2 text-sm text-[#8e282d]">
-                                                    Interesse recusado · você pode tentar novamente
-                                                </p>
-                                            )}
-                                            {interest?.status === "ACEITO" && (
-                                                <div className="mb-3 rounded-lg bg-[#e7f3e9] p-3">
-                                                    <p className="mb-2 text-sm font-semibold text-[#285a2e]">
-                                                        Interesse aceito · negociação aberta
-                                                    </p>
-                                                    {interest.negotiationId ? (
-                                                        <button
-                                                            type="button"
-                                                            className={greenButton}
-                                                            onClick={() =>
-                                                                router.push(
-                                                                    `/rooms/negotiations/${interest.negotiationId}`
-                                                                )
-                                                            }
-                                                        >
-                                                            Abrir conversa
-                                                        </button>
-                                                    ) : (
-                                                        <p className="text-sm text-[#285a2e]">
-                                                            Atualize a tela para acessar a conversa.
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            )}
-                                            <button
-                                                onClick={() =>
-                                                    tab === "mine"
-                                                        ? void openManagement(listing)
-                                                        : openListingDetails(listing)
-                                                }
-                                                className={`${greenButton} w-full`}
+                                    <RoomListingCard key={listing.id} listing={listing}>
+                                        {interest?.status === "PENDENTE" && (
+                                            <p
+                                                role="status"
+                                                className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900"
                                             >
-                                                {tab === "mine"
-                                                    ? "Detalhes e interessados"
-                                                    : "Ver Detalhes do Anúncio"}
-                                            </button>
-                                            {tab === "mine" && (
-                                                <div className="mt-2 flex gap-2">
+                                                Interesse enviado · aguardando anunciante
+                                            </p>
+                                        )}
+                                        {interest?.status === "RECUSADO" && (
+                                            <p className="mb-3 rounded-lg bg-[#fcebec] px-3 py-2 text-sm text-[#8e282d]">
+                                                Interesse recusado · você pode tentar novamente
+                                            </p>
+                                        )}
+                                        {interest?.status === "ACEITO" && (
+                                            <div className="mb-3 rounded-lg bg-[#e7f3e9] p-3">
+                                                <p className="mb-2 text-sm font-semibold text-[#285a2e]">
+                                                    Interesse aceito · negociação aberta
+                                                </p>
+                                                {interest.negotiationId ? (
                                                     <button
-                                                        onClick={() => {
-                                                            setEditing(listing);
-                                                            setShowForm(true);
-                                                            setError("");
-                                                        }}
-                                                        className="flex-1 rounded border px-3 py-2 text-xs"
+                                                        type="button"
+                                                        className={greenButton}
+                                                        onClick={() =>
+                                                            router.push(
+                                                                `/rooms/negotiations/${interest.negotiationId}`
+                                                            )
+                                                        }
                                                     >
-                                                        Editar
+                                                        Abrir conversa
                                                     </button>
-                                                    <button
-                                                        onClick={() => void toggleStatus(listing)}
-                                                        className="flex-1 rounded border px-3 py-2 text-xs"
-                                                    >
-                                                        {listing.status === "ABERTO"
-                                                            ? "Pausar anúncio"
-                                                            : "Reabrir anúncio"}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => void removeListing(listing)}
-                                                        className="rounded border border-red-200 px-3 py-2 text-xs text-red-700"
-                                                    >
-                                                        Fechar
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </article>
+                                                ) : (
+                                                    <p className="text-sm text-[#285a2e]">
+                                                        Atualize a tela para acessar a conversa.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() =>
+                                                tab === "mine"
+                                                    ? void openManagement(listing)
+                                                    : openListingDetails(listing)
+                                            }
+                                            className={`${greenButton} w-full`}
+                                        >
+                                            {tab === "mine"
+                                                ? "Detalhes e interessados"
+                                                : "Ver Detalhes do Anúncio"}
+                                        </button>
+                                        {tab === "mine" && (
+                                            <div className="mt-2 flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditing(listing);
+                                                        setShowForm(true);
+                                                        setError("");
+                                                    }}
+                                                    className="flex-1 rounded border px-3 py-2 text-xs"
+                                                >
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    onClick={() => void toggleStatus(listing)}
+                                                    className="flex-1 rounded border px-3 py-2 text-xs"
+                                                >
+                                                    {listing.status === "ABERTO"
+                                                        ? "Pausar anúncio"
+                                                        : "Reabrir anúncio"}
+                                                </button>
+                                                <button
+                                                    onClick={() => void removeListing(listing)}
+                                                    className="rounded border border-red-200 px-3 py-2 text-xs text-red-700"
+                                                >
+                                                    Fechar
+                                                </button>
+                                            </div>
+                                        )}
+                                    </RoomListingCard>
                                 );
                             })}
                         </div>

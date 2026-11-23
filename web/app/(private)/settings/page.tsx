@@ -40,5 +40,11 @@ export default async function SettingsRoute({
         redirect(`/settings?section=${section}`);
     }
 
-    return <SettingsPage section={section} tab={section === "preferences" ? tab : "general"} />;
+    return (
+        <SettingsPage
+            section={section}
+            tab={section === "preferences" ? tab : "general"}
+            requestedListingId={section === "members" ? one(params.listingId) : undefined}
+        />
+    );
 }

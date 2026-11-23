@@ -18,6 +18,7 @@ describe("Room listings HTTP API (e2e)", () => {
         findMany: vi.fn(),
         findById: vi.fn(),
         findMine: vi.fn(),
+        findForHouse: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
         remove: vi.fn(),
@@ -59,7 +60,11 @@ describe("Room listings HTTP API (e2e)", () => {
         });
         service.findById.mockResolvedValue(listing);
         service.findMine.mockResolvedValue([listing]);
+        service.findForHouse.mockResolvedValue([
+            { ...listing, autorNome: "Autora", canManage: true, pendingInterestCount: 1 },
+        ]);
         service.create.mockResolvedValue(listing);
+        service.uploadPhoto.mockResolvedValue({ url: "https://storage.example/quarto.png" });
         service.update.mockResolvedValue(listing);
         service.remove.mockResolvedValue(undefined);
         service.createInterest.mockResolvedValue({
@@ -119,6 +124,27 @@ describe("Room listings HTTP API (e2e)", () => {
             expect.objectContaining({ cidade: "Quixada", page: 2, limit: 5, aceitaPets: true }),
             undefined
         );
+    });
+
+    it("authenticates house listings and validates the residence identifier", async () => {
+        const houseId = "4ca328bc-3d0c-4ce7-a26a-e827684cc634";
+        await request(app.getHttpServer())
+            .get(`/rooms/listings/house?casaId=${houseId}`)
+            .expect(401);
+        const cookie = await authenticatedCookie();
+        await request(app.getHttpServer())
+            .get("/rooms/listings/house?casaId=invalid")
+            .set("Cookie", cookie)
+            .expect(400);
+        expect(service.findForHouse).not.toHaveBeenCalled();
+        await request(app.getHttpServer())
+            .get(`/rooms/listings/house?casaId=${houseId}`)
+            .set("Cookie", cookie)
+            .expect(200)
+            .expect([
+                { ...listing, autorNome: "Autora", canManage: true, pendingInterestCount: 1 },
+            ]);
+        expect(service.findForHouse).toHaveBeenCalledWith(USER_ID, houseId);
     });
 
     it("passes the authenticated identity to the public search policy", async () => {
@@ -202,11 +228,50 @@ describe("Room listings HTTP API (e2e)", () => {
                 preco: 450,
                 cidade: "Quixadá",
                 contato: "(88) 99999-9999",
+                descricao: "Quarto com janela",
+                exibeEnderecoCompleto: false,
+                exibeContato: true,
+                perfilConvivencia: "Visitas: combinar com antecedência.",
+                aceitaPets: true,
+                fotos: ["https://storage.example/quarto.png"],
             })
             .expect(201)
             .expect(listing);
         expect(service.create).toHaveBeenCalledWith(
-            expect.objectContaining({ titulo: "Quarto", preco: 450 }),
+            expect.objectContaining({
+                casaId: "4ca328bc-3d0c-4ce7-a26a-e827684cc634",
+                titulo: "Quarto",
+                preco: 450,
+                descricao: "Quarto com janela",
+                exibeEnderecoCompleto: false,
+                exibeContato: true,
+                perfilConvivencia: "Visitas: combinar com antecedência.",
+                aceitaPets: true,
+                fotos: ["https://storage.example/quarto.png"],
+            }),
+            USER_ID
+        );
+    });
+
+    it("requires JWT for photo upload and forwards the house and session identity", async () => {
+        const houseId = "4ca328bc-3d0c-4ce7-a26a-e827684cc634";
+        const route = `/rooms/listings/photos?casaId=${houseId}`;
+        const image = Buffer.from("test image");
+        await request(app.getHttpServer())
+            .post(route)
+            .attach("file", image, "quarto.png")
+            .expect(401);
+        expect(service.uploadPhoto).not.toHaveBeenCalled();
+
+        await request(app.getHttpServer())
+            .post(route)
+            .set("Cookie", await authenticatedCookie())
+            .attach("file", image, "quarto.png")
+            .expect(201)
+            .expect({ url: "https://storage.example/quarto.png" });
+        expect(service.uploadPhoto).toHaveBeenCalledWith(
+            houseId,
+            expect.objectContaining({ originalname: "quarto.png", mimetype: "image/png" }),
             USER_ID
         );
     });

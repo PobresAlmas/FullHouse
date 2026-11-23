@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { EllipsisVertical, Info, UsersRound } from "lucide-react";
 import { SystemSelect } from "@/components/ui/system-select";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -15,6 +16,7 @@ export function SettingsMembersTable({
     manager,
     currentUserId,
     busy,
+    headerAction,
     onAccessChange,
     onRemove,
 }: {
@@ -24,6 +26,7 @@ export function SettingsMembersTable({
     manager: boolean;
     currentUserId?: string;
     busy: boolean;
+    headerAction?: ReactNode;
     onAccessChange: (member: ResidenceMember, allowed: boolean) => void;
     onRemove: (member: ResidenceMember) => void;
 }) {
@@ -43,12 +46,19 @@ export function SettingsMembersTable({
 
     return (
         <section className="overflow-visible rounded-xl border border-[#d9d0dc] bg-[#fffaff]">
-            <header className="flex items-center gap-2 border-b border-[#d9d0dc] px-4 py-3.5">
-                {(house || permissions) && <UsersRound size={17} className="text-[#4e812f]" />}
-                <div>
-                    <h2 className="text-sm font-semibold">{title}</h2>
-                    {description && <p className="mt-0.5 text-xs text-[#9a94a0]">{description}</p>}
+            <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] px-4 py-3.5">
+                <div className="flex min-w-0 items-center gap-2">
+                    {(house || permissions) && (
+                        <UsersRound size={17} className="shrink-0 text-[#4e812f]" />
+                    )}
+                    <div>
+                        <h2 className="text-sm font-semibold">{title}</h2>
+                        {description && (
+                            <p className="mt-0.5 text-xs text-[#9a94a0]">{description}</p>
+                        )}
+                    </div>
                 </div>
+                {mode === "members" && headerAction}
             </header>
             {loading ? (
                 <p role="status" className="px-4 py-6 text-sm text-[#77717c]">

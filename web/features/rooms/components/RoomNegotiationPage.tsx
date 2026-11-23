@@ -6,8 +6,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { enterInvitedResidence } from "../enter-invited-residence";
 import {
     getRoomNegotiation,
+    respondToRoomInvitation,
     sendRoomInvitation,
     sendRoomNegotiationMessage,
     type RoomNegotiation,
@@ -15,6 +17,13 @@ import {
 
 const MESSAGE_PAGE_SIZE = 30;
 const OLDER_MESSAGES_THRESHOLD = 64;
+const invitationLabels = {
+    PENDENTE: "Convite pendente",
+    ACEITO: "Convite aceito",
+    RECUSADO: "Convite recusado",
+    EXPIRADO: "Convite expirado",
+    CANCELADO: "Convite cancelado",
+};
 
 function errorText(error: unknown, fallback = "Não foi possível carregar a negociação.") {
     return typeof error === "object" && error !== null && "message" in error
@@ -23,7 +32,7 @@ function errorText(error: unknown, fallback = "Não foi possível carregar a neg
 }
 
 export function RoomNegotiationPage() {
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, refreshUser } = useAuth();
     const { replace } = useRouter();
     const { id } = useParams<{ id: string }>();
     const [negotiation, setNegotiation] = useState<RoomNegotiation | null>(null);
@@ -32,6 +41,7 @@ export function RoomNegotiationPage() {
     const [loadingOlder, setLoadingOlder] = useState(false);
     const [sending, setSending] = useState(false);
     const [sendingInvitation, setSendingInvitation] = useState(false);
+    const [respondingInvitation, setRespondingInvitation] = useState(false);
     const [error, setError] = useState("");
     const [olderError, setOlderError] = useState("");
     const [notice, setNotice] = useState("");
@@ -40,6 +50,7 @@ export function RoomNegotiationPage() {
     const initialScrollPositionedRef = useRef(false);
     const pendingScrollAdjustmentRef = useRef<{ height: number; top: number } | null>(null);
     const messages = negotiation?.mensagens;
+    const invitation = negotiation?.convite;
     const name = user?.name?.trim() || user?.email?.split("@")[0] || "Morador";
 
     const loadNegotiation = useCallback(async () => {
@@ -172,6 +183,15 @@ export function RoomNegotiationPage() {
         setNotice("");
         try {
             const invitation = await sendRoomInvitation(id);
+            setNegotiation((current) =>
+                current
+                    ? {
+                          ...current,
+                          podeConvidar: false,
+                          convite: { ...invitation, podeResponder: false },
+                      }
+                    : current
+            );
             const expiry = new Intl.DateTimeFormat("pt-BR", {
                 dateStyle: "short",
                 timeStyle: "short",
@@ -181,6 +201,37 @@ export function RoomNegotiationPage() {
             setError(errorText(cause));
         } finally {
             setSendingInvitation(false);
+        }
+    }
+
+    async function answerInvitation(status: "ACEITO" | "RECUSADO") {
+        if (!invitation?.podeResponder || respondingInvitation) return;
+        setRespondingInvitation(true);
+        setError("");
+        setNotice("");
+        try {
+            const decision = await respondToRoomInvitation(invitation.id, status);
+            setNegotiation((current) =>
+                current?.convite
+                    ? {
+                          ...current,
+                          convite: {
+                              ...current.convite,
+                              status: decision.status,
+                              podeResponder: false,
+                          },
+                      }
+                    : current
+            );
+            if (decision.status === "ACEITO") {
+                if (!enterInvitedResidence(decision, refreshUser, () => replace("/"))) {
+                    setError("O servidor não confirmou sua participação na casa.");
+                }
+            }
+        } catch (cause: unknown) {
+            setError(errorText(cause, "Não foi possível responder ao convite."));
+        } finally {
+            setRespondingInvitation(false);
         }
     }
 
@@ -251,6 +302,35 @@ export function RoomNegotiationPage() {
                                             ? "Enviando..."
                                             : "Enviar convite para a casa"}
                                     </button>
+                                )}
+                                {invitation && (
+                                    <div className="mt-4 rounded-lg border border-[#d9d0dc] bg-[#f7f8f6] p-3 text-sm">
+                                        <p aria-live="polite" className="font-medium">
+                                            {invitationLabels[invitation.status]}
+                                        </p>
+                                        {invitation.podeResponder && (
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    disabled={respondingInvitation}
+                                                    onClick={() => void answerInvitation("ACEITO")}
+                                                    className="rounded-lg bg-[#2f6034] px-3 py-2 font-semibold text-white disabled:opacity-60"
+                                                >
+                                                    Aceitar convite e entrar na casa
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={respondingInvitation}
+                                                    onClick={() =>
+                                                        void answerInvitation("RECUSADO")
+                                                    }
+                                                    className="rounded-lg border bg-white px-3 py-2 disabled:opacity-60"
+                                                >
+                                                    Recusar convite
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </header>
                             {notice && (
