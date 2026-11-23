@@ -140,6 +140,8 @@ export class PantryService {
             userId
         );
         const memberId = membership.memberId;
+        this.assertQuantityPrecision(data.unit, data.initialQuantity, "A quantidade inicial");
+        this.assertQuantityPrecision(data.unit, data.minimumQuantity, "A quantidade mínima");
         const category = await this.repository.findCategory(residenceId, data.categoryId);
         if (!category) throw new BadRequestException("Selecione uma categoria desta residência.");
         const ownerMemberId =
@@ -186,6 +188,16 @@ export class PantryService {
             throw new BadRequestException("Selecione uma categoria desta residência.");
         }
         this.assertCanManageOwnedItem(existing, member);
+        const resultingUnit = data.unit ?? existing.unidade;
+        this.assertQuantityPrecision(
+            resultingUnit,
+            data.minimumQuantity === undefined
+                ? existing.quantidade_minima === null
+                    ? null
+                    : Number(existing.quantidade_minima)
+                : data.minimumQuantity,
+            "A quantidade mínima"
+        );
         if (
             data.unit &&
             data.unit !== existing.unidade &&
@@ -241,6 +253,7 @@ export class PantryService {
         const item = await this.repository.findItem(residenceId, itemId, membership.memberId);
         if (!item) throw new NotFoundException("O item não está disponível nesta residência.");
         this.assertCanUseOwnedItem(item, member);
+        this.assertQuantityPrecision(item.unidade, data.quantity, "A quantidade da movimentação");
 
         await this.repository.createMovement({
             itemId,
@@ -276,22 +289,35 @@ export class PantryService {
             throw new BadRequestException("O responsável não pertence a esta residência ativa.");
     }
 
+    private assertQuantityPrecision(
+        unit: string,
+        quantity: number | null | undefined,
+        label: string
+    ) {
+        if (quantity == null) return;
+        const integerUnit =
+            unit === "UNIDADE" || unit === "PACOTE" || unit === "G" || unit === "ML";
+        if (integerUnit && !Number.isInteger(quantity)) {
+            throw new BadRequestException(`${label} deve ser um número inteiro para esta unidade.`);
+        }
+        if (!integerUnit && Math.round(quantity * 10) !== quantity * 10) {
+            throw new BadRequestException(`${label} deve usar passos de 0,1 para kg ou L.`);
+        }
+    }
+
     private assertCanManageOwnedItem(
         item: NonNullable<PantryItemRecord>,
         member: { id: string; papel: string }
     ) {
-        const isOwner = item.dono_participacao_id === member.id;
-        const isManager =
+        const isCreator =
             item.participacao_item_despensa_criado_por_participacao_idToparticipacao.id ===
-                member.id ||
-            member.papel === "ADMINISTRADOR" ||
-            member.papel === "LIDER";
+            member.id;
+        const isAdmin = member.papel === "ADMINISTRADOR" || member.papel === "LIDER";
 
-        if (item.propriedade === "PRIVADO" && !isOwner) {
-            throw new ForbiddenException("Este item privado pertence a outro morador.");
-        }
-        if (item.propriedade === "DONO_ESPECIFICO" && !isOwner && !isManager) {
-            throw new ForbiddenException("Somente o responsável pode usar este item.");
+        if (!isCreator && !isAdmin) {
+            throw new ForbiddenException(
+                "Somente quem criou o item ou um administrador pode editá-lo."
+            );
         }
     }
 
@@ -328,6 +354,8 @@ export class PantryService {
             property: item.propriedade,
             ownerMemberId: owner?.id ?? null,
             ownerName: owner ? owner.usuario.apelido || owner.usuario.nome : "Casa",
+            creatorMemberId:
+                item.participacao_item_despensa_criado_por_participacao_idToparticipacao.id,
             isMine: owner?.id === currentMemberId,
             unit: item.unidade,
             quantity,

@@ -43,11 +43,12 @@ const item: ShoppingListItem = {
     purchasedByName: null,
     purchasedAt: null,
     version: 1,
+    canEdit: true,
 };
 
 describe("ShoppingListPage", () => {
     beforeEach(() => {
-        vi.clearAllMocks();
+        vi.resetAllMocks();
         vi.mocked(getPetResidences).mockResolvedValue([residence]);
         vi.mocked(getShoppingListItems).mockResolvedValue([item]);
     });
@@ -55,31 +56,23 @@ describe("ShoppingListPage", () => {
     it("loads the active residence and shows shared pending items", async () => {
         render(<ShoppingListPage />);
         expect(
-            await screen.findByRole("heading", { name: "Lista de compras" })
+            await screen.findByRole("heading", { name: "Lista de compras da casa" })
         ).toBeInTheDocument();
         expect(await screen.findByText("2 L")).toBeInTheDocument();
         expect(screen.getByText("Integral")).toBeInTheDocument();
         expect(screen.getByText("Adicionado por Ana")).toBeInTheDocument();
-        expect(getShoppingListItems).toHaveBeenCalledWith(residence.id);
+        expect(getShoppingListItems).toHaveBeenCalledWith(residence.id, false);
     });
 
-    it("requires quantity and unit together and accepts a comma decimal on create", async () => {
+    it("selects the unit before quantity and creates an item with a decimal amount", async () => {
         const user = userEvent.setup();
         render(<ShoppingListPage />);
         await screen.findByText("Leite");
         await user.type(screen.getByPlaceholderText("Ex.: Café"), "Farinha");
-        await user.type(screen.getByPlaceholderText("Ex.: 1,5"), "0,75");
-        await user.click(screen.getByRole("button", { name: "Adicionar à lista" }));
-        expect(
-            await screen.findByText("Selecione a unidade da quantidade informada.")
-        ).toBeInTheDocument();
-        expect(createShoppingListItem).not.toHaveBeenCalled();
-
-        await selectSystemOption(
-            user,
-            screen.getByRole("combobox", { name: "Unidade (opcional)" }),
-            "kg"
-        );
+        await selectSystemOption(user, screen.getByRole("combobox", { name: "Unidade" }), "kg");
+        const quantity = screen.getByRole("spinbutton", { name: "Quantidade" });
+        await user.clear(quantity);
+        await user.type(quantity, "0.7");
         const created = {
             ...item,
             id: "item-2",
@@ -90,12 +83,11 @@ describe("ShoppingListPage", () => {
         vi.mocked(createShoppingListItem).mockResolvedValueOnce(created);
         await user.click(screen.getByRole("button", { name: "Adicionar à lista" }));
         await waitFor(() =>
-            expect(createShoppingListItem).toHaveBeenCalledWith(residence.id, {
-                name: "Farinha",
-                quantity: 0.75,
-                unit: "KG",
-                notes: null,
-            })
+            expect(createShoppingListItem).toHaveBeenCalledWith(
+                residence.id,
+                { name: "Farinha", quantity: 0.7, unit: "KG", notes: null },
+                false
+            )
         );
         expect(await screen.findByRole("status")).toHaveTextContent("Item adicionado à lista.");
         expect(screen.getByText("Farinha")).toBeInTheDocument();
@@ -137,14 +129,21 @@ describe("ShoppingListPage", () => {
         await user.click(await screen.findByRole("button", { name: "Marcar Leite como comprado" }));
         expect(await screen.findByText(/Comprado por Ana/)).toBeInTheDocument();
         expect(screen.getByText("Nenhum item pendente.")).toBeInTheDocument();
-        expect(updateShoppingListStatus).toHaveBeenNthCalledWith(1, residence.id, item, "COMPRADO");
+        expect(updateShoppingListStatus).toHaveBeenNthCalledWith(
+            1,
+            residence.id,
+            item,
+            "COMPRADO",
+            false
+        );
         await user.click(screen.getByRole("button", { name: "Reabrir Leite" }));
         await waitFor(() =>
             expect(updateShoppingListStatus).toHaveBeenNthCalledWith(
                 2,
                 residence.id,
                 bought,
-                "PENDENTE"
+                "PENDENTE",
+                false
             )
         );
         expect(await screen.findByText("Adicionado por Ana")).toBeInTheDocument();
@@ -179,12 +178,18 @@ describe("ShoppingListPage", () => {
         await user.type(name, "Leite sem lactose");
         await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
         await waitFor(() =>
-            expect(updateShoppingListItem).toHaveBeenCalledWith(residence.id, item.id, 1, {
-                name: "Leite sem lactose",
-                quantity: 2,
-                unit: "L",
-                notes: "Integral",
-            })
+            expect(updateShoppingListItem).toHaveBeenCalledWith(
+                residence.id,
+                item.id,
+                1,
+                {
+                    name: "Leite sem lactose",
+                    quantity: 2,
+                    unit: "L",
+                    notes: "Integral",
+                },
+                false
+            )
         );
         expect(await screen.findByText("Item atualizado.")).toBeInTheDocument();
         expect(await screen.findByText("Leite sem lactose")).toBeInTheDocument();
@@ -204,7 +209,7 @@ describe("ShoppingListPage", () => {
             "Remover este item da lista? Esta ação não pode ser desfeita."
         );
         await waitFor(() =>
-            expect(deleteShoppingListItem).toHaveBeenCalledWith(residence.id, item)
+            expect(deleteShoppingListItem).toHaveBeenCalledWith(residence.id, item, false)
         );
         expect(await screen.findByRole("status")).toHaveTextContent("Item removido da lista.");
         expect(screen.queryByText("Leite")).not.toBeInTheDocument();
@@ -241,18 +246,55 @@ describe("ShoppingListPage", () => {
         render(<ShoppingListPage />);
         await selectSystemOption(
             user,
-            await screen.findByRole("combobox", { name: "Trocar residência" }),
+            await screen.findByRole("combobox", { name: "Lista da casa" }),
             secondResidence.name
         );
-        await waitFor(() => expect(getShoppingListItems).toHaveBeenLastCalledWith("residence-2"));
+        await waitFor(() =>
+            expect(getShoppingListItems).toHaveBeenLastCalledWith("residence-2", false)
+        );
         expect(await screen.findByText("Sua lista de compras está vazia.")).toBeInTheDocument();
     });
 
-    it("shows an empty state when no residence is associated", async () => {
+    it("switches to the personal list and adds items there", async () => {
+        const user = userEvent.setup();
+        const personalItem = { ...item, id: "personal-item", name: "Caderno", canEdit: true };
+        vi.mocked(getShoppingListItems)
+            .mockResolvedValueOnce([item])
+            .mockResolvedValueOnce([personalItem]);
+        vi.mocked(createShoppingListItem).mockResolvedValueOnce({
+            ...personalItem,
+            id: "personal-item-2",
+            name: "Caneta",
+        });
+
+        render(<ShoppingListPage />);
+        await screen.findByText("Leite");
+        await user.click(screen.getByRole("button", { name: "Pessoal" }));
+
+        expect(await screen.findByText("Caderno")).toBeInTheDocument();
+        expect(getShoppingListItems).toHaveBeenLastCalledWith("", true);
+        expect(screen.getByRole("button", { name: "Pessoal" })).toHaveAttribute(
+            "aria-pressed",
+            "true"
+        );
+
+        await user.type(screen.getByPlaceholderText("Ex.: Café"), "Caneta");
+        await user.click(screen.getByRole("button", { name: "Adicionar à lista" }));
+        await waitFor(() =>
+            expect(createShoppingListItem).toHaveBeenCalledWith(
+                residence.id,
+                { name: "Caneta", quantity: 1, unit: "UNIDADE", notes: null },
+                true
+            )
+        );
+        expect(await screen.findByText("Item adicionado à lista.")).toBeInTheDocument();
+    });
+
+    it("opens the personal list when no residence is associated", async () => {
         vi.mocked(getPetResidences).mockResolvedValue([]);
         render(<ShoppingListPage />);
-        expect(await screen.findByText("Nenhuma casa ativa")).toBeInTheDocument();
-        expect(getShoppingListItems).not.toHaveBeenCalled();
+        expect(await screen.findByRole("heading", { name: "Lista pessoal" })).toBeInTheDocument();
+        expect(getShoppingListItems).toHaveBeenCalledWith("", true);
     });
 
     it("shows a query failure separately from empty state and lets the user retry", async () => {

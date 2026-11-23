@@ -1,7 +1,10 @@
 import { ConflictException, INestApplication, NotFoundException } from "@nestjs/common";
 import request from "supertest";
 import { App } from "supertest/types.js";
-import { ShoppingListController } from "../src/shopping-list/shopping-list.controller.js";
+import {
+    PersonalShoppingListController,
+    ShoppingListController,
+} from "../src/shopping-list/shopping-list.controller.js";
 import { ShoppingListService } from "../src/shopping-list/shopping-list.service.js";
 import { createAuthenticatedTestApp } from "./utils/authenticated-test-app.js";
 
@@ -32,6 +35,11 @@ describe("Shopping list HTTP API (e2e)", () => {
         updateItem: vi.fn(),
         updateStatus: vi.fn(),
         removeItem: vi.fn(),
+        findPersonalItems: vi.fn(),
+        createPersonalItem: vi.fn(),
+        updatePersonalItem: vi.fn(),
+        updatePersonalStatus: vi.fn(),
+        removePersonalItem: vi.fn(),
     };
 
     beforeEach(async () => {
@@ -47,8 +55,23 @@ describe("Shopping list HTTP API (e2e)", () => {
             version: 2,
         });
         service.removeItem.mockResolvedValue({ id: ITEM_ID, deleted: true });
+        service.findPersonalItems.mockResolvedValue([item]);
+        service.createPersonalItem.mockResolvedValue(item);
+        service.updatePersonalItem.mockResolvedValue({
+            ...item,
+            name: "Leite integral",
+            version: 2,
+        });
+        service.updatePersonalStatus.mockResolvedValue({
+            ...item,
+            status: "COMPRADO",
+            purchasedByName: "Emilson",
+            purchasedAt: "2026-10-30T12:00:00.000Z",
+            version: 2,
+        });
+        service.removePersonalItem.mockResolvedValue({ id: ITEM_ID, deleted: true });
         const testApp = await createAuthenticatedTestApp({
-            controllers: [ShoppingListController],
+            controllers: [ShoppingListController, PersonalShoppingListController],
             providers: [{ provide: ShoppingListService, useValue: service }],
         });
         app = testApp.app;
@@ -82,6 +105,56 @@ describe("Shopping list HTTP API (e2e)", () => {
             { name: "Leite integral", quantity: 2, unit: "L", notes: "Integral" },
             USER_ID
         );
+    });
+
+    it("requires authentication and supports personal list operations", async () => {
+        await request(app.getHttpServer()).get("/shopping-list/personal/items").expect(401);
+        expect(service.findPersonalItems).not.toHaveBeenCalled();
+
+        const cookie = await authenticatedCookie();
+        await request(app.getHttpServer())
+            .get("/shopping-list/personal/items")
+            .set("Cookie", cookie)
+            .expect(200)
+            .expect([item]);
+        await request(app.getHttpServer())
+            .post("/shopping-list/personal/items")
+            .set("Cookie", cookie)
+            .send({ name: "Leite", quantity: 2, unit: "L" })
+            .expect(201)
+            .expect(item);
+        await request(app.getHttpServer())
+            .patch(`/shopping-list/personal/items/${ITEM_ID}`)
+            .set("Cookie", cookie)
+            .send({ version: 1, name: "Leite integral" })
+            .expect(200);
+        await request(app.getHttpServer())
+            .patch(`/shopping-list/personal/items/${ITEM_ID}/status`)
+            .set("Cookie", cookie)
+            .send({ version: 1, status: "COMPRADO" })
+            .expect(200);
+        await request(app.getHttpServer())
+            .delete(`/shopping-list/personal/items/${ITEM_ID}?version=3`)
+            .set("Cookie", cookie)
+            .expect(200)
+            .expect({ id: ITEM_ID, deleted: true });
+
+        expect(service.findPersonalItems).toHaveBeenCalledWith(USER_ID);
+        expect(service.createPersonalItem).toHaveBeenCalledWith(
+            { name: "Leite", quantity: 2, unit: "L" },
+            USER_ID
+        );
+        expect(service.updatePersonalItem).toHaveBeenCalledWith(
+            ITEM_ID,
+            { version: 1, name: "Leite integral" },
+            USER_ID
+        );
+        expect(service.updatePersonalStatus).toHaveBeenCalledWith(
+            ITEM_ID,
+            { version: 1, status: "COMPRADO" },
+            USER_ID
+        );
+        expect(service.removePersonalItem).toHaveBeenCalledWith(ITEM_ID, 3, USER_ID);
     });
 
     it("updates item details with a required concurrency version", async () => {

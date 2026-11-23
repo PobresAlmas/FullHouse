@@ -1,6 +1,12 @@
 import type { FormEvent } from "react";
 import { X } from "lucide-react";
-import { formatQuantity, unitLabels, type MovementModalState } from "../lib/pantry.utils";
+import {
+    formatQuantity,
+    pantryQuantityStep,
+    pantryUnitRequiresInteger,
+    unitLabels,
+    type MovementModalState,
+} from "../lib/pantry.utils";
 import { FormField } from "./FormField";
 
 export function PantryMovementModal({
@@ -62,15 +68,24 @@ export function PantryMovementModal({
                                 <X size={18} />
                             </button>
                         </div>
-                        <form onSubmit={(event) => onSubmit(event)} className="grid gap-4">
+                        <form
+                            noValidate
+                            onSubmit={(event) => onSubmit(event)}
+                            className="grid gap-4"
+                        >
                             <FormField
                                 label={`Quantidade (${unitLabels[movementModal.item.unit]})`}
                             >
                                 <input
                                     autoFocus
                                     required
-                                    inputMode="decimal"
-                                    maxLength={12}
+                                    type="number"
+                                    min={
+                                        pantryUnitRequiresInteger(movementModal.item.unit)
+                                            ? "1"
+                                            : "0.1"
+                                    }
+                                    step={pantryQuantityStep(movementModal.item.unit)}
                                     value={movementQuantity}
                                     onChange={(event) => {
                                         setMovementQuantity(event.target.value);
@@ -78,13 +93,19 @@ export function PantryMovementModal({
                                     }}
                                     aria-describedby="pantry-movement-help"
                                     className="h-10 w-full rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                    placeholder="Ex.: 0,5"
+                                    placeholder={
+                                        pantryUnitRequiresInteger(movementModal.item.unit)
+                                            ? "Ex.: 1"
+                                            : "Ex.: 0,5"
+                                    }
                                 />
                                 <span
                                     id="pantry-movement-help"
                                     className="mt-1 block text-xs text-[#77717c]"
                                 >
-                                    Use até duas casas decimais.
+                                    {pantryUnitRequiresInteger(movementModal.item.unit)
+                                        ? "Informe um número inteiro."
+                                        : "Use frações em passos de 0,1."}
                                 </span>
                             </FormField>
                             {movementError && (

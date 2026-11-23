@@ -16,6 +16,7 @@ export interface ShoppingListItem {
     purchasedByName: string | null;
     purchasedAt: string | null;
     version: number;
+    canEdit?: boolean;
 }
 
 export interface ShoppingListItemInput {
@@ -25,19 +26,27 @@ export interface ShoppingListItemInput {
     notes: string | null;
 }
 
-export async function getShoppingListItems(residenceId: string): Promise<ShoppingListItem[]> {
+export async function getShoppingListItems(
+    residenceId: string,
+    personal = false
+): Promise<ShoppingListItem[]> {
     const response = await api.get<ShoppingListItem[]>(
-        `/residences/${residenceId}/shopping-list/items`
+        personal
+            ? "/shopping-list/personal/items"
+            : `/residences/${residenceId}/shopping-list/items`
     );
     return response.data;
 }
 
 export async function createShoppingListItem(
     residenceId: string,
-    data: ShoppingListItemInput
+    data: ShoppingListItemInput,
+    personal = false
 ): Promise<ShoppingListItem> {
     const response = await api.post<ShoppingListItem>(
-        `/residences/${residenceId}/shopping-list/items`,
+        personal
+            ? "/shopping-list/personal/items"
+            : `/residences/${residenceId}/shopping-list/items`,
         data
     );
     return response.data;
@@ -47,10 +56,13 @@ export async function updateShoppingListItem(
     residenceId: string,
     itemId: string,
     version: number,
-    data: Omit<ShoppingListItemInput, "name"> & { name: string }
+    data: Omit<ShoppingListItemInput, "name"> & { name: string },
+    personal = false
 ): Promise<ShoppingListItem> {
     const response = await api.patch<ShoppingListItem>(
-        `/residences/${residenceId}/shopping-list/items/${itemId}`,
+        personal
+            ? `/shopping-list/personal/items/${itemId}`
+            : `/residences/${residenceId}/shopping-list/items/${itemId}`,
         { ...data, version }
     );
     return response.data;
@@ -59,10 +71,13 @@ export async function updateShoppingListItem(
 export async function updateShoppingListStatus(
     residenceId: string,
     item: Pick<ShoppingListItem, "id" | "version">,
-    status: ShoppingListStatus
+    status: ShoppingListStatus,
+    personal = false
 ): Promise<ShoppingListItem> {
     const response = await api.patch<ShoppingListItem>(
-        `/residences/${residenceId}/shopping-list/items/${item.id}/status`,
+        personal
+            ? `/shopping-list/personal/items/${item.id}/status`
+            : `/residences/${residenceId}/shopping-list/items/${item.id}/status`,
         { version: item.version, status }
     );
     return response.data;
@@ -70,9 +85,15 @@ export async function updateShoppingListStatus(
 
 export async function deleteShoppingListItem(
     residenceId: string,
-    item: Pick<ShoppingListItem, "id" | "version">
+    item: Pick<ShoppingListItem, "id" | "version">,
+    personal = false
 ): Promise<void> {
-    await api.delete(`/residences/${residenceId}/shopping-list/items/${item.id}`, {
-        params: { version: item.version },
-    });
+    await api.delete(
+        personal
+            ? `/shopping-list/personal/items/${item.id}`
+            : `/residences/${residenceId}/shopping-list/items/${item.id}`,
+        {
+            params: { version: item.version },
+        }
+    );
 }

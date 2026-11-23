@@ -70,3 +70,46 @@ export class ShoppingListController {
         return this.service.removeItem(residenceId, itemId, version, user.id);
     }
 }
+
+@Controller("shopping-list/personal/items")
+@UseGuards(JwtAuthGuard)
+export class PersonalShoppingListController {
+    constructor(private readonly service: ShoppingListService) {}
+
+    @Get()
+    findItems(@CurrentUser() user: { id: string }) {
+        return this.service.findPersonalItems(user.id);
+    }
+
+    @Post()
+    createItem(@Body() data: CreateShoppingListItemDto, @CurrentUser() user: { id: string }) {
+        return this.service.createPersonalItem(data, user.id);
+    }
+
+    @Patch(":itemId")
+    updateItem(
+        @Param("itemId", new ParseUUIDPipe({ version: "4" })) itemId: string,
+        @Body() data: UpdateShoppingListItemDto,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.service.updatePersonalItem(itemId, data, user.id);
+    }
+
+    @Patch(":itemId/status")
+    updateStatus(
+        @Param("itemId", new ParseUUIDPipe({ version: "4" })) itemId: string,
+        @Body() data: UpdateShoppingListStatusDto,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.service.updatePersonalStatus(itemId, data, user.id);
+    }
+
+    @Delete(":itemId")
+    removeItem(
+        @Param("itemId", new ParseUUIDPipe({ version: "4" })) itemId: string,
+        @Query("version", ParseIntPipe) version: number,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.service.removePersonalItem(itemId, version, user.id);
+    }
+}

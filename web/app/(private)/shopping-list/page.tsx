@@ -35,7 +35,7 @@ import type {
 type ItemDraft = { name: string; quantity: string; unit: ShoppingListUnit | ""; notes: string };
 type EditingItem = ShoppingListItem | null;
 
-const emptyDraft: ItemDraft = { name: "", quantity: "", unit: "", notes: "" };
+const emptyDraft: ItemDraft = { name: "", quantity: "1", unit: "UNIDADE", notes: "" };
 const unitLabels: Record<ShoppingListUnit, string> = {
     UNIDADE: "un",
     KG: "kg",
@@ -44,6 +44,10 @@ const unitLabels: Record<ShoppingListUnit, string> = {
     ML: "ml",
     PACOTE: "pacote(s)",
 };
+
+function isIntegerUnit(unit: ShoppingListUnit | "") {
+    return unit === "UNIDADE" || unit === "PACOTE" || unit === "G" || unit === "ML";
+}
 
 function getErrorMessage(error: unknown) {
     if (typeof error === "object" && error !== null && "message" in error) {
@@ -82,8 +86,13 @@ function getDraftValidationError(draft: ItemDraft) {
     const notes = draft.notes.trim();
     if (!name) return "Informe o nome do item.";
     if (name.length > 100) return "O nome deve ter no máximo 100 caracteres.";
-    if (quantityText && (!/^\d+(?:\.\d{1,3})?$/.test(quantityText) || Number(quantityText) <= 0)) {
-        return "Informe uma quantidade positiva com até três casas decimais.";
+    const validQuantity = isIntegerUnit(draft.unit)
+        ? /^\d+$/.test(quantityText)
+        : /^\d+(?:\.\d)?$/.test(quantityText);
+    if (quantityText && (!validQuantity || Number(quantityText) <= 0)) {
+        return isIntegerUnit(draft.unit)
+            ? "Informe uma quantidade inteira para esta unidade."
+            : "Use no máximo uma casa decimal para esta unidade.";
     }
     if (quantityText && !draft.unit) return "Selecione a unidade da quantidade informada.";
     if (!quantityText && draft.unit) return "Informe a quantidade para usar uma unidade.";
@@ -103,7 +112,7 @@ function parseDraft(draft: ItemDraft): ShoppingListItemInput | null {
     return {
         name,
         quantity,
-        unit: draft.unit || null,
+        unit: quantity === null ? null : draft.unit || null,
         notes: notes || null,
     };
 }
@@ -136,6 +145,7 @@ export default function ShoppingListPage() {
     const { user } = useAuth();
     const [residences, setResidences] = useState<PetResidence[]>([]);
     const [residenceId, setResidenceId] = useState("");
+    const [scope, setScope] = useState<"HOME" | "PERSONAL">("HOME");
     const [items, setItems] = useState<ShoppingListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);
@@ -166,7 +176,8 @@ export default function ShoppingListPage() {
         if (showSpinner) setLoading(true);
         setLoadFailed(false);
         try {
-            const nextItems = await getShoppingListItems(id);
+            const personal = id === "personal";
+            const nextItems = await getShoppingListItems(personal ? "" : id, personal);
             if (sequence === requestSequence.current && currentResidence.current === id) {
                 setItems(sortItems(nextItems));
                 setError("");
@@ -194,13 +205,11 @@ export default function ShoppingListPage() {
                 if (!active) return;
                 setResidences(available);
                 const first = available[0];
-                if (!first) {
-                    setLoading(false);
-                    return;
-                }
-                currentResidence.current = first.id;
-                setResidenceId(first.id);
-                await loadItems(first.id);
+                const initialScope = first ? "HOME" : "PERSONAL";
+                setScope(initialScope);
+                currentResidence.current = first?.id ?? "personal";
+                if (first) setResidenceId(first.id);
+                await loadItems(first?.id ?? "personal");
             })
             .catch((loadError: unknown) => {
                 if (active) setError(getErrorMessage(loadError));
@@ -215,6 +224,7 @@ export default function ShoppingListPage() {
     }, [loadItems]);
 
     async function changeResidence(id: string) {
+        setScope("HOME");
         currentResidence.current = id;
         setResidenceId(id);
         setItems([]);
@@ -227,10 +237,30 @@ export default function ShoppingListPage() {
         await loadItems(id);
     }
 
+    async function changeScope(nextScope: "HOME" | "PERSONAL", homeId = residenceId) {
+        if (nextScope === "HOME") {
+            const id = homeId || residences[0]?.id;
+            if (id) await changeResidence(id);
+            return;
+        }
+        setScope("PERSONAL");
+        currentResidence.current = "personal";
+        setItems([]);
+        setError("");
+        setNotice("");
+        setDraft(emptyDraft);
+        setDuplicateWarning(false);
+        setEditingItem(null);
+        setEditError("");
+        await loadItems("personal");
+    }
+
     async function submitNewItem(addDuplicateAnyway = false) {
         if (busy || createInFlight.current) return;
         setDraftError("");
-        if (!residenceId) return;
+        const isPersonal = scope === "PERSONAL";
+        const activeContextId = isPersonal ? "personal" : residenceId;
+        if (!isPersonal && !residenceId) return;
         const input = parseDraft(draft);
         if (!input) {
             setDraftError(
@@ -250,15 +280,15 @@ export default function ShoppingListPage() {
         setError("");
         setNotice("");
         try {
-            const created = await createShoppingListItem(residenceId, input);
-            if (currentResidence.current === residenceId) {
+            const created = await createShoppingListItem(residenceId, input, isPersonal);
+            if (currentResidence.current === activeContextId) {
                 setItems((current) => sortItems([created, ...current]));
                 setDraft(emptyDraft);
                 setDuplicateWarning(false);
                 setNotice("Item adicionado à lista.");
             }
         } catch (saveError: unknown) {
-            if (currentResidence.current === residenceId) {
+            if (currentResidence.current === activeContextId) {
                 setDraftError(getErrorMessage(saveError));
             }
         } finally {
@@ -268,13 +298,15 @@ export default function ShoppingListPage() {
     }
 
     async function changeStatus(item: ShoppingListItem, status: ShoppingListStatus) {
-        if (!residenceId || busy) return;
+        const isPersonal = scope === "PERSONAL";
+        const activeContextId = isPersonal ? "personal" : residenceId;
+        if ((!isPersonal && !residenceId) || busy) return;
         setBusy(true);
         setError("");
         setNotice("");
         try {
-            const updated = await updateShoppingListStatus(residenceId, item, status);
-            if (currentResidence.current === residenceId) {
+            const updated = await updateShoppingListStatus(residenceId, item, status, isPersonal);
+            if (currentResidence.current === activeContextId) {
                 setItems((current) =>
                     sortItems(
                         current.map((candidate) =>
@@ -286,12 +318,12 @@ export default function ShoppingListPage() {
         } catch (statusError: unknown) {
             const message = getErrorMessage(statusError);
             if (
-                currentResidence.current === residenceId &&
+                currentResidence.current === activeContextId &&
                 message.includes("alterado por outro morador")
             ) {
-                await loadItems(residenceId, false);
+                await loadItems(activeContextId, false);
             }
-            if (currentResidence.current === residenceId) setError(message);
+            if (currentResidence.current === activeContextId) setError(message);
         } finally {
             setBusy(false);
         }
@@ -301,7 +333,7 @@ export default function ShoppingListPage() {
         setEditingItem(item);
         setEditDraft({
             name: item.name,
-            quantity: item.quantity === null ? "" : String(item.quantity).replace(".", ","),
+            quantity: item.quantity === null ? "" : String(item.quantity),
             unit: item.unit ?? "",
             notes: item.notes ?? "",
         });
@@ -310,7 +342,9 @@ export default function ShoppingListPage() {
 
     async function saveEdit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (!residenceId || !editingItem || busy) return;
+        const isPersonal = scope === "PERSONAL";
+        const activeContextId = isPersonal ? "personal" : residenceId;
+        if ((!isPersonal && !residenceId) || !editingItem || busy) return;
         const input = parseDraft(editDraft);
         if (!input) {
             setEditError(
@@ -325,9 +359,10 @@ export default function ShoppingListPage() {
                 residenceId,
                 editingItem.id,
                 editingItem.version,
-                input
+                input,
+                isPersonal
             );
-            if (currentResidence.current === residenceId) {
+            if (currentResidence.current === activeContextId) {
                 setItems((current) =>
                     sortItems(current.map((item) => (item.id === updated.id ? updated : item)))
                 );
@@ -337,41 +372,43 @@ export default function ShoppingListPage() {
         } catch (saveError: unknown) {
             const message = getErrorMessage(saveError);
             if (
-                currentResidence.current === residenceId &&
+                currentResidence.current === activeContextId &&
                 message.includes("alterado por outro morador")
             ) {
-                await loadItems(residenceId, false);
+                await loadItems(activeContextId, false);
             }
-            if (currentResidence.current === residenceId) setEditError(message);
+            if (currentResidence.current === activeContextId) setEditError(message);
         } finally {
             setBusy(false);
         }
     }
 
     async function removeItem(item: ShoppingListItem) {
+        const isPersonal = scope === "PERSONAL";
+        const activeContextId = isPersonal ? "personal" : residenceId;
         if (
             busy ||
-            !residenceId ||
+            (!isPersonal && !residenceId) ||
             !window.confirm("Remover este item da lista? Esta ação não pode ser desfeita.")
         )
             return;
         setBusy(true);
         setError("");
         try {
-            await deleteShoppingListItem(residenceId, item);
-            if (currentResidence.current === residenceId) {
+            await deleteShoppingListItem(residenceId, item, isPersonal);
+            if (currentResidence.current === activeContextId) {
                 setItems((current) => current.filter((candidate) => candidate.id !== item.id));
                 setNotice("Item removido da lista.");
             }
         } catch (removeError: unknown) {
             const message = getErrorMessage(removeError);
             if (
-                currentResidence.current === residenceId &&
+                currentResidence.current === activeContextId &&
                 message.includes("alterado por outro morador")
             ) {
-                await loadItems(residenceId, false);
+                await loadItems(activeContextId, false);
             }
-            if (currentResidence.current === residenceId) setError(message);
+            if (currentResidence.current === activeContextId) setError(message);
         } finally {
             setBusy(false);
         }
@@ -383,29 +420,53 @@ export default function ShoppingListPage() {
             <div className="min-w-0 flex-1">
                 <AppPageHeader
                     greetingName={memberName}
-                    residenceName={residence?.name ?? "Nenhuma casa ativa"}
+                    residenceName={
+                        scope === "HOME" ? (residence?.name ?? "Nenhuma casa ativa") : undefined
+                    }
+                    subtitle={scope === "PERSONAL" ? "Lista de compras pessoal" : undefined}
                     settingsHref="/settings"
                     residenceControl={
-                        residences.length > 1 ? (
-                            <label className="flex items-center gap-2 rounded-xl bg-[#e8e5e9] p-1 text-xs">
-                                <span className="sr-only">Trocar residência</span>
+                        <div
+                            className="grid grid-cols-2 gap-1 rounded-xl bg-[#e8e5e9] p-1 text-xs"
+                            role="group"
+                            aria-label="Tipo de lista de compras"
+                        >
+                            <button
+                                type="button"
+                                aria-pressed={scope === "PERSONAL"}
+                                onClick={() => void changeScope("PERSONAL")}
+                                className={`h-9 min-w-24 rounded-lg px-4 font-semibold ${scope === "PERSONAL" ? "bg-[#4e812f] text-white" : "text-[#514c56]"}`}
+                            >
+                                Pessoal
+                            </button>
+                            {residences.length > 1 ? (
                                 <SystemSelect
+                                    aria-label="Lista da casa"
                                     value={residenceId}
-                                    onChange={(event) => void changeResidence(event.target.value)}
-                                    className="max-w-56 rounded-lg border-0 bg-[#4e812f] px-4 py-2 text-white outline-none"
+                                    onChange={(event) =>
+                                        void changeScope("HOME", event.target.value)
+                                    }
+                                    className={`h-9 min-h-0! max-w-56 border-0! text-xs! font-semibold ${scope === "HOME" ? "bg-[#3e6b25]! text-white! [&_svg]:text-white!" : "bg-transparent! text-[#514c56]!"}`}
                                 >
                                     {residences.map((item) => (
-                                        <option
-                                            key={item.id}
-                                            value={item.id}
-                                            className="bg-white text-[#29252d]"
-                                        >
+                                        <option key={item.id} value={item.id}>
                                             {item.name}
                                         </option>
                                     ))}
                                 </SystemSelect>
-                            </label>
-                        ) : null
+                            ) : (
+                                <button
+                                    type="button"
+                                    aria-pressed={scope === "HOME"}
+                                    disabled={!residences.length}
+                                    onClick={() => void changeScope("HOME")}
+                                    title={residence?.name ?? "Nenhuma casa ativa"}
+                                    className={`h-9 min-w-24 truncate rounded-lg px-4 font-semibold disabled:opacity-40 ${scope === "HOME" ? "bg-[#4e812f] text-white" : "text-[#514c56]"}`}
+                                >
+                                    {residence?.name ?? "Casa"}
+                                </button>
+                            )}
+                        </div>
                     }
                 />
 
@@ -420,10 +481,14 @@ export default function ShoppingListPage() {
                                     ? "Não foi possível carregar a lista de compras."
                                     : error}
                             </span>
-                            {loadFailed && residenceId && (
+                            {loadFailed && (scope === "PERSONAL" || residenceId) && (
                                 <button
                                     type="button"
-                                    onClick={() => void loadItems(residenceId)}
+                                    onClick={() =>
+                                        void loadItems(
+                                            scope === "PERSONAL" ? "personal" : residenceId
+                                        )
+                                    }
                                     className="rounded-md border border-red-300 px-3 py-1.5 font-medium hover:bg-red-100"
                                 >
                                     Tentar novamente
@@ -440,7 +505,7 @@ export default function ShoppingListPage() {
                         </div>
                     )}
 
-                    {!loading && residences.length === 0 ? (
+                    {!loading && scope === "HOME" && residences.length === 0 ? (
                         <section className="rounded-xl border border-[#d6cdd9] bg-[#fffaff] p-8 text-center">
                             <ShoppingBasket className="mx-auto mb-3 text-[#4e812f]" size={32} />
                             <h2 className="font-semibold">Nenhuma casa ativa</h2>
@@ -451,19 +516,26 @@ export default function ShoppingListPage() {
                     ) : (
                         <>
                             <section className="mb-5 rounded-xl border border-[#d6cdd9] bg-[#fffaff] p-4 md:p-5">
-                                <h1 className="mb-1 text-xl font-bold">Lista de compras</h1>
+                                <h1 className="mb-1 text-xl font-bold">
+                                    {scope === "PERSONAL"
+                                        ? "Lista pessoal"
+                                        : "Lista de compras da casa"}
+                                </h1>
                                 <p className="mb-4 text-sm text-[#77717c]">
-                                    Compartilhe os itens que faltam com os moradores da casa.
+                                    {scope === "PERSONAL"
+                                        ? "Organize os itens que você quer comprar para si."
+                                        : "Compartilhe os itens que faltam com os moradores da casa."}
                                 </p>
                                 <form
+                                    noValidate
                                     onSubmit={(event) => {
                                         event.preventDefault();
                                         void submitNewItem();
                                     }}
                                     className="grid gap-3"
                                 >
-                                    <div className="grid gap-3 md:grid-cols-[minmax(180px,1fr)_150px_150px]">
-                                        <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
+                                    <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_150px_150px]">
+                                        <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#514c56]">
                                             Item
                                             <input
                                                 required
@@ -477,13 +549,35 @@ export default function ShoppingListPage() {
                                                     setDuplicateWarning(false);
                                                 }}
                                                 placeholder="Ex.: Café"
-                                                className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
+                                                className="h-10 w-full min-w-0 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
                                             />
                                         </label>
-                                        <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
-                                            Quantidade (opcional)
+                                        <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#514c56]">
+                                            Unidade
+                                            <SystemSelect
+                                                value={draft.unit || "UNIDADE"}
+                                                onChange={(event) =>
+                                                    setDraft((current) => ({
+                                                        ...current,
+                                                        unit: event.target
+                                                            .value as ShoppingListUnit,
+                                                    }))
+                                                }
+                                                className="h-10 w-full min-w-0 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
+                                            >
+                                                {Object.entries(unitLabels).map(([unit, label]) => (
+                                                    <option key={unit} value={unit}>
+                                                        {label}
+                                                    </option>
+                                                ))}
+                                            </SystemSelect>
+                                        </label>
+                                        <label className="grid min-w-0 gap-1.5 text-xs font-medium text-[#514c56]">
+                                            Quantidade
                                             <input
-                                                inputMode="decimal"
+                                                type="number"
+                                                min={isIntegerUnit(draft.unit) ? "1" : "0.1"}
+                                                step={isIntegerUnit(draft.unit) ? "1" : "0.1"}
                                                 value={draft.quantity}
                                                 onChange={(event) =>
                                                     setDraft({
@@ -491,30 +585,14 @@ export default function ShoppingListPage() {
                                                         quantity: event.target.value,
                                                     })
                                                 }
-                                                placeholder="Ex.: 1,5"
-                                                className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                            />
-                                        </label>
-                                        <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
-                                            Unidade (opcional)
-                                            <SystemSelect
-                                                value={draft.unit}
-                                                onChange={(event) =>
-                                                    setDraft({
-                                                        ...draft,
-                                                        unit: event.target.value as
-                                                            ShoppingListUnit | "",
-                                                    })
+                                                placeholder={
+                                                    draft.unit === "UNIDADE" ||
+                                                    draft.unit === "PACOTE"
+                                                        ? "Ex.: 2 un"
+                                                        : "Ex.: 1,5"
                                                 }
-                                                className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                            >
-                                                <option value="">Sem quantidade</option>
-                                                {Object.entries(unitLabels).map(([unit, label]) => (
-                                                    <option key={unit} value={unit}>
-                                                        {label}
-                                                    </option>
-                                                ))}
-                                            </SystemSelect>
+                                                className="h-10 w-full min-w-0 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
+                                            />
                                         </label>
                                     </div>
                                     <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
@@ -568,7 +646,11 @@ export default function ShoppingListPage() {
                                     <div className="flex justify-end">
                                         <button
                                             type="submit"
-                                            disabled={busy || loading || !residenceId}
+                                            disabled={
+                                                busy ||
+                                                loading ||
+                                                (scope === "HOME" && !residenceId)
+                                            }
                                             className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#4e812f] px-5 text-sm font-medium text-white hover:bg-[#3f6c26] disabled:opacity-50"
                                         >
                                             <Plus size={17} />{" "}
@@ -602,6 +684,9 @@ export default function ShoppingListPage() {
                                                 key={item.id}
                                                 item={item}
                                                 busy={busy}
+                                                canEdit={
+                                                    scope === "PERSONAL" || item.canEdit === true
+                                                }
                                                 onStatus={(status) =>
                                                     void changeStatus(item, status)
                                                 }
@@ -652,6 +737,10 @@ export default function ShoppingListPage() {
                                                     key={item.id}
                                                     item={item}
                                                     busy={busy}
+                                                    canEdit={
+                                                        scope === "PERSONAL" ||
+                                                        item.canEdit === true
+                                                    }
                                                     onStatus={(status) =>
                                                         void changeStatus(item, status)
                                                     }
@@ -700,7 +789,11 @@ export default function ShoppingListPage() {
                                 <X size={18} />
                             </button>
                         </div>
-                        <form onSubmit={(event) => void saveEdit(event)} className="grid gap-4">
+                        <form
+                            noValidate
+                            onSubmit={(event) => void saveEdit(event)}
+                            className="grid gap-4"
+                        >
                             <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
                                 Nome do item
                                 <input
@@ -714,20 +807,6 @@ export default function ShoppingListPage() {
                                 />
                             </label>
                             <div className="grid gap-3 sm:grid-cols-2">
-                                <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
-                                    Quantidade
-                                    <input
-                                        inputMode="decimal"
-                                        value={editDraft.quantity}
-                                        onChange={(event) =>
-                                            setEditDraft({
-                                                ...editDraft,
-                                                quantity: event.target.value,
-                                            })
-                                        }
-                                        className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                    />
-                                </label>
                                 <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
                                     Unidade
                                     <SystemSelect
@@ -747,6 +826,28 @@ export default function ShoppingListPage() {
                                             </option>
                                         ))}
                                     </SystemSelect>
+                                </label>
+                                <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
+                                    Quantidade
+                                    <input
+                                        type="number"
+                                        min={isIntegerUnit(editDraft.unit) ? "1" : "0.1"}
+                                        step={isIntegerUnit(editDraft.unit) ? "1" : "0.1"}
+                                        value={editDraft.quantity}
+                                        onChange={(event) =>
+                                            setEditDraft({
+                                                ...editDraft,
+                                                quantity: event.target.value,
+                                            })
+                                        }
+                                        placeholder={
+                                            editDraft.unit === "UNIDADE" ||
+                                            editDraft.unit === "PACOTE"
+                                                ? "Ex.: 2 un"
+                                                : "Ex.: 1,5"
+                                        }
+                                        className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
+                                    />
                                 </label>
                             </div>
                             <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
@@ -797,12 +898,14 @@ export default function ShoppingListPage() {
 function ShoppingItemRow({
     item,
     busy,
+    canEdit,
     onStatus,
     onEdit,
     onDelete,
 }: {
     item: ShoppingListItem;
     busy: boolean;
+    canEdit: boolean;
     onStatus: (status: ShoppingListStatus) => void;
     onEdit: () => void;
     onDelete: () => void;
@@ -839,26 +942,28 @@ function ShoppingItemRow({
                           : "Na lista compartilhada"}
                 </p>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
-                <button
-                    type="button"
-                    disabled={busy}
-                    onClick={onEdit}
-                    aria-label={`Editar ${item.name}`}
-                    className="grid size-8 place-items-center rounded-md text-[#625c66] hover:bg-[#f1edf3] disabled:opacity-40"
-                >
-                    <Pencil size={15} />
-                </button>
-                <button
-                    type="button"
-                    disabled={busy}
-                    onClick={onDelete}
-                    aria-label={`Excluir ${item.name}`}
-                    className="grid size-8 place-items-center rounded-md text-[#9a5555] hover:bg-red-50 disabled:opacity-40"
-                >
-                    <Trash2 size={15} />
-                </button>
-            </div>
+            {canEdit && (
+                <div className="flex shrink-0 items-center gap-1">
+                    <button
+                        type="button"
+                        disabled={busy}
+                        onClick={onEdit}
+                        aria-label={`Editar ${item.name}`}
+                        className="grid size-8 place-items-center rounded-md text-[#625c66] hover:bg-[#f1edf3] disabled:opacity-40"
+                    >
+                        <Pencil size={15} />
+                    </button>
+                    <button
+                        type="button"
+                        disabled={busy}
+                        onClick={onDelete}
+                        aria-label={`Excluir ${item.name}`}
+                        className="grid size-8 place-items-center rounded-md text-[#9a5555] hover:bg-red-50 disabled:opacity-40"
+                    >
+                        <Trash2 size={15} />
+                    </button>
+                </div>
+            )}
         </li>
     );
 }

@@ -23,6 +23,7 @@ export interface PantryItem {
     property: PantryProperty;
     ownerMemberId: string | null;
     ownerName: string;
+    creatorMemberId?: string;
     isMine: boolean;
     unit: PantryUnit;
     quantity: number;

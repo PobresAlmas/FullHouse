@@ -25,10 +25,17 @@ describe("ShoppingListRepository", () => {
             where: { casa_id: "home-1" },
             include: {
                 participacao_item_lista_compras_criado_por: {
-                    select: { usuario: { select: { nome: true, apelido: true } } },
+                    select: {
+                        usuario_id: true,
+                        usuario: { select: { nome: true, apelido: true } },
+                    },
                 },
                 participacao_item_lista_compras_comprado_por: {
                     select: { usuario: { select: { nome: true, apelido: true } } },
+                },
+                usuario: { select: { nome: true, apelido: true } },
+                usuario_item_lista_compras_comprado_por: {
+                    select: { nome: true, apelido: true },
                 },
             },
             orderBy: [{ status: "asc" }, { id: "asc" }],
@@ -42,8 +49,17 @@ describe("ShoppingListRepository", () => {
             include: expect.objectContaining({
                 participacao_item_lista_compras_criado_por: expect.any(Object),
                 participacao_item_lista_compras_comprado_por: expect.any(Object),
+                usuario: expect.any(Object),
+                usuario_item_lista_compras_comprado_por: expect.any(Object),
             }),
         });
+    });
+
+    it("scopes personal list reads to the owner user", () => {
+        repository.findItems(null, "user-1");
+        expect(prisma.item_lista_compras.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({ where: { casa_id: null, usuario_id: "user-1" } })
+        );
     });
 
     it("creates a pending item with creator participation and nullable optional values", () => {
@@ -58,10 +74,34 @@ describe("ShoppingListRepository", () => {
         expect(prisma.item_lista_compras.create).toHaveBeenCalledWith({
             data: {
                 casa_id: "home-1",
+                usuario_id: null,
                 criado_por_participacao_id: "member-1",
                 nome: "Arroz",
                 quantidade: null,
                 unidade: null,
+                observacao: null,
+            },
+            include: expect.any(Object),
+        });
+    });
+
+    it("creates a personal item with user ownership and no residence participation", () => {
+        repository.createItem({
+            residenceId: null,
+            userId: "user-1",
+            name: "Arroz",
+            quantity: 1,
+            unit: "UNIDADE" as never,
+            notes: null,
+        });
+        expect(prisma.item_lista_compras.create).toHaveBeenCalledWith({
+            data: {
+                casa_id: null,
+                usuario_id: "user-1",
+                criado_por_participacao_id: null,
+                nome: "Arroz",
+                quantidade: 1,
+                unidade: "UNIDADE",
                 observacao: null,
             },
             include: expect.any(Object),
@@ -171,6 +211,7 @@ describe("ShoppingListRepository", () => {
                 status: "PENDENTE",
                 comprado_em: null,
                 comprado_por_participacao_id: null,
+                comprado_por_usuario_id: null,
                 versao: { increment: 1 },
             },
         });

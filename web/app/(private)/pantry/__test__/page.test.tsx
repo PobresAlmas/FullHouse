@@ -96,7 +96,7 @@ describe("PantryPage", () => {
         await user.click(await screen.findByRole("button", { name: "Registrar consumo de Arroz" }));
         const quantity = screen.getByPlaceholderText("Ex.: 0,5");
         await user.clear(quantity);
-        await user.type(quantity, "0,75");
+        await user.type(quantity, "0.7");
         await user.click(screen.getByRole("button", { name: "Confirmar" }));
 
         await waitFor(() =>
@@ -104,11 +104,11 @@ describe("PantryPage", () => {
                 residence.id,
                 item.id,
                 "CONSUMO",
-                0.75
+                0.7
             )
         );
         expect(
-            await screen.findByText("Consumo de 0,75 kg registrado para Arroz.")
+            await screen.findByText("Consumo de 0,7 kg registrado para Arroz.")
         ).toBeInTheDocument();
     }, 10_000);
 
@@ -192,7 +192,7 @@ describe("PantryPage", () => {
         expect(await screen.findByText("Categoria criada.")).toBeInTheDocument();
     });
 
-    it("rejects movement quantities with more than two decimal places before sending", async () => {
+    it("rejects movement quantities outside the 0.1 step before sending", async () => {
         const user = userEvent.setup();
         render(<PantryPage />);
 
@@ -201,11 +201,11 @@ describe("PantryPage", () => {
         );
         const quantity = screen.getByPlaceholderText("Ex.: 0,5");
         await user.clear(quantity);
-        await user.type(quantity, "0,123");
+        await user.type(quantity, "0.12");
         await user.click(screen.getByRole("button", { name: "Confirmar" }));
 
         expect(
-            await screen.findByText("Informe uma quantidade positiva com até duas casas decimais.")
+            await screen.findByText("Informe uma quantidade positiva em passos de 0,1.")
         ).toBeInTheDocument();
         expect(registerPantryMovement).not.toHaveBeenCalled();
     });

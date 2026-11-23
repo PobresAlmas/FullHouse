@@ -496,8 +496,27 @@ describe("PantryService", () => {
             record({
                 propriedade: "PRIVADO",
                 dono_participacao_id: "member-2",
+                participacao_item_despensa_criado_por_participacao_idToparticipacao: {
+                    id: "member-3",
+                },
             })
         );
+        await expect(
+            service.updateItem("home-1", "item-1", { name: "Alterado" } as never, "user-1")
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(repository.updateItem).not.toHaveBeenCalled();
+    });
+
+    it("prevents a non-creator who is not an admin from editing a community item", async () => {
+        repository.findItem.mockResolvedValue(
+            record({
+                propriedade: "COMUNITARIO",
+                participacao_item_despensa_criado_por_participacao_idToparticipacao: {
+                    id: "member-2",
+                },
+            })
+        );
+
         await expect(
             service.updateItem("home-1", "item-1", { name: "Alterado" } as never, "user-1")
         ).rejects.toBeInstanceOf(ForbiddenException);
@@ -595,7 +614,7 @@ describe("PantryService", () => {
         expect(repository.deleteItem).toHaveBeenCalledWith("item-1");
     });
 
-    it("allows any household member to delete a shared item", async () => {
+    it("prevents a non-creator from deleting a shared item", async () => {
         repository.findItem.mockResolvedValue(
             record({
                 participacao_item_despensa_criado_por_participacao_idToparticipacao: {
@@ -603,10 +622,9 @@ describe("PantryService", () => {
                 },
             })
         );
-        await expect(service.removeItem("home-1", "item-1", "user-1")).resolves.toEqual({
-            id: "item-1",
-            deleted: true,
-        });
-        expect(repository.deleteItem).toHaveBeenCalledWith("item-1");
+        await expect(service.removeItem("home-1", "item-1", "user-1")).rejects.toBeInstanceOf(
+            ForbiddenException
+        );
+        expect(repository.deleteItem).not.toHaveBeenCalled();
     });
 });
