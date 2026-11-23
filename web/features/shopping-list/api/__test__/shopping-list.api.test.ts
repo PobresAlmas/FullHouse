@@ -91,4 +91,50 @@ describe("shopping list API client", () => {
             { params: { version: 1 } }
         );
     });
+
+    it("routes personal list operations to the authenticated user's endpoints", async () => {
+        vi.mocked(api.get).mockResolvedValue({ data: [item] });
+        vi.mocked(api.post).mockResolvedValue({ data: item });
+        vi.mocked(api.patch).mockResolvedValue({ data: item });
+        vi.mocked(api.delete).mockResolvedValue({ data: undefined });
+
+        await getShoppingListItems("", true);
+        await createShoppingListItem(
+            "",
+            { name: "Leite", quantity: 2, unit: "L", notes: null },
+            true
+        );
+        await updateShoppingListItem(
+            "",
+            item.id,
+            item.version,
+            { name: item.name, quantity: item.quantity, unit: item.unit, notes: item.notes },
+            true
+        );
+        await updateShoppingListStatus("", item, "COMPRADO", true);
+        await deleteShoppingListItem("", item, true);
+
+        expect(api.get).toHaveBeenCalledWith("/shopping-list/personal/items");
+        expect(api.post).toHaveBeenCalledWith("/shopping-list/personal/items", {
+            name: "Leite",
+            quantity: 2,
+            unit: "L",
+            notes: null,
+        });
+        expect(api.patch).toHaveBeenNthCalledWith(1, `/shopping-list/personal/items/${item.id}`, {
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            notes: item.notes,
+            version: item.version,
+        });
+        expect(api.patch).toHaveBeenNthCalledWith(
+            2,
+            `/shopping-list/personal/items/${item.id}/status`,
+            { version: item.version, status: "COMPRADO" }
+        );
+        expect(api.delete).toHaveBeenCalledWith(`/shopping-list/personal/items/${item.id}`, {
+            params: { version: item.version },
+        });
+    });
 });

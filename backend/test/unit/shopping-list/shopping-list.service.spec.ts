@@ -21,6 +21,7 @@ function item(overrides: Record<string, unknown> = {}) {
         comprado_em: null,
         versao: 1,
         participacao_item_lista_compras_criado_por: {
+            usuario_id: userId,
             usuario: { nome: "Morador", apelido: "Ana" },
         },
         participacao_item_lista_compras_comprado_por: null,
@@ -136,6 +137,118 @@ describe("ShoppingListService", () => {
             notes: "Integral",
         });
         expect(residenceAccess.requireMembership).toHaveBeenCalledWith(residenceId, userId);
+    });
+
+    it("scopes personal reads to the authenticated user", async () => {
+        repository.findItems.mockResolvedValue([
+            item({
+                casa_id: null,
+                usuario_id: userId,
+                usuario: { nome: "Usuária", apelido: "Ana" },
+                participacao_item_lista_compras_criado_por: null,
+            }),
+        ]);
+
+        await expect(service.findPersonalItems(userId)).resolves.toMatchObject([
+            { createdByName: "Ana", canEdit: true },
+        ]);
+        expect(repository.findItems).toHaveBeenCalledWith(null, userId);
+        expect(residenceAccess.requireMembership).not.toHaveBeenCalled();
+    });
+
+    it("creates personal items owned by the user without requiring a residence", async () => {
+        repository.createItem.mockResolvedValue(
+            item({
+                casa_id: null,
+                usuario_id: userId,
+                usuario: { nome: "Usuária", apelido: "Ana" },
+                participacao_item_lista_compras_criado_por: null,
+            })
+        );
+
+        await expect(
+            service.createPersonalItem(
+                { name: "Arroz", quantity: 2, unit: "KG", notes: null } as never,
+                userId
+            )
+        ).resolves.toMatchObject({ createdByName: "Ana", canEdit: true });
+        expect(repository.createItem).toHaveBeenCalledWith({
+            residenceId: null,
+            userId,
+            name: "Arroz",
+            quantity: 2,
+            unit: "KG",
+            notes: null,
+        });
+        expect(residenceAccess.requireMembership).not.toHaveBeenCalled();
+    });
+
+    it("updates personal items only within the authenticated user's scope", async () => {
+        const personalItem = item({ casa_id: null, usuario_id: userId });
+        repository.findItem.mockResolvedValue(personalItem);
+        repository.updateItem.mockResolvedValue({ found: true, item: personalItem });
+
+        await service.updatePersonalItem(
+            "item-1",
+            { version: 1, name: "Café moído" } as never,
+            userId
+        );
+
+        expect(repository.findItem).toHaveBeenCalledWith(null, "item-1", userId);
+        expect(repository.updateItem).toHaveBeenCalledWith(
+            expect.objectContaining({
+                residenceId: null,
+                userId,
+                itemId: "item-1",
+                version: 1,
+                name: "Café moído",
+            })
+        );
+
+        repository.findItem.mockResolvedValueOnce(null);
+        await expect(
+            service.updatePersonalItem("foreign-item", { version: 1 } as never, userId)
+        ).rejects.toBeInstanceOf(NotFoundException);
+        expect(repository.updateItem).toHaveBeenCalledTimes(1);
+    });
+
+    it("records the user who completed a personal list item", async () => {
+        const purchased = item({
+            casa_id: null,
+            usuario_id: userId,
+            status: "COMPRADO",
+            comprado_por_usuario_id: userId,
+        });
+        repository.updateStatus.mockResolvedValue({ found: true, item: purchased });
+
+        await service.updatePersonalStatus(
+            "item-1",
+            { version: 1, status: "COMPRADO" } as never,
+            userId
+        );
+
+        expect(repository.updateStatus).toHaveBeenCalledWith({
+            residenceId: null,
+            userId,
+            itemId: "item-1",
+            version: 1,
+            purchaserUserId: userId,
+            status: "COMPRADO",
+        });
+    });
+
+    it("deletes personal items within the authenticated user's scope", async () => {
+        await expect(service.removePersonalItem("item-1", 3, userId)).resolves.toEqual({
+            id: "item-1",
+            deleted: true,
+        });
+        expect(repository.deleteItem).toHaveBeenCalledWith(null, "item-1", 3, userId);
+
+        repository.deleteItem.mockResolvedValueOnce(false);
+        repository.findItem.mockResolvedValueOnce(null);
+        await expect(service.removePersonalItem("foreign-item", 1, userId)).rejects.toBeInstanceOf(
+            NotFoundException
+        );
     });
 
     it.each([

@@ -376,7 +376,8 @@ model categoria_despensa {
 
 model item_lista_compras {
   id                                           String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  casa_id                                      String                         @db.Uuid
+  casa_id                                      String?                        @db.Uuid
+  usuario_id                                   String?                        @db.Uuid
   nome                                         String                         @db.VarChar(100)
   quantidade                                   Decimal?                       @db.Decimal(12, 3)
   unidade                                      unidade_item_enum?
@@ -386,14 +387,18 @@ model item_lista_compras {
   criado_em                                    DateTime                       @default(now()) @db.Timestamptz(6)
   atualizado_em                                DateTime                       @updatedAt @db.Timestamptz(6)
   comprado_por_participacao_id                 String?                        @db.Uuid
+  comprado_por_usuario_id                      String?                        @db.Uuid
   comprado_em                                  DateTime?                      @db.Timestamptz(6)
   versao                                       Int                            @default(1)
-  casa                                         casa                           @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_item_lista_compras_casa")
+  casa                                         casa?                          @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_item_lista_compras_casa")
+  usuario                                      usuario?                       @relation("item_lista_compras_dono", fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_item_lista_compras_usuario")
   participacao_item_lista_compras_criado_por   participacao?                  @relation("item_lista_compras_criado_por", fields: [criado_por_participacao_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_item_lista_compras_criado_por")
   participacao_item_lista_compras_comprado_por participacao?                  @relation("item_lista_compras_comprado_por", fields: [comprado_por_participacao_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_item_lista_compras_comprado_por")
+  usuario_item_lista_compras_comprado_por      usuario?                       @relation("item_lista_compras_comprado_por", fields: [comprado_por_usuario_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_item_lista_compras_comprado_usuario")
 
   @@index([casa_id, status, criado_em(sort: Desc), id], map: "idx_item_lista_compras_casa_status_criado")
   @@index([casa_id, status, comprado_em(sort: Desc), id], map: "idx_item_lista_compras_casa_status_comprado")
+  @@index([usuario_id, status, criado_em(sort: Desc), id], map: "idx_item_lista_compras_usuario_status_criado")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -784,33 +789,35 @@ model subgrupo {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model usuario {
-  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  codigo_pessoal              String                        @unique @db.Char(6)
-  nome                        String                        @db.VarChar(150)
-  apelido                     String?                       @db.VarChar(100)
-  email                       String                        @unique @db.Citext
-  senha_hash                  String                        @db.VarChar(255)
-  falhas_login                Int                           @default(0)
-  login_bloqueado_ate         DateTime?                     @db.Timestamptz(6)
-  foto_url                    String?                       @db.VarChar(500)
-  cor_avatar                  String                        @default("#e8f3e8") @db.VarChar(7)
-  status_moradia              status_moradia_enum           @default(PROCURANDO)
-  anonimizado_em              DateTime?                     @db.Timestamptz(6)
-  excluido_em                 DateTime?                     @db.Timestamptz(6)
-  casa                        casa[]
-  convite_casa                convite_casa[]
-  comprovante_pagamento       comprovante_pagamento[]
-  definicao_tarefa            definicao_tarefa[]
-  despesa                     despesa[]
-  despesas_criadas            despesa[]                     @relation("despesa_criador")
-  instancia_tarefa            instancia_tarefa[]
-  interesse_anuncio           interesse_anuncio[]
-  lembrete                    lembrete[]
-  mensagem_negociacao_anuncio mensagem_negociacao_anuncio[]
-  notificacao                 notificacao[]
-  participacao                participacao[]
-  preferencia_residencia      preferencia_residencia[]
-  password_reset              password_reset[]
+  id                              String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo_pessoal                  String                        @unique @db.Char(6)
+  nome                            String                        @db.VarChar(150)
+  apelido                         String?                       @db.VarChar(100)
+  email                           String                        @unique @db.Citext
+  senha_hash                      String                        @db.VarChar(255)
+  falhas_login                    Int                           @default(0)
+  login_bloqueado_ate             DateTime?                     @db.Timestamptz(6)
+  foto_url                        String?                       @db.VarChar(500)
+  cor_avatar                      String                        @default("#e8f3e8") @db.VarChar(7)
+  status_moradia                  status_moradia_enum           @default(PROCURANDO)
+  anonimizado_em                  DateTime?                     @db.Timestamptz(6)
+  excluido_em                     DateTime?                     @db.Timestamptz(6)
+  casa                            casa[]
+  convite_casa                    convite_casa[]
+  comprovante_pagamento           comprovante_pagamento[]
+  definicao_tarefa                definicao_tarefa[]
+  despesa                         despesa[]
+  despesas_criadas                despesa[]                     @relation("despesa_criador")
+  instancia_tarefa                instancia_tarefa[]
+  interesse_anuncio               interesse_anuncio[]
+  lembrete                        lembrete[]
+  mensagem_negociacao_anuncio     mensagem_negociacao_anuncio[]
+  notificacao                     notificacao[]
+  participacao                    participacao[]
+  preferencia_residencia          preferencia_residencia[]
+  password_reset                  password_reset[]
+  item_lista_compras_dono         item_lista_compras[]          @relation("item_lista_compras_dono")
+  item_lista_compras_comprado_por item_lista_compras[]          @relation("item_lista_compras_comprado_por")
 }
 
 model password_reset {

@@ -4,6 +4,8 @@ import { X } from "lucide-react";
 import type { PantryCategory, PantryMember, PantryUnit } from "../api/pantry.api";
 import {
     formatQuantity,
+    pantryQuantityStep,
+    pantryUnitRequiresInteger,
     unitLabels,
     type ItemFormState,
     type ItemModalState,
@@ -78,7 +80,7 @@ export function PantryItemModal({
                                     placeholder="Ex.: Arroz"
                                 />
                             </FormField>
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid min-w-0 gap-4 sm:grid-cols-2">
                                 <FormField label="Categoria">
                                     <SystemSelect
                                         required
@@ -163,7 +165,7 @@ export function PantryItemModal({
                                     </SystemSelect>
                                 </FormField>
                             )}
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="grid min-w-0 gap-4 sm:grid-cols-2">
                                 <FormField
                                     label={
                                         itemModal.mode === "edit"
@@ -171,11 +173,23 @@ export function PantryItemModal({
                                             : "Quantidade inicial"
                                     }
                                 >
-                                    <div className="flex gap-2">
+                                    <div className="flex min-w-0 gap-2">
                                         <input
                                             required={itemModal.mode === "create"}
                                             disabled={itemModal.mode === "edit"}
-                                            inputMode="decimal"
+                                            type={itemModal.mode === "edit" ? "text" : "number"}
+                                            min={
+                                                itemModal.mode === "create"
+                                                    ? pantryUnitRequiresInteger(form.unit)
+                                                        ? "0"
+                                                        : "0.1"
+                                                    : undefined
+                                            }
+                                            step={
+                                                itemModal.mode === "create"
+                                                    ? pantryQuantityStep(form.unit)
+                                                    : undefined
+                                            }
                                             value={
                                                 itemModal.mode === "edit"
                                                     ? formatQuantity(
@@ -198,7 +212,7 @@ export function PantryItemModal({
                                                     unit: event.target.value as PantryUnit,
                                                 })
                                             }
-                                            className="h-10 rounded-lg border border-[#d9d1de] bg-white px-2 text-sm outline-none focus:border-[#4e812f]"
+                                            className="h-10 w-[92px] shrink-0 rounded-lg border border-[#d9d1de] bg-white px-2 text-sm outline-none focus:border-[#4e812f]"
                                         >
                                             {Object.entries(unitLabels).map(([value, label]) => (
                                                 <option key={value} value={value}>
@@ -209,18 +223,34 @@ export function PantryItemModal({
                                     </div>
                                 </FormField>
                                 <FormField label="Quantidade mínima (opcional)">
-                                    <input
-                                        inputMode="decimal"
-                                        value={form.minimumQuantity}
-                                        onChange={(event) =>
-                                            setForm({
-                                                ...form,
-                                                minimumQuantity: event.target.value,
-                                            })
-                                        }
-                                        className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                        placeholder="Sem alerta"
-                                    />
+                                    <div className="flex min-w-0 gap-2">
+                                        <input
+                                            type="number"
+                                            min={pantryUnitRequiresInteger(form.unit) ? "0" : "0.1"}
+                                            step={pantryQuantityStep(form.unit)}
+                                            value={form.minimumQuantity}
+                                            onChange={(event) =>
+                                                setForm({
+                                                    ...form,
+                                                    minimumQuantity: event.target.value,
+                                                })
+                                            }
+                                            className="h-10 min-w-0 flex-1 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
+                                            placeholder="Sem alerta"
+                                        />
+                                        <SystemSelect
+                                            value={form.unit}
+                                            disabled
+                                            aria-label="Unidade da quantidade mínima"
+                                            className="h-10 w-[92px] shrink-0 rounded-lg border border-[#d9d1de] bg-[#f5f2f6] px-2 text-sm outline-none disabled:cursor-default disabled:opacity-100"
+                                        >
+                                            {Object.entries(unitLabels).map(([value, label]) => (
+                                                <option key={value} value={value}>
+                                                    {label}
+                                                </option>
+                                            ))}
+                                        </SystemSelect>
+                                    </div>
                                 </FormField>
                             </div>
                             <FormField label="Validade (opcional)">

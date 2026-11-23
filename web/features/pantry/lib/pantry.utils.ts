@@ -34,6 +34,14 @@ export const unitLabels: Record<PantryUnit, string> = {
     PACOTE: "pacote(s)",
 };
 
+export function pantryUnitRequiresInteger(unit: PantryUnit) {
+    return unit === "UNIDADE" || unit === "PACOTE" || unit === "G" || unit === "ML";
+}
+
+export function pantryQuantityStep(unit: PantryUnit) {
+    return pantryUnitRequiresInteger(unit) ? "1" : "0.1";
+}
+
 export function getErrorMessage(error: unknown) {
     if (typeof error === "object" && error !== null && "message" in error) {
         const responseData =

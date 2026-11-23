@@ -14,6 +14,7 @@ type PantryItemsTableProps = {
     loading: boolean;
     busy: boolean;
     canManageHouse: boolean;
+    currentMemberId: string;
     onMovement: (item: PantryItem, type: PantryMovementType) => void;
     onEdit: (item: PantryItem) => void;
     onRemove: (item: PantryItem) => void;
@@ -25,6 +26,7 @@ export function PantryItemsTable({
     loading,
     busy,
     canManageHouse,
+    currentMemberId,
     onMovement,
     onEdit,
     onRemove,
@@ -169,8 +171,7 @@ export function PantryItemsTable({
                                                     <Plus size={15} />
                                                 </button>
                                             ) : null}
-                                            {item.property === "COMUNITARIO" ||
-                                            item.isMine ||
+                                            {item.creatorMemberId === currentMemberId ||
                                             canManageHouse ? (
                                                 <button
                                                     type="button"
@@ -182,8 +183,7 @@ export function PantryItemsTable({
                                                     <Pencil size={15} />
                                                 </button>
                                             ) : null}
-                                            {item.property === "COMUNITARIO" ||
-                                            item.isMine ||
+                                            {item.creatorMemberId === currentMemberId ||
                                             canManageHouse ? (
                                                 <button
                                                     type="button"
@@ -195,11 +195,10 @@ export function PantryItemsTable({
                                                     <Trash2 size={15} />
                                                 </button>
                                             ) : null}
-                                            {item.property === "DONO_ESPECIFICO" &&
-                                                !item.isMine &&
+                                            {item.creatorMemberId !== currentMemberId &&
                                                 !canManageHouse && (
                                                     <span className="px-1 text-[10px] text-[#77717c]">
-                                                        Somente responsável
+                                                        Somente criador ou administrador
                                                     </span>
                                                 )}
                                         </div>

@@ -40,6 +40,7 @@ import {
     initialForm,
     isExpiringSoon,
     localDateString,
+    pantryUnitRequiresInteger,
     type ItemFormState,
     type ItemModalState,
     type MovementModalState,
@@ -252,10 +253,42 @@ export default function PantryPage() {
             return;
         }
         if (
+            itemModal?.mode === "create" &&
+            pantryUnitRequiresInteger(form.unit) &&
+            !Number.isInteger(quantity)
+        ) {
+            setFormError("Para un, pacote, g ou ml, informe uma quantidade inteira.");
+            return;
+        }
+        if (
+            itemModal?.mode === "create" &&
+            !pantryUnitRequiresInteger(form.unit) &&
+            Math.round(quantity * 10) !== quantity * 10
+        ) {
+            setFormError("Para kg ou L, use frações em passos de 0,1.");
+            return;
+        }
+        if (
             minimumQuantity !== null &&
             (!Number.isFinite(minimumQuantity) || minimumQuantity < 0)
         ) {
             setFormError("Informe uma quantidade mínima válida.");
+            return;
+        }
+        if (
+            minimumQuantity !== null &&
+            pantryUnitRequiresInteger(form.unit) &&
+            !Number.isInteger(minimumQuantity)
+        ) {
+            setFormError("Para un, pacote, g ou ml, a quantidade mínima deve ser inteira.");
+            return;
+        }
+        if (
+            minimumQuantity !== null &&
+            !pantryUnitRequiresInteger(form.unit) &&
+            Math.round(minimumQuantity * 10) !== minimumQuantity * 10
+        ) {
+            setFormError("Para kg ou L, a quantidade mínima deve usar passos de 0,1.");
             return;
         }
         setBusy(true);
@@ -335,9 +368,15 @@ export default function PantryPage() {
             !Number.isFinite(quantity) ||
             quantity < 0.01 ||
             quantity > 99999999 ||
-            !/^\d+(\.\d{1,2})?$/.test(normalizedQuantity)
+            (pantryUnitRequiresInteger(movementModal.item.unit)
+                ? !/^\d+$/.test(normalizedQuantity)
+                : !/^\d+(\.\d)?$/.test(normalizedQuantity))
         ) {
-            setMovementError("Informe uma quantidade positiva com até duas casas decimais.");
+            setMovementError(
+                pantryUnitRequiresInteger(movementModal.item.unit)
+                    ? "Informe uma quantidade inteira para esta unidade."
+                    : "Informe uma quantidade positiva em passos de 0,1."
+            );
             return;
         }
         await adjustQuantity(movementModal.item, movementModal.type, quantity);
@@ -621,6 +660,7 @@ export default function PantryPage() {
                                     loading={loading}
                                     busy={busy}
                                     canManageHouse={canManageHouse}
+                                    currentMemberId={currentMemberId}
                                     onMovement={openMovementModal}
                                     onEdit={openEditModal}
                                     onRemove={(item) => void removeItem(item)}
