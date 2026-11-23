@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import {
@@ -9,8 +10,9 @@ import {
     subscribeNotifications,
 } from "../api/notifications.api";
 import type { AppNotification } from "../api/notifications.api";
+import { roomInterestHref } from "../room-interest-link";
 import { respondToRoomInvitation } from "@/features/rooms/api/rooms.api";
-import { announceResidenceMembershipChanged } from "@/features/residences/api/residences.api";
+import { enterInvitedResidence } from "@/features/rooms/enter-invited-residence";
 import { AuthContext } from "@/providers/AuthProvider";
 
 function errorText(error: unknown) {
@@ -21,7 +23,33 @@ function errorText(error: unknown) {
 
 export function NotificationBell() {
     const auth = useContext(AuthContext);
-    const userId = auth?.user?.id;
+    if (!auth?.user) {
+        return (
+            <span
+                aria-label="Notificações"
+                className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
+            >
+                <Bell size={19} />
+            </span>
+        );
+    }
+    return (
+        <SignedInNotificationBell
+            key={auth.user.id}
+            userId={auth.user.id}
+            refreshUser={auth.refreshUser}
+        />
+    );
+}
+
+function SignedInNotificationBell({
+    userId,
+    refreshUser,
+}: {
+    userId: string;
+    refreshUser: () => Promise<void>;
+}) {
+    const router = useRouter();
     const [notificationState, setNotificationState] = useState<{
         userId: string;
         items: AppNotification[];
@@ -30,6 +58,7 @@ export function NotificationBell() {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [responding, setResponding] = useState(false);
     const notifications =
         notificationState && notificationState.userId === userId ? notificationState.items : [];
     const unreadCount =
@@ -97,11 +126,11 @@ export function NotificationBell() {
     }
 
     async function respond(notification: AppNotification, status: "ACEITO" | "RECUSADO") {
-        if (!notification.convite?.podeResponder) return;
+        if (!notification.convite?.podeResponder || responding) return;
         setError("");
+        setResponding(true);
         try {
-            await respondToRoomInvitation(notification.convite.id, status);
-            if (status === "ACEITO") announceResidenceMembershipChanged();
+            const decision = await respondToRoomInvitation(notification.convite.id, status);
             setNotificationState((current) => {
                 if (!current || current.userId !== userId) return current;
                 const wasUnread = current.items.some(
@@ -116,29 +145,33 @@ export function NotificationBell() {
                                   ...item,
                                   lida: true,
                                   convite: item.convite
-                                      ? { ...item.convite, status, podeResponder: false }
+                                      ? {
+                                            ...item.convite,
+                                            status: decision.status,
+                                            podeResponder: false,
+                                        }
                                       : null,
                               }
                             : item
                     ),
                 };
             });
+            if (decision.status === "ACEITO") {
+                void markRead(notification.id);
+                if (enterInvitedResidence(decision, refreshUser, () => router.replace("/"))) {
+                    setOpen(false);
+                } else {
+                    setError("O servidor não confirmou sua participação na casa.");
+                }
+                return;
+            }
             await markNotificationRead(notification.id);
             await refresh();
         } catch (cause: unknown) {
             setError(errorText(cause));
+        } finally {
+            setResponding(false);
         }
-    }
-
-    if (!userId) {
-        return (
-            <span
-                aria-label="Notificações"
-                className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
-            >
-                <Bell size={19} />
-            </span>
-        );
     }
 
     return (
@@ -196,58 +229,73 @@ export function NotificationBell() {
                         </p>
                     ) : (
                         <ul className="grid gap-2">
-                            {notifications.map((notification) => (
-                                <li
-                                    key={notification.id}
-                                    className={`rounded-lg border p-3 ${notification.lida ? "bg-white" : "bg-[#f3f8f2]"}`}
-                                >
-                                    {notification.negotiationId ? (
-                                        <Link
-                                            href={`/rooms/negotiations/${notification.negotiationId}`}
-                                            onClick={() => void markRead(notification.id)}
-                                            className="font-semibold hover:underline"
-                                        >
-                                            {notification.titulo}
-                                        </Link>
-                                    ) : (
-                                        <p className="font-semibold">{notification.titulo}</p>
-                                    )}
-                                    {notification.mensagem && (
-                                        <p className="mt-1 text-sm text-[#625c66]">
-                                            {notification.mensagem}
-                                        </p>
-                                    )}
-                                    {notification.convite?.podeResponder && (
-                                        <div className="mt-3 flex gap-2">
+                            {notifications.map((notification) => {
+                                const href =
+                                    roomInterestHref(notification) ??
+                                    (notification.negotiationId
+                                        ? `/rooms/negotiations/${notification.negotiationId}`
+                                        : undefined);
+                                return (
+                                    <li
+                                        key={notification.id}
+                                        className={`rounded-lg border p-3 ${notification.lida ? "bg-white" : "bg-[#f3f8f2]"}`}
+                                    >
+                                        {href ? (
+                                            <Link
+                                                href={href}
+                                                onClick={() => {
+                                                    if (!notification.lida)
+                                                        void markRead(notification.id);
+                                                    setOpen(false);
+                                                }}
+                                                className="font-semibold hover:underline"
+                                            >
+                                                {notification.titulo}
+                                            </Link>
+                                        ) : (
+                                            <p className="font-semibold">{notification.titulo}</p>
+                                        )}
+                                        {notification.mensagem && (
+                                            <p className="mt-1 text-sm text-[#625c66]">
+                                                {notification.mensagem}
+                                            </p>
+                                        )}
+                                        {notification.convite?.podeResponder && (
+                                            <div className="mt-3 flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    disabled={responding}
+                                                    onClick={() =>
+                                                        void respond(notification, "ACEITO")
+                                                    }
+                                                    className="rounded bg-[#2f6034] px-3 py-1.5 text-xs font-semibold text-white"
+                                                >
+                                                    Aceitar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={responding}
+                                                    onClick={() =>
+                                                        void respond(notification, "RECUSADO")
+                                                    }
+                                                    className="rounded border px-3 py-1.5 text-xs"
+                                                >
+                                                    Recusar
+                                                </button>
+                                            </div>
+                                        )}
+                                        {!notification.lida && (
                                             <button
                                                 type="button"
-                                                onClick={() => void respond(notification, "ACEITO")}
-                                                className="rounded bg-[#2f6034] px-3 py-1.5 text-xs font-semibold text-white"
+                                                onClick={() => void markRead(notification.id)}
+                                                className="mt-2 block text-xs text-[#315f35] underline"
                                             >
-                                                Aceitar
+                                                Marcar como lida
                                             </button>
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    void respond(notification, "RECUSADO")
-                                                }
-                                                className="rounded border px-3 py-1.5 text-xs"
-                                            >
-                                                Recusar
-                                            </button>
-                                        </div>
-                                    )}
-                                    {!notification.lida && (
-                                        <button
-                                            type="button"
-                                            onClick={() => void markRead(notification.id)}
-                                            className="mt-2 block text-xs text-[#315f35] underline"
-                                        >
-                                            Marcar como lida
-                                        </button>
-                                    )}
-                                </li>
-                            ))}
+                                        )}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     )}
                 </section>

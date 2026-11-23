@@ -1,5 +1,9 @@
 import { ConfigService } from "@nestjs/config";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+    GetBucketPolicyCommand,
+    PutBucketPolicyCommand,
+    PutObjectCommand,
+} from "@aws-sdk/client-s3";
 import { StorageService } from "./storage.service.js";
 
 describe("StorageService", () => {
@@ -57,5 +61,49 @@ describe("StorageService", () => {
                 mimetype: "image/png",
             })
         ).rejects.toThrow("minio unavailable");
+    });
+
+    it("grants read access to listing photos and retains the existing bucket policy", async () => {
+        const avatarStatement = {
+            Sid: "FullHousePublicAvatarRead",
+            Effect: "Allow",
+            Principal: "*",
+            Action: ["s3:GetObject"],
+            Resource: ["arn:aws:s3:::fullhouse/avatars/*"],
+        };
+        send.mockImplementation(async (command: unknown) =>
+            command instanceof GetBucketPolicyCommand
+                ? {
+                      Policy: JSON.stringify({
+                          Version: "2012-10-17",
+                          Statement: [avatarStatement],
+                      }),
+                  }
+                : {}
+        );
+        const file = {
+            originalname: "quarto.png",
+            buffer: Buffer.from("x"),
+            mimetype: "image/png",
+        };
+
+        const url = await service.upload(file, "room-listings");
+        expect(url).toMatch(/\/room-listings\/[0-9a-f-]{36}-quarto\.png$/i);
+        const policyUpdate = send.mock.calls.find(
+            ([command]) => command instanceof PutBucketPolicyCommand
+        )?.[0] as PutBucketPolicyCommand;
+        expect(JSON.parse(policyUpdate.input.Policy as string).Statement).toEqual([
+            avatarStatement,
+            {
+                ...avatarStatement,
+                Sid: "FullHousePublicRoomListingRead",
+                Resource: ["arn:aws:s3:::fullhouse/room-listings/*"],
+            },
+        ]);
+
+        send.mockClear();
+        await service.upload(file, "expense-proofs");
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(send.mock.calls[0][0]).toBeInstanceOf(PutObjectCommand);
     });
 });

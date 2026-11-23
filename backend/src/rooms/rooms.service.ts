@@ -82,6 +82,21 @@ export class RoomsService {
         );
     }
 
+    async findForHouse(userId: string, residenceId: string) {
+        await this.residenceAccess.requireMembership(residenceId, userId);
+        const listings = await this.repository.findForHouse(residenceId);
+        return listings.map((listing) => {
+            const author = listing.participacao;
+            const canManage = author.usuario_id === userId && author.data_saida === null;
+            return {
+                ...toRoomListingResponse(listing, canManage),
+                autorNome: author.usuario.apelido || author.usuario.nome,
+                canManage,
+                pendingInterestCount: canManage ? listing._count.interesse_anuncio : null,
+            };
+        });
+    }
+
     async update(id: string, data: UpdateRoomListingDto, userId: string) {
         const listing = await this.requireOwner(id, userId);
         const updated = await this.repository.update(listing.id, data);
@@ -193,13 +208,22 @@ export class RoomsService {
         const negotiation = await this.requireNegotiationParticipant(negotiationId, userId);
         const listing = negotiation.interesse_anuncio.anuncio_quarto;
         const advertiserId = listing.participacao.usuario_id;
+        const invitation = negotiation.convite_casa[0];
+        const invitationStatus =
+            invitation?.status === "PENDENTE" && invitation.expira_em.getTime() <= Date.now()
+                ? "EXPIRADO"
+                : invitation?.status;
         const page = await this.repository.listNegotiationMessages(
             negotiationId,
             query.before,
             query.limit
         );
         let canInvite = false;
-        if (advertiserId === userId) {
+        if (
+            advertiserId === userId &&
+            invitationStatus !== "PENDENTE" &&
+            invitationStatus !== "ACEITO"
+        ) {
             try {
                 await this.residenceAccess.requireManager(listing.casa_id, userId);
                 canInvite = true;
@@ -215,6 +239,17 @@ export class RoomsService {
             status: negotiation.interesse_anuncio.status,
             casaId: listing.casa_id,
             podeConvidar: canInvite,
+            convite:
+                invitation && invitationStatus
+                    ? {
+                          id: invitation.id,
+                          status: invitationStatus,
+                          expiraEm: invitation.expira_em.toISOString(),
+                          podeResponder:
+                              invitation.usuario_convidado_id === userId &&
+                              invitationStatus === "PENDENTE",
+                      }
+                    : null,
             anuncio: toRoomListingResponse(listing, advertiserId === userId),
             mensagens: page.data.map((message) => ({
                 id: message.id,

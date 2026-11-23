@@ -6,6 +6,9 @@ import { getNotifications, markNotificationRead } from "../../api/notifications.
 import { respondToRoomInvitation } from "@/features/rooms/api/rooms.api";
 import { RESIDENCE_MEMBERSHIP_CHANGED_EVENT } from "@/features/residences/api/residences.api";
 
+const router = vi.hoisted(() => ({ replace: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
+
 vi.mock("../../api/notifications.api", () => ({
     getNotifications: vi.fn(),
     markNotificationRead: vi.fn(),
@@ -62,6 +65,39 @@ describe("NotificationBell", () => {
         });
     });
 
+    it("links a new room interest to the announcement in Moradores", async () => {
+        vi.mocked(getNotifications).mockResolvedValue({
+            items: [
+                {
+                    ...pendingInvite,
+                    titulo: "Novo interesse em um quarto",
+                    entidadeTipo: "INTERESSE_QUARTO",
+                    entidadeId: "listing-1",
+                    negotiationId: null,
+                    convite: null,
+                },
+            ],
+            unreadCount: 1,
+        });
+        render(
+            <AuthContext.Provider
+                value={{
+                    user: { id: "author-1", email: "owner@example.com" },
+                    loading: false,
+                    logout: async () => undefined,
+                    refreshUser: async () => undefined,
+                }}
+            >
+                <NotificationBell />
+            </AuthContext.Provider>
+        );
+        expect(await screen.findByLabelText("1 notificações não lidas")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Notificações" }));
+        expect(
+            await screen.findByRole("link", { name: "Novo interesse em um quarto" })
+        ).toHaveAttribute("href", "/settings?section=members&listingId=listing-1#anuncios-da-casa");
+    });
+
     it("provides invite actions and removes them after the recipient responds", async () => {
         const membershipChanged = vi.fn();
         window.addEventListener(RESIDENCE_MEMBERSHIP_CHANGED_EVENT, membershipChanged);
@@ -86,6 +122,7 @@ describe("NotificationBell", () => {
             expect(respondToRoomInvitation).toHaveBeenCalledWith("invitation-1", "RECUSADO")
         );
         expect(markNotificationRead).toHaveBeenCalledWith("notification-1");
+        expect(router.replace).not.toHaveBeenCalled();
         await waitFor(() =>
             expect(screen.queryByRole("button", { name: "Recusar" })).not.toBeInTheDocument()
         );
@@ -95,6 +132,7 @@ describe("NotificationBell", () => {
 
     it("announces a residence membership change after accepting an invitation", async () => {
         const membershipChanged = vi.fn();
+        const refreshUser = vi.fn(async () => undefined);
         window.addEventListener(RESIDENCE_MEMBERSHIP_CHANGED_EVENT, membershipChanged);
         vi.mocked(respondToRoomInvitation).mockResolvedValue({
             id: "invitation-1",
@@ -108,7 +146,7 @@ describe("NotificationBell", () => {
                     user: { id: "seeker-1", email: "seeker@example.com" },
                     loading: false,
                     logout: async () => undefined,
-                    refreshUser: async () => undefined,
+                    refreshUser,
                 }}
             >
                 <NotificationBell />
@@ -120,6 +158,8 @@ describe("NotificationBell", () => {
 
         await waitFor(() => expect(membershipChanged).toHaveBeenCalledOnce());
         expect(respondToRoomInvitation).toHaveBeenCalledWith("invitation-1", "ACEITO");
+        expect(refreshUser).toHaveBeenCalledOnce();
+        expect(router.replace).toHaveBeenCalledWith("/");
         window.removeEventListener(RESIDENCE_MEMBERSHIP_CHANGED_EVENT, membershipChanged);
     });
 

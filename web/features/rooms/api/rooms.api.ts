@@ -40,6 +40,12 @@ export interface RoomListingInput {
     fotos?: string[];
 }
 
+export interface HouseRoomListing extends RoomListing {
+    autorNome: string;
+    canManage: boolean;
+    pendingInterestCount: number | null;
+}
+
 export type RoomListingFilters = {
     cidade?: string;
     bairro?: string;
@@ -95,11 +101,25 @@ export interface RoomNegotiation {
     status: RoomInterest["status"];
     casaId: string;
     podeConvidar: boolean;
+    convite?: RoomInvitation | null;
     anuncio: RoomListing;
     mensagens: RoomNegotiationMessage[];
     hasMore: boolean;
     nextCursor: string | null;
 }
+
+export type RoomInvitation = {
+    id: string;
+    status: "PENDENTE" | "ACEITO" | "RECUSADO" | "EXPIRADO" | "CANCELADO";
+    expiraEm: string;
+    podeResponder: boolean;
+};
+
+export type RoomInvitationDecision = {
+    id: string;
+    status: "ACEITO" | "RECUSADO" | "EXPIRADO";
+    membershipId: string | null;
+};
 
 export async function searchRoomListings(filters: RoomListingFilters = {}) {
     const response = await api.get<RoomListingPage>("/rooms/listings", { params: filters });
@@ -114,6 +134,13 @@ export async function getRoomListing(id: string) {
 export async function getMyRoomListings(casaId?: string) {
     const response = await api.get<RoomListing[]>("/rooms/listings/mine", {
         params: casaId ? { casaId } : undefined,
+    });
+    return response.data;
+}
+
+export async function getHouseRoomListings(casaId: string) {
+    const response = await api.get<HouseRoomListing[]>("/rooms/listings/house", {
+        params: { casaId },
     });
     return response.data;
 }
@@ -205,10 +232,9 @@ export async function sendRoomInvitation(id: string) {
 }
 
 export async function respondToRoomInvitation(id: string, status: "ACEITO" | "RECUSADO") {
-    const response = await api.patch<{
-        id: string;
-        status: "ACEITO" | "RECUSADO" | "EXPIRADO";
-        membershipId: string | null;
-    }>(`/rooms/negotiations/invitations/${id}`, { status });
+    const response = await api.patch<RoomInvitationDecision>(
+        `/rooms/negotiations/invitations/${id}`,
+        { status }
+    );
     return response.data;
 }

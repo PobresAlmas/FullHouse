@@ -11,6 +11,7 @@ describe("RoomsRepository room-interest decisions", () => {
         },
         negociacao_anuncio: { upsert: vi.fn() },
         notificacao: { create: vi.fn() },
+        usuario: { update: vi.fn() },
         convite_casa: {
             findFirst: vi.fn(),
             findUnique: vi.fn(),
@@ -51,6 +52,7 @@ describe("RoomsRepository room-interest decisions", () => {
             convidado_por_participacao_id: "manager-member-1",
             status: "PENDENTE",
             expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            casa: { status: "ATIVA", excluido_em: null },
         });
         transaction.convite_casa.create.mockResolvedValue({
             id: "invitation-1",
@@ -161,6 +163,26 @@ describe("RoomsRepository room-interest decisions", () => {
             where: { id: "invitation-1" },
             data: { status: "ACEITO" },
         });
+        expect(transaction.usuario.update).toHaveBeenCalledWith({
+            where: { id: "seeker-1" },
+            data: { status_moradia: "MORANDO" },
+        });
+    });
+
+    it("rejects accepting a pending invite when the house is no longer active", async () => {
+        transaction.convite_casa.findUnique.mockResolvedValueOnce({
+            id: "invitation-1",
+            usuario_convidado_id: "seeker-1",
+            status: "PENDENTE",
+            expira_em: new Date(Date.now() + 60_000),
+            casa: { status: "INATIVA", excluido_em: null },
+        });
+
+        await expect(
+            repository.respondToNegotiationInvitation("invitation-1", "seeker-1", "ACEITO")
+        ).rejects.toThrow("A casa deste convite não está mais ativa.");
+        expect(transaction.participacao.create).not.toHaveBeenCalled();
+        expect(transaction.usuario.update).not.toHaveBeenCalled();
     });
 
     it("rejects accepting an invite to a second residence without changing the invite", async () => {
@@ -241,15 +263,21 @@ describe("RoomsRepository", () => {
     let transaction: {
         $queryRaw: ReturnType<typeof vi.fn>;
         interesse_anuncio: Record<string, ReturnType<typeof vi.fn>>;
+        notificacao: { create: ReturnType<typeof vi.fn> };
     };
 
     beforeEach(() => {
         transaction = {
-            $queryRaw: vi.fn().mockResolvedValue([{ id: "listing-1" }]),
+            $queryRaw: vi
+                .fn()
+                .mockResolvedValue([
+                    { casa_id: "house-1", usuario_id: "author-1", titulo: "Quarto" },
+                ]),
             interesse_anuncio: {
                 findFirst: vi.fn().mockResolvedValue(null),
                 create: vi.fn().mockResolvedValue({ id: "interest-1" }),
             },
+            notificacao: { create: vi.fn().mockResolvedValue({}) },
         };
         prisma = {
             anuncio_quarto: {
@@ -464,7 +492,9 @@ describe("RoomsRepository", () => {
             NotFoundException
         );
 
-        transaction.$queryRaw.mockResolvedValueOnce([{ id: "listing-1" }]);
+        transaction.$queryRaw.mockResolvedValueOnce([
+            { casa_id: "house-1", usuario_id: "author-1", titulo: "Quarto" },
+        ]);
         transaction.interesse_anuncio.findFirst.mockResolvedValueOnce({ id: "existing" });
         await expect(repository.createInterest("listing-1", "user-1")).rejects.toBeInstanceOf(
             ConflictException

@@ -8,6 +8,7 @@ describe("RoomsService", () => {
         findMany: vi.fn(),
         findById: vi.fn(),
         findMine: vi.fn(),
+        findForHouse: vi.fn(),
         findForOwner: vi.fn(),
         update: vi.fn(),
         close: vi.fn(),
@@ -37,6 +38,7 @@ describe("RoomsService", () => {
     const negotiationRecord = {
         id: "negotiation-1",
         interesse_id: "interest-1",
+        convite_casa: [],
         interesse_anuncio: {
             status: "ACEITO",
             usuario: { id: "seeker-1" },
@@ -68,6 +70,47 @@ describe("RoomsService", () => {
 
     beforeEach(() => {
         vi.resetAllMocks();
+    });
+
+    it("lists house announcements with private fields and pending counts only for the active author", async () => {
+        const rawListing = negotiationRecord.interesse_anuncio.anuncio_quarto;
+        residenceAccess.requireMembership.mockResolvedValue({ memberId: "active-member-1" });
+        repository.findForHouse.mockResolvedValue([
+            {
+                ...rawListing,
+                participacao: {
+                    usuario_id: "owner-1",
+                    data_saida: null,
+                    usuario: { nome: "Ana", apelido: "Aninha" },
+                },
+                _count: { interesse_anuncio: 2 },
+            },
+        ]);
+
+        await expect(service.findForHouse("owner-1", "house-1")).resolves.toMatchObject([
+            {
+                autorNome: "Aninha",
+                canManage: true,
+                pendingInterestCount: 2,
+                enderecoCompleto: "Rua privada",
+                contato: "88999999999",
+            },
+        ]);
+        await expect(service.findForHouse("other-resident", "house-1")).resolves.toMatchObject([
+            {
+                autorNome: "Aninha",
+                canManage: false,
+                pendingInterestCount: null,
+                enderecoCompleto: null,
+                contato: null,
+            },
+        ]);
+        expect(repository.findForHouse).toHaveBeenLastCalledWith("house-1");
+        residenceAccess.requireMembership.mockRejectedValueOnce(new NotFoundException());
+        await expect(service.findForHouse("owner-1", "other-house")).rejects.toBeInstanceOf(
+            NotFoundException
+        );
+        expect(repository.findForHouse).toHaveBeenCalledTimes(2);
     });
 
     it("uses the authenticated active participation as the creator", async () => {
@@ -141,6 +184,32 @@ describe("RoomsService", () => {
             )
         ).rejects.toBeInstanceOf(ForbiddenException);
         expect(storage.upload).not.toHaveBeenCalled();
+    });
+
+    it("uses the residence in the request to authorize upload and publication", async () => {
+        residenceAccess.requireManager.mockImplementation(async (residenceId: string) => {
+            if (residenceId !== "house-1") throw new NotFoundException();
+            return { memberId: "manager-1" };
+        });
+        const file = { mimetype: "image/png" } as Express.Multer.File;
+        storage.upload.mockResolvedValue("https://storage.example/quarto.png");
+
+        await expect(service.uploadPhoto("house-1", file, "user-1")).resolves.toEqual({
+            url: "https://storage.example/quarto.png",
+        });
+        await expect(service.uploadPhoto("house-2", file, "user-1")).rejects.toBeInstanceOf(
+            NotFoundException
+        );
+        await expect(
+            service.create({ casaId: "house-2" } as never, "user-1")
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(residenceAccess.requireManager.mock.calls).toEqual([
+            ["house-1", "user-1"],
+            ["house-2", "user-1"],
+            ["house-2", "user-1"],
+        ]);
+        expect(storage.upload).toHaveBeenCalledExactlyOnceWith(file, "room-listings");
+        expect(repository.create).not.toHaveBeenCalled();
     });
 
     it("does not expose a closed listing through public detail", async () => {
@@ -313,6 +382,34 @@ describe("RoomsService", () => {
         ]);
     });
 
+    it("offers a pending invitation response only to the invited negotiation participant", async () => {
+        const expiration = new Date(Date.now() + 60_000);
+        repository.findNegotiationForAccess.mockResolvedValue({
+            ...negotiationRecord,
+            convite_casa: [
+                {
+                    id: "invite-1",
+                    status: "PENDENTE",
+                    expira_em: expiration,
+                    usuario_convidado_id: "seeker-1",
+                },
+            ],
+        });
+        repository.listNegotiationMessages.mockResolvedValue({
+            data: [],
+            hasMore: false,
+            nextCursor: null,
+        });
+        await expect(
+            service.getNegotiationMessages("negotiation-1", "seeker-1", { limit: 30 })
+        ).resolves.toMatchObject({
+            convite: { id: "invite-1", status: "PENDENTE", podeResponder: true },
+        });
+        await expect(
+            service.getNegotiationMessages("negotiation-1", "owner-1", { limit: 30 })
+        ).resolves.toMatchObject({ podeConvidar: false, convite: { podeResponder: false } });
+    });
+
     it.each([
         ["seeker-1", "owner-1"],
         ["owner-1", "seeker-1"],
@@ -399,7 +496,14 @@ describe("RoomsService", () => {
         async (invitationStatus) => {
             repository.findNegotiationForAccess.mockResolvedValue({
                 ...negotiationRecord,
-                convite_casa: [{ status: invitationStatus }],
+                convite_casa: [
+                    {
+                        id: "invitation-1",
+                        status: invitationStatus,
+                        expira_em: new Date(Date.now() + 60_000),
+                        usuario_convidado_id: "seeker-1",
+                    },
+                ],
             });
             repository.listNegotiationMessages.mockResolvedValue({
                 data: [],

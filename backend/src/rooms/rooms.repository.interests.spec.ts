@@ -10,6 +10,7 @@ describe("RoomsRepository room-interest retry rules", () => {
             update: vi.fn(),
             create: vi.fn(),
         },
+        notificacao: { create: vi.fn() },
     };
     const prisma = {
         interesse_anuncio: { findFirst: vi.fn() },
@@ -21,7 +22,9 @@ describe("RoomsRepository room-interest retry rules", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        transaction.$queryRaw.mockResolvedValue([{ id: "listing-1" }]);
+        transaction.$queryRaw.mockResolvedValue([
+            { casa_id: "house-1", usuario_id: "author-1", titulo: "Quarto" },
+        ]);
         transaction.interesse_anuncio.findFirst.mockResolvedValue(null);
         transaction.interesse_anuncio.update.mockResolvedValue({
             id: "interest-1",
@@ -66,6 +69,7 @@ describe("RoomsRepository room-interest retry rules", () => {
         expect(transaction.$queryRaw).toHaveBeenCalledOnce();
         expect(transaction.interesse_anuncio.create).not.toHaveBeenCalled();
         expect(transaction.interesse_anuncio.update).not.toHaveBeenCalled();
+        expect(transaction.notificacao.create).not.toHaveBeenCalled();
     });
 
     it("reopens a declined interest instead of creating a duplicate row", async () => {
@@ -81,6 +85,7 @@ describe("RoomsRepository room-interest retry rules", () => {
             data: { status: "PENDENTE", mensagem: "Tenho interesse novamente." },
         });
         expect(transaction.interesse_anuncio.create).not.toHaveBeenCalled();
+        expect(transaction.notificacao.create).toHaveBeenCalledOnce();
     });
 
     it("creates an interest when the user has no prior interest", async () => {
@@ -96,6 +101,17 @@ describe("RoomsRepository room-interest retry rules", () => {
                 anuncio_id: "listing-1",
                 usuario_id: "user-1",
                 mensagem: "Tenho interesse.",
+            },
+        });
+        expect(transaction.notificacao.create).toHaveBeenCalledExactlyOnceWith({
+            data: {
+                usuario_id: "author-1",
+                casa_id: "house-1",
+                tipo: "SISTEMA",
+                titulo: "Novo interesse em um quarto",
+                mensagem: "Alguém se interessou pelo anúncio “Quarto”.",
+                entidade_tipo: "INTERESSE_QUARTO",
+                entidade_id: "listing-1",
             },
         });
     });

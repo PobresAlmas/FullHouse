@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RoomNegotiationPage } from "../RoomNegotiationPage";
 import {
     getRoomNegotiation,
+    respondToRoomInvitation,
     sendRoomInvitation,
     sendRoomNegotiationMessage,
 } from "../../api/rooms.api";
@@ -10,6 +11,7 @@ import {
 const authState = vi.hoisted(() => ({
     user: { id: "owner-1", email: "owner@example.com", name: "Owner" },
     replace: vi.fn(),
+    refreshUser: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/features/auth/hooks/useAuth", () => ({
@@ -25,6 +27,7 @@ vi.mock("@/components/layout/AppSidebar", () => ({
 }));
 vi.mock("../../api/rooms.api", () => ({
     getRoomNegotiation: vi.fn(),
+    respondToRoomInvitation: vi.fn(),
     sendRoomInvitation: vi.fn(),
     sendRoomNegotiationMessage: vi.fn(),
 }));
@@ -87,6 +90,49 @@ describe("RoomNegotiationPage", () => {
             enviadaEm: "2026-11-09T12:01:00.000Z",
         });
     });
+
+    it.each(["ACEITO", "RECUSADO"] as const)(
+        "handles an invited user's %s decision",
+        async (status) => {
+            authState.user = { id: "seeker-1", email: "seeker@example.com", name: "Seeker" };
+            vi.mocked(getRoomNegotiation).mockResolvedValue({
+                ...negotiation,
+                podeConvidar: false,
+                convite: {
+                    id: "invitation-1",
+                    status: "PENDENTE",
+                    expiraEm: new Date(Date.now() + 60_000).toISOString(),
+                    podeResponder: true,
+                },
+            });
+            vi.mocked(respondToRoomInvitation).mockResolvedValue({
+                id: "invitation-1",
+                status,
+                membershipId: status === "ACEITO" ? "membership-1" : null,
+            });
+
+            render(<RoomNegotiationPage />);
+            fireEvent.click(
+                await screen.findByRole("button", {
+                    name:
+                        status === "ACEITO"
+                            ? "Aceitar convite e entrar na casa"
+                            : "Recusar convite",
+                })
+            );
+            expect(
+                await screen.findByText(status === "ACEITO" ? "Convite aceito" : "Convite recusado")
+            ).toBeInTheDocument();
+            expect(respondToRoomInvitation).toHaveBeenCalledWith("invitation-1", status);
+            if (status === "ACEITO") {
+                expect(authState.refreshUser).toHaveBeenCalledOnce();
+                expect(authState.replace).toHaveBeenCalledWith("/");
+            } else {
+                expect(authState.refreshUser).not.toHaveBeenCalled();
+                expect(authState.replace).not.toHaveBeenCalled();
+            }
+        }
+    );
 
     it("keeps the negotiation open for messages and offers invitations only when permitted", async () => {
         render(<RoomNegotiationPage />);

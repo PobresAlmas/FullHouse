@@ -1,0 +1,59 @@
+# SPEC-001 — Tarefas
+
+Executar na ordem após a aprovação da spec e o pedido de implementação. Ler `requirements.md` e `design.md` antes de começar. Marcar `[x]` somente após verificar o resultado.
+
+- [x] **T01 — Conferir os pontos de integração.** Revisar as seções de `SettingsPage`, o cabeçalho de `SettingsMembersTable`, o formulário de `RoomsPage`, as rotas da API de Quartos e a leitura de regras. Confirmar os papéis habilitados e como o contexto da residência é recebido. **Refs:** RF01, RNF03, CA01, CA02, CA07.
+- [x] **T02 — Inserir a ação em Moradores.** Reservar a ação opcional no cabeçalho e exibir **Anunciar quarto** para gestores da casa ativa na seção `members`. Abrir e fechar o diálogo sem perder o contexto de Configurações. Conferir as outras seções e os modos sem permissão. **Refs:** RF01, RNF01, RNF02, CA01, CA08.
+- [x] **T03 — Reutilizar o formulário de anúncio.** Organizar os campos do quarto, localização e contato, reaproveitar validações existentes e aplicar as exigências desse fluxo. Exibir a casa de destino, preencher cidade e bairro quando conhecidos e iniciar as flags de contato e endereço desmarcadas. Preservar os demais pontos de uso do formulário. **Refs:** RF02, RF05, CA02, CA05.
+- [x] **T04 — Implementar seleção, prévia e envio de fotos.** Aplicar limite de quantidade, formato e tamanho, oferecer remoção antes do envio, exibir erros por arquivo e usar `uploadRoomPhoto` com o ID da casa vinculada ao diálogo. Aproveitar uploads bem-sucedidos ao repetir um envio e submeter apenas as URLs ainda selecionadas. Restringir a política de leitura pública das fotos ao prefixo de anúncios e verificar o acesso às URLs retornadas. **Refs:** RF03, RF06, CA02, CA03, CA06, CA07.
+- [x] **T05 — Preparar o perfil público de convivência.** Carregar as regras vigentes por `getHouseRules`, permitir seleção e revisão do texto e salvar **Aceita pets** como booleano. Tratar mural vazio e erro, preservar o preenchimento manual e manter os metadados das regras fora do payload. **Refs:** RF04, RF05, CA02, CA04, CA05.
+- [x] **T06 — Conectar a publicação e o retorno.** Validar o formulário antes de iniciar os uploads, usar `createRoomListing` somente depois de todas as fotos escolhidas estarem disponíveis e impedir submissões simultâneas. Tratar falhas sem descartar o formulário e confirmar o sucesso em Moradores. **Refs:** RF06, RNF03, CA02, CA06, CA07.
+- [x] **T07 — Verificar os contratos e permissões.** Usar os testes existentes de Quartos, Configurações e regras como base. Cobrir os casos novos em Moradores, o vínculo da residência, a seleção de regras e pets, as falhas de envio e as flags de privacidade. Verificar criação e upload com gestor, morador comum, sessão ausente e residência não autorizada. **Refs:** RF01–RF06, RNF03, CA01–CA07.
+- [x] **T08 — Validar o fluxo integrado e registrar evidências.** Exercitar publicação com e sem fotos, erro e nova tentativa, cancelamento, mural vazio e visibilidade pública. Conferir em celular e desktop a posição do botão, o comportamento do diálogo e a navegação por teclado. Registrar o resultado e as capturas após a execução. **Refs:** RNF01, RNF02, CA01–CA08.
+- [x] **T09 — Listar anúncios da casa e reaproveitar a edição.** Criar a consulta autenticada por casa, aplicar máscara para outros membros e integrar painel, prévia e edição em Moradores. **Refs:** RF07, CA09.
+- [x] **T10 — Responder a interessados em Moradores.** Reutilizar a lista e a decisão de interesse. Atualizar situação e oferecer a conversa após aceitar. **Refs:** RF08, CA10.
+- [x] **T11 — Avisar o anunciante.** Persistir o aviso na transação de interesse e conectar o sino e a tela de notificações à lista de interessados. **Refs:** RF09, CA11.
+- [x] **T12 — Verificar gestão e aviso.** Testar isolamento por casa, privacidade, edição pelo autor, decisão e persistência da notificação sem duplicidade. Registrar o resultado. **Refs:** CA09–CA11.
+- [x] **T13 — Confirmar entrada e atualizar a interface após aceitar convite.** Exibir o convite na conversa, sincronizar a situação de moradia na transação e abrir a Home após aceite confirmado pelo sino ou pela conversa. Orientar o anunciante sobre o envio do convite. **Refs:** RF10, CA12.
+- [x] **T14 — Compartilhar o card do anúncio.** Usar a mesma apresentação em Quartos e Anúncios da casa, mantendo as ações de cada contexto. **Refs:** RF07, CA13.
+- [x] **T15 — Verificar convite e cards.** Exercitar aceite pelo destinatário, recusa, autorização, residência no perfil e navegação. Conferir o card com e sem capa e as ações do autor. **Refs:** CA12, CA13.
+
+## Verificação em 22/11/2026
+
+Executado com Node.js 26.8.1, usando os executáveis locais de cada pacote.
+
+| Área                         | Comando ou verificação                                                                                                                                | Resultado                                                                                                                                                                                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend da spec (`web/`)    | `./node_modules/.bin/vitest run features/settings features/rooms app/rooms "app/(private)/rules"`                                                     | 45 testes passaram. A cobertura nova inclui permissões em Moradores, revisão de regras, pets, privacidade, arquivos inválidos, nova tentativa de envio e cancelamento.                                                                                                        |
+| Backend (`backend/`)         | `./node_modules/.bin/vitest run`                                                                                                                      | 509 testes passaram, incluindo a política de leitura das fotos.                                                                                                                                                                                                               |
+| HTTP de Quartos (`backend/`) | `./node_modules/.bin/vitest run --config ./vitest.config.e2e.ts test/rooms.e2e-spec.ts`                                                               | 13 testes passaram.                                                                                                                                                                                                                                                           |
+| Tipos, lint e formatação     | `tsc --noEmit --incremental false`, `eslint .` e `prettier --check .` no frontend. `nest build`, lint e formatação dos arquivos alterados no backend. | Verificações aprovadas.                                                                                                                                                                                                                                                       |
+| Fluxo integrado              | Chromium em desktop e celular com API NestJS, PostgreSQL e Silo temporários.                                                                          | Publicação com e sem fotos, cancelamento por Escape, retorno de foco, mural vazio, seleção de regras, falha simulada de upload seguida de nova tentativa, consulta pública e proteção independente de endereço e contato. A URL da foto retornou HTTP `200` sem autenticação. |
+| Suíte geral do frontend      | `./node_modules/.bin/vitest run --maxWorkers=2`                                                                                                       | 309 passaram e 1 falhou na Lista de Compras. O teste de recuperação da consulta encontra dois elementos com `role="alert"`.                                                                                                                                                   |
+
+### Capturas do fluxo integrado
+
+- [Ação no cabeçalho de Moradores](evidencias/01-moradores-desktop.png)
+- [Formulário com foto e regras em desktop](evidencias/02-formulario-desktop.png)
+- [Confirmação após publicar](evidencias/03-publicado.png)
+- [Formulário em celular](evidencias/04-formulario-celular.png)
+
+## Verificação de anúncios e interesses
+
+Executado com Node.js 26.8.1.
+
+| Área            | Comando ou verificação                                                               | Resultado                                                                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend        | `vitest run features/settings features/rooms features/notifications app/rooms`       | 53 testes passaram. Inclui prévia, edição com fotos preservadas, acesso à lista de interessados pelo aviso, exibição da conversa após aceite e restrição das ações ao autor.              |
+| Backend         | `vitest run`                                                                         | 510 testes passaram.                                                                                                                                                                      |
+| HTTP de Quartos | `vitest run --config ./vitest.config.e2e.ts test/rooms.e2e-spec.ts`                  | 14 testes passaram.                                                                                                                                                                       |
+| Fluxo com banco | API NestJS e PostgreSQL temporários com contas de autor, morador e interessado.      | Conferidos isolamento por casa, edição, máscara de contato e endereço, aviso entregue no fluxo do sino, duplicata sem novo aviso, recusa, reenvio com novo aviso e aceite com negociação. |
+| Qualidade       | ESLint e Prettier dos arquivos alterados, TypeScript no frontend e build do backend. | Aprovados.                                                                                                                                                                                |
+
+## Verificação do aceite de convite e dos cards
+
+- **Frontend.** 85 testes passaram em `vitest run features/settings features/rooms features/notifications features/home app/rooms components/layout`. Verificados o redirecionamento após o aceite pelo sino e pela conversa, a recusa sem navegação e o card de Moradores com e sem capa.
+- **Backend.** 512 testes passaram em `vitest run`. Os novos cenários cobrem a atualização da situação de moradia, a proteção contra convite para casa inativa e a oferta das ações ao destinatário.
+- **API com PostgreSQL temporário.** Um terceiro não conseguiu aceitar o convite. Após a recusa, o perfil continuou como `PROCURANDO`. Após um novo convite e o aceite, `/auth/me` retornou `MORANDO` e `/residences` retornou a casa com o papel `MORADOR` e o mesmo ID de participação devolvido no aceite.
+- **Qualidade.** Formatação, lint nos arquivos alterados, tipos do frontend e build do backend passaram.
+- **Suíte geral do frontend.** 315 testes passaram e 1 falhou. A falha registrada anteriormente continua na Lista de Compras, onde o teste encontra dois alertas.

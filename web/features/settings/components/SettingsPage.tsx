@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
     Bell,
@@ -27,6 +27,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import {
     announceResidenceMembershipChanged,
@@ -35,6 +36,7 @@ import {
     updateResidenceName,
     removeResidenceMember,
     updateResidenceMemberAccess,
+    RESIDENCE_MEMBERSHIP_CHANGED_EVENT,
 } from "@/features/residences/api/residences.api";
 import type { Residence, ResidenceMember } from "@/features/residences/api/residences.api";
 import {
@@ -55,6 +57,9 @@ import type {
 import { PreferencesPanel } from "@/features/settings/components/PreferencesPanel";
 import { ProfileSettingsContent } from "@/features/profile/components/ProfilePage";
 import { SettingsMembersTable } from "@/features/settings/components/SettingsMembersTable";
+import { RoomListingDialog } from "@/features/rooms/components/RoomListingDialog";
+import { HouseRoomListings } from "@/features/rooms/components/HouseRoomListings";
+import { roomInterestHref } from "@/features/notifications/room-interest-link";
 import { PantryCategoryModal } from "@/features/pantry/components/PantryCategoryModal";
 import {
     getNotifications,
@@ -142,7 +147,15 @@ function residenceError(error: unknown) {
     return errorText(error);
 }
 
-export function SettingsPage({ section, tab }: { section: Section; tab: PreferenceTab }) {
+export function SettingsPage({
+    section,
+    tab,
+    requestedListingId,
+}: {
+    section: Section;
+    tab: PreferenceTab;
+    requestedListingId?: string;
+}) {
     const { user, loading: authLoading } = useAuth();
     const userId = user?.id;
     const [residenceState, setResidenceState] = useState<{
@@ -157,6 +170,14 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
     const [categoriesLoading, setCategoriesLoading] = useState(false);
     const [sectionError, setSectionError] = useState("");
     const [notice, setNotice] = useState("");
+    const [listingDraft, setListingDraft] = useState<{
+        userId: string;
+        residence: Residence;
+    } | null>(null);
+    const [listingAccessError, setListingAccessError] = useState("");
+    const [listingsVersion, setListingsVersion] = useState(0);
+    const listingButtonRef = useRef<HTMLButtonElement>(null);
+    const settingsHeadingRef = useRef<HTMLHeadingElement>(null);
     const [saving, setSaving] = useState(false);
     const [categoryModalOpen, setCategoryModalOpen] = useState(false);
     const [categoryDraft, setCategoryDraft] = useState("");
@@ -178,6 +199,19 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
         residenceState && residenceState.userId === userId ? residenceState.residence : null;
     const manager =
         residence?.membership?.role === "LIDER" || residence?.membership?.role === "ADMINISTRADOR";
+    const canListRoom =
+        section === "members" &&
+        !authLoading &&
+        !loadingResidence &&
+        !residenceErrorText &&
+        residence?.status === "ATIVA" &&
+        manager;
+    const listingDraftIsCurrent =
+        listingDraft &&
+        canListRoom &&
+        listingDraft.userId === userId &&
+        listingDraft.residence.id === residence?.id &&
+        listingDraft.residence.membership?.id === residence?.membership?.id;
     const canEditCategories = residence?.creationEditPolicy === "TODOS" || manager;
     const displayName = user?.nickname || user?.name || "Morador";
 
@@ -187,27 +221,52 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
             return;
         }
         let active = true;
+        let latestRequest = 0;
         queueMicrotask(() => {
             if (!active) return;
             setLoadingResidence(true);
             setResidenceErrorText("");
         });
-        getResidences()
-            .then((residences) => {
-                if (!active) return;
+        const refreshResidence = async () => {
+            const request = ++latestRequest;
+            try {
+                const residences = await getResidences();
+                if (!active || request !== latestRequest) return;
                 // The API/database enforce one active residence per user.
                 setResidenceState({ userId, residence: residences[0] ?? null });
-            })
-            .catch((error: unknown) => {
-                if (active) setResidenceErrorText(residenceError(error));
-            })
-            .finally(() => {
-                if (active) setLoadingResidence(false);
-            });
+                setResidenceErrorText("");
+            } catch (error: unknown) {
+                if (active && request === latestRequest)
+                    setResidenceErrorText(residenceError(error));
+            } finally {
+                if (active && request === latestRequest) setLoadingResidence(false);
+            }
+        };
+        void refreshResidence();
+        window.addEventListener(RESIDENCE_MEMBERSHIP_CHANGED_EVENT, refreshResidence);
+        return () => {
+            active = false;
+            window.removeEventListener(RESIDENCE_MEMBERSHIP_CHANGED_EVENT, refreshResidence);
+        };
+    }, [authLoading, userId]);
+
+    useEffect(() => {
+        if (!listingDraft || listingDraftIsCurrent) return;
+        let active = true;
+        queueMicrotask(() => {
+            if (!active) return;
+            setListingDraft(null);
+            if (section === "members") {
+                setListingAccessError(
+                    "A casa ou sua permissão mudou. Abra o anúncio novamente quando tiver acesso."
+                );
+                settingsHeadingRef.current?.focus();
+            }
+        });
         return () => {
             active = false;
         };
-    }, [authLoading, userId]);
+    }, [listingDraft, listingDraftIsCurrent, section]);
 
     useEffect(() => {
         if (!residence) return;
@@ -523,6 +582,8 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
                                 <div>
                                     <h1
                                         id="settings-heading"
+                                        ref={settingsHeadingRef}
+                                        tabIndex={-1}
                                         className="text-2xl font-bold tracking-tight md:text-[28px]"
                                     >
                                         {section === "preferences"
@@ -539,6 +600,15 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
                                     ⚙
                                 </span>
                             </div>
+
+                            {section === "members" && listingAccessError && (
+                                <p
+                                    role="alert"
+                                    className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+                                >
+                                    {listingAccessError}
+                                </p>
+                            )}
 
                             {section === "account" ? (
                                 <ProfileSettingsContent />
@@ -663,6 +733,26 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
                                     {section === "members" && (
                                         <SettingsMembersTable
                                             mode="members"
+                                            headerAction={
+                                                canListRoom &&
+                                                userId && (
+                                                    <Button
+                                                        ref={listingButtonRef}
+                                                        type="button"
+                                                        size="lg"
+                                                        aria-haspopup="dialog"
+                                                        className="bg-[#315f35] text-white hover:bg-[#244d29]"
+                                                        onClick={() => {
+                                                            setListingAccessError("");
+                                                            setNotice("");
+                                                            setListingDraft({ userId, residence });
+                                                        }}
+                                                    >
+                                                        <Plus aria-hidden="true" />
+                                                        Anunciar quarto
+                                                    </Button>
+                                                )
+                                            }
                                             members={members}
                                             loading={membersLoading}
                                             manager={Boolean(manager)}
@@ -674,6 +764,34 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
                                             onRemove={(member) => void removeMember(member)}
                                         />
                                     )}
+
+                                    {listingDraft && listingDraftIsCurrent && (
+                                        <RoomListingDialog
+                                            residence={listingDraft.residence}
+                                            onCancel={() => setListingDraft(null)}
+                                            onPublished={() => {
+                                                setListingDraft(null);
+                                                setNotice("Anúncio publicado.");
+                                                setListingsVersion((version) => version + 1);
+                                            }}
+                                            returnFocus={() =>
+                                                listingButtonRef.current ??
+                                                settingsHeadingRef.current
+                                            }
+                                        />
+                                    )}
+
+                                    {section === "members" &&
+                                        residence.status === "ATIVA" &&
+                                        residence.membership && (
+                                            <HouseRoomListings
+                                                key={`${userId}:${residence.id}:${residence.membership.id}`}
+                                                residence={residence}
+                                                refreshKey={listingsVersion}
+                                                requestedListingId={requestedListingId}
+                                                canUpload={manager}
+                                            />
+                                        )}
 
                                     {section === "permissions" && (
                                         <SettingsMembersTable
@@ -762,47 +880,69 @@ export function SettingsPage({ section, tab }: { section: Section; tab: Preferen
                                                 </p>
                                             ) : (
                                                 <ul className="mt-2 divide-y divide-[#e5dfe8]">
-                                                    {visibleNotifications.map((item) => (
-                                                        <li
-                                                            key={item.id}
-                                                            className={`relative py-4 pl-5 ${item.lida ? "" : "before:absolute before:left-0 before:top-6 before:size-1.5 before:rounded-full before:bg-[#4e812f]"}`}
-                                                        >
-                                                            <div className="flex flex-wrap items-start justify-between gap-2">
-                                                                <h3
-                                                                    className={`text-sm ${item.lida ? "font-medium" : "font-bold"}`}
-                                                                >
-                                                                    {item.titulo}
-                                                                </h3>
-                                                                <time
-                                                                    className="shrink-0 text-xs text-[#77717c]"
-                                                                    dateTime={item.criadoEm}
-                                                                >
-                                                                    {new Date(
-                                                                        item.criadoEm
-                                                                    ).toLocaleString("pt-BR", {
-                                                                        dateStyle: "short",
-                                                                        timeStyle: "short",
-                                                                    })}
-                                                                </time>
-                                                            </div>
-                                                            {item.mensagem && (
-                                                                <p className="mt-1 text-sm text-[#625c66]">
-                                                                    {item.mensagem}
-                                                                </p>
-                                                            )}
-                                                            {!item.lida && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        void markRead(item)
-                                                                    }
-                                                                    className="mt-2 text-xs font-medium text-[#315f35] underline underline-offset-2"
-                                                                >
-                                                                    Marcar como lida
-                                                                </button>
-                                                            )}
-                                                        </li>
-                                                    ))}
+                                                    {visibleNotifications.map((item) => {
+                                                        const href =
+                                                            roomInterestHref(item) ??
+                                                            (item.convite && item.negotiationId
+                                                                ? `/rooms/negotiations/${item.negotiationId}`
+                                                                : undefined);
+                                                        return (
+                                                            <li
+                                                                key={item.id}
+                                                                className={`relative py-4 pl-5 ${item.lida ? "" : "before:absolute before:left-0 before:top-6 before:size-1.5 before:rounded-full before:bg-[#4e812f]"}`}
+                                                            >
+                                                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                                                    <h3
+                                                                        className={`text-sm ${item.lida ? "font-medium" : "font-bold"}`}
+                                                                    >
+                                                                        {href ? (
+                                                                            <Link
+                                                                                href={href}
+                                                                                onClick={() => {
+                                                                                    if (!item.lida)
+                                                                                        void markRead(
+                                                                                            item
+                                                                                        );
+                                                                                }}
+                                                                                className="text-[#315f35] underline underline-offset-2"
+                                                                            >
+                                                                                {item.titulo}
+                                                                            </Link>
+                                                                        ) : (
+                                                                            item.titulo
+                                                                        )}
+                                                                    </h3>
+                                                                    <time
+                                                                        className="shrink-0 text-xs text-[#77717c]"
+                                                                        dateTime={item.criadoEm}
+                                                                    >
+                                                                        {new Date(
+                                                                            item.criadoEm
+                                                                        ).toLocaleString("pt-BR", {
+                                                                            dateStyle: "short",
+                                                                            timeStyle: "short",
+                                                                        })}
+                                                                    </time>
+                                                                </div>
+                                                                {item.mensagem && (
+                                                                    <p className="mt-1 text-sm text-[#625c66]">
+                                                                        {item.mensagem}
+                                                                    </p>
+                                                                )}
+                                                                {!item.lida && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            void markRead(item)
+                                                                        }
+                                                                        className="mt-2 text-xs font-medium text-[#315f35] underline underline-offset-2"
+                                                                    >
+                                                                        Marcar como lida
+                                                                    </button>
+                                                                )}
+                                                            </li>
+                                                        );
+                                                    })}
                                                 </ul>
                                             )}
                                             {notificationFilter === "all" &&

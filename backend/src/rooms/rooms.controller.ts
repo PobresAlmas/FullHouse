@@ -44,6 +44,15 @@ export class RoomsController {
         return this.service.findMine(user.id, query.casaId);
     }
 
+    @Get("house")
+    @UseGuards(JwtAuthGuard)
+    findForHouse(
+        @CurrentUser() user: { id: string },
+        @Query("casaId", new ParseUUIDPipe({ version: "4" })) casaId: string
+    ) {
+        return this.service.findForHouse(user.id, casaId);
+    }
+
     @Get(":id")
     @UseGuards(OptionalJwtAuthGuard)
     findById(
