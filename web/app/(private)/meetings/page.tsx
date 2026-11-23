@@ -226,23 +226,25 @@ export default function MeetingsPage() {
                                 </details>
                                 {meeting.status === "AGENDADA" && (
                                     <div className="flex flex-wrap gap-2">
-                                        {ownInvitation && (
+                                        {ownInvitation?.response === "PENDENTE" && (
                                             <>
                                                 <button
+                                                    type="button"
                                                     disabled={busy}
                                                     onClick={() =>
                                                         void respond(meeting, "CONFIRMADO")
                                                     }
-                                                    className="rounded-md border px-3 py-1.5"
+                                                    className="cursor-pointer rounded-md bg-[#4e812f] px-3 py-1.5 text-white transition-colors hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-60"
                                                 >
                                                     Confirmar presença
                                                 </button>
                                                 <button
+                                                    type="button"
                                                     disabled={busy}
                                                     onClick={() =>
                                                         void respond(meeting, "RECUSADO")
                                                     }
-                                                    className="rounded-md border px-3 py-1.5"
+                                                    className="cursor-pointer rounded-md bg-red-600 px-3 py-1.5 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                                                 >
                                                     Recusar convite
                                                 </button>

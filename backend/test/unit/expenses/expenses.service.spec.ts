@@ -18,6 +18,7 @@ describe("ExpensesService CRUD", () => {
     const accessibleExpense = {
         id: "expense-id",
         casa_id: "home-id",
+        criado_por_usuario_id: "user-id",
         subgrupo_id: "subgroup-id",
         status: "ABERTA",
         quitada_em: null,
@@ -32,6 +33,7 @@ describe("ExpensesService CRUD", () => {
         estrategia_rateio: "IGUALITARIO" as const,
         quitada_em: new Date("2026-10-11T00:00:00.000Z"),
         subgrupo: { id: "subgroup-id", nome: "Casa" },
+        criado_por_usuario_id: "user-id",
         participacao: { usuario: { nome: "Emilson", apelido: null } },
     };
 
@@ -50,6 +52,7 @@ describe("ExpensesService CRUD", () => {
     let residenceAccess: {
         requireMembership: ReturnType<typeof vi.fn>;
         requireCreateEditPermission: ReturnType<typeof vi.fn>;
+        requireManager: ReturnType<typeof vi.fn>;
     };
     let service: ExpensesService;
 
@@ -71,6 +74,7 @@ describe("ExpensesService CRUD", () => {
             requireCreateEditPermission: vi
                 .fn()
                 .mockResolvedValue({ memberId: memberParticipationId }),
+            requireManager: vi.fn().mockResolvedValue({ memberId: memberParticipationId }),
         };
         service = new ExpensesService(
             repository as never,
@@ -192,7 +196,12 @@ describe("ExpensesService CRUD", () => {
             id: "expense-id",
         });
         expect(repository.findHomeForUser).toHaveBeenCalledWith("home-id", "user-id");
-        expect(repository.create).toHaveBeenCalledWith(body, "home-id", memberParticipationId);
+        expect(repository.create).toHaveBeenCalledWith(
+            body,
+            "home-id",
+            memberParticipationId,
+            "user-id"
+        );
         expect(repository.findSubgroupForUser).not.toHaveBeenCalled();
     });
 
@@ -204,7 +213,12 @@ describe("ExpensesService CRUD", () => {
         });
         expect(repository.findAvailableHomes).toHaveBeenCalledWith("user-id");
         expect(repository.findHomeForUser).toHaveBeenCalledWith("home-id", "user-id");
-        expect(repository.create).toHaveBeenCalledWith(body, "home-id", memberParticipationId);
+        expect(repository.create).toHaveBeenCalledWith(
+            body,
+            "home-id",
+            memberParticipationId,
+            "user-id"
+        );
     });
 
     it("requires a residence selection if the user has multiple homes", async () => {
@@ -224,7 +238,12 @@ describe("ExpensesService CRUD", () => {
             id: "expense-id",
         });
         expect(repository.findHomeForUser).toHaveBeenCalledWith("home-id", "user-id");
-        expect(repository.create).toHaveBeenCalledWith(dto, "home-id", memberParticipationId);
+        expect(repository.create).toHaveBeenCalledWith(
+            dto,
+            "home-id",
+            memberParticipationId,
+            "user-id"
+        );
     });
 
     it("uses the subgroup residence and rejects a conflicting selected residence", async () => {
@@ -248,6 +267,7 @@ describe("ExpensesService CRUD", () => {
                 quitada_em: null,
                 subgrupo: null,
                 casa_id: "home-id",
+                criado_por_usuario_id: "user-id",
                 casa: { nome: "Grifinória" },
                 participacao: null,
             },

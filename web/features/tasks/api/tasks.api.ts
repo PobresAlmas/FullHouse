@@ -104,6 +104,11 @@ export async function completeTask(residenceId: string, taskId: string): Promise
     return response.data;
 }
 
+export async function reopenTask(residenceId: string, taskId: string): Promise<Task> {
+    const response = await api.patch<Task>(`${residenceTasksPath(residenceId)}/${taskId}/reopen`);
+    return response.data;
+}
+
 export async function deleteTask(residenceId: string, taskId: string): Promise<void> {
     await api.delete(`${residenceTasksPath(residenceId)}/${taskId}`);
 }
@@ -125,6 +130,11 @@ export async function updatePersonalTask(taskId: string, data: Partial<TaskInput
 
 export async function completePersonalTask(taskId: string): Promise<Task> {
     const response = await api.patch<Task>(`/tasks/personal/${taskId}/complete`);
+    return response.data;
+}
+
+export async function reopenPersonalTask(taskId: string): Promise<Task> {
+    const response = await api.patch<Task>(`/tasks/personal/${taskId}/reopen`);
     return response.data;
 }
 
@@ -167,10 +177,12 @@ export async function respondToTaskExchange(
     residenceId: string,
     requestId: string,
     status: "ACEITA" | "RECUSADA",
-    targetTaskId?: string
+    targetTaskId?: string,
+    acceptWithoutTarget = false
 ): Promise<void> {
     await api.patch(`/residences/${residenceId}/task-exchange-requests/${requestId}`, {
         status,
         ...(targetTaskId ? { targetTaskId } : {}),
+        ...(acceptWithoutTarget ? { acceptWithoutTarget: true } : {}),
     });
 }

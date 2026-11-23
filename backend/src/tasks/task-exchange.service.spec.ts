@@ -57,6 +57,7 @@ describe("TaskExchangeService", () => {
         instancia_tarefa: {
             updateMany: ReturnType<typeof vi.fn>;
         };
+        notificacao: { create: ReturnType<typeof vi.fn> };
     };
     let residenceAccess: {
         requireMembership: ReturnType<typeof vi.fn>;
@@ -73,6 +74,7 @@ describe("TaskExchangeService", () => {
             instancia_tarefa: {
                 updateMany: vi.fn().mockResolvedValue({ count: 1 }),
             },
+            notificacao: { create: vi.fn().mockResolvedValue({}) },
         };
         prisma = {
             solicitacao_troca_tarefa: {

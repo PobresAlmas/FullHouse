@@ -65,7 +65,6 @@ export default function LoginForm() {
             <PasswordField
                 id="password"
                 label="Senha"
-                helperText="Use pelo menos 8 caracteres"
                 {...register("password")}
                 error={errors.password?.message}
             />

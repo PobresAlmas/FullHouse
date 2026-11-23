@@ -50,6 +50,7 @@ import type {
 import { AuthContext } from "@/providers/AuthProvider";
 
 type FormState = CreateExpenseInput;
+type ExpenseSummaryModal = "PENDING" | "PAID_THIS_MONTH" | "LAST_3_MONTHS";
 type SubgroupExpenseDraft = Pick<
     CreateExpenseInput,
     "description" | "amount" | "date" | "paymentDate" | "paymentStatus" | "allocations"
@@ -149,6 +150,7 @@ export default function FinancePage() {
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [showOverdue, setShowOverdue] = useState(true);
     const [scope, setScope] = useState<ExpenseScope>("HOME");
+    const [summaryModal, setSummaryModal] = useState<ExpenseSummaryModal | null>(null);
     const [paymentUpdatingIds, setPaymentUpdatingIds] = useState<string[]>([]);
     const [proofUploadingIds, setProofUploadingIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
@@ -178,14 +180,27 @@ export default function FinancePage() {
 
     useEffect(() => {
         let active = true;
-        Promise.all([getExpenseHomes(), getExpenseSubgroups(), getExpenses(scope)])
-            .then(async ([availableHomes, availableSubgroups, registeredExpenses]) => {
+        getExpenseHomes()
+            .then(async (availableHomes) => {
+                if (!active) return;
+
+                setHomes(availableHomes);
+                if (scope === "HOME" && availableHomes.length === 0) {
+                    setSubgroups([]);
+                    setExpenses([]);
+                    setError("");
+                    return;
+                }
+
+                const [availableSubgroups, registeredExpenses] = await Promise.all([
+                    getExpenseSubgroups(),
+                    getExpenses(scope),
+                ]);
                 if (!active) return;
                 const preferences = availableHomes[0]
                     ? await getResidencePreferences(availableHomes[0].id)
                     : null;
                 if (!active) return;
-                setHomes(availableHomes);
                 setSubgroups(availableSubgroups);
                 setExpenses(sortExpenses(registeredExpenses));
                 if (preferences) setShowOverdue(preferences.finance.showOverdue);
@@ -202,18 +217,17 @@ export default function FinancePage() {
         };
     }, [scope]);
 
-    const visibleExpenses = useMemo(
-        () =>
-            scope === "HOME" && !showOverdue
-                ? expenses.filter(
-                      (expense) =>
-                          expense.paymentStatus !== "PENDING" ||
-                          !expense.date ||
-                          expense.date >= localIsoDate(new Date())
-                  )
-                : expenses,
-        [expenses, scope, showOverdue]
-    );
+    const visibleExpenses = useMemo(() => {
+        const today = localIsoDate(new Date());
+        return expenses.filter(
+            (expense) =>
+                scope !== "HOME" ||
+                showOverdue ||
+                expense.paymentStatus !== "PENDING" ||
+                !expense.date ||
+                expense.date >= today
+        );
+    }, [expenses, scope, showOverdue]);
 
     async function loadHomeMembers(homeId: string) {
         const requestId = ++memberRequest.current;
@@ -235,7 +249,8 @@ export default function FinancePage() {
             !expenseToDelete &&
             !subgroupModalOpen &&
             !subgroupViewerOpen &&
-            !reminderDialog
+            !reminderDialog &&
+            !summaryModal
         )
             return;
         function closeOnEscape(event: KeyboardEvent) {
@@ -245,15 +260,24 @@ export default function FinancePage() {
                 setSubgroupModalOpen(false);
                 setSubgroupViewerOpen(false);
                 setReminderDialog(null);
+                setSummaryModal(null);
             }
         }
         window.addEventListener("keydown", closeOnEscape);
         return () => window.removeEventListener("keydown", closeOnEscape);
-    }, [modal, expenseToDelete, subgroupModalOpen, subgroupViewerOpen, reminderDialog]);
+    }, [
+        modal,
+        expenseToDelete,
+        subgroupModalOpen,
+        subgroupViewerOpen,
+        reminderDialog,
+        summaryModal,
+    ]);
 
     const totals = useMemo(() => {
         const now = new Date();
         const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const threeMonthStart = localIsoDate(new Date(now.getFullYear(), now.getMonth() - 2, 1));
         const outstanding = expenses
             .filter((expense) => expense.paymentStatus === "PENDING")
             .reduce((sum, expense) => sum + amountToCents(expense.amount), 0);
@@ -263,9 +287,19 @@ export default function FinancePage() {
                     expense.paymentStatus === "PAID" && expense.paidAt?.startsWith(monthPrefix)
             )
             .reduce((sum, expense) => sum + amountToCents(expense.amount), 0);
-        const total = expenses.reduce((sum, expense) => sum + amountToCents(expense.amount), 0);
+        const paidThisMonthCount = expenses.filter(
+            (expense) => expense.paymentStatus === "PAID" && expense.paidAt?.startsWith(monthPrefix)
+        ).length;
+        const total = expenses
+            .filter((expense) => expense.date && expense.date >= threeMonthStart)
+            .reduce((sum, expense) => sum + amountToCents(expense.amount), 0);
 
-        return { outstanding, paidThisMonth, monthlyAverage: Math.round(total / 3) };
+        return {
+            outstanding,
+            paidThisMonth,
+            paidThisMonthCount,
+            monthlyAverage: Math.round(total / 3),
+        };
     }, [expenses]);
 
     const houseName = homes[0]?.name ?? null;
@@ -273,6 +307,7 @@ export default function FinancePage() {
     function switchScope(nextScope: ExpenseScope) {
         if (nextScope === scope) return;
         setLoading(true);
+        setSummaryModal(null);
         setScope(nextScope);
         setError("");
         setNotice("");
@@ -469,6 +504,7 @@ export default function FinancePage() {
     }
 
     function openEditModal(expense: Expense) {
+        if (!expense.canEdit) return;
         setForm({
             description: expense.description,
             amount: expense.amount,
@@ -684,6 +720,7 @@ export default function FinancePage() {
                                         )?.description ?? "Nenhuma despesa pendente"
                                     }
                                     detailIcon={<span className="text-red-600">▲</span>}
+                                    onClick={() => setSummaryModal("PENDING")}
                                 />
                                 <SummaryCard
                                     icon={<Check size={22} />}
@@ -691,7 +728,8 @@ export default function FinancePage() {
                                     label="Total pago este mês"
                                     value={formatCurrency(totals.paidThisMonth / 100)}
                                     valueClass="text-green-700"
-                                    detail={`${expenses.filter((expense) => expense.paymentStatus === "PAID").length} despesas pagas`}
+                                    detail={`${totals.paidThisMonthCount} despesas pagas`}
+                                    onClick={() => setSummaryModal("PAID_THIS_MONTH")}
                                 />
                                 <SummaryCard
                                     icon={<span className="text-lg">↗</span>}
@@ -700,6 +738,7 @@ export default function FinancePage() {
                                     value={formatCurrency(totals.monthlyAverage / 100)}
                                     valueClass="text-[#211e24]"
                                     detail="Últimos 3 meses"
+                                    onClick={() => setSummaryModal("LAST_3_MONTHS")}
                                 />
                             </div>
                         </section>
@@ -750,9 +789,13 @@ export default function FinancePage() {
                                 <table className="w-full min-w-[1120px] text-left text-xs">
                                     <thead className="border-b border-[#eae4ec] text-[11px] font-semibold text-[#88849a]">
                                         <tr>
-                                            <th scope="col" className="w-10 px-3 py-3">
-                                                <span className="sr-only">Ações</span>
-                                            </th>
+                                            {scope === "PERSONAL" && (
+                                                <th scope="col" className="w-10 px-3 py-3">
+                                                    <span className="sr-only">
+                                                        Marcar como paga
+                                                    </span>
+                                                </th>
+                                            )}
                                             <th scope="col" className="px-3 py-3">
                                                 Descrição
                                             </th>
@@ -789,7 +832,7 @@ export default function FinancePage() {
                                         {visibleExpenses.length === 0 ? (
                                             <tr>
                                                 <td
-                                                    colSpan={11}
+                                                    colSpan={scope === "PERSONAL" ? 11 : 10}
                                                     className="px-4 py-10 text-center text-sm text-[#77717c]"
                                                 >
                                                     Nenhuma despesa corresponde às preferências de
@@ -874,6 +917,18 @@ export default function FinancePage() {
                     </section>
                 </main>
             </div>
+
+            {summaryModal && (
+                <ExpenseSummaryDialog
+                    type={summaryModal}
+                    expenses={expenses}
+                    onClose={() => setSummaryModal(null)}
+                    onSelectExpense={(expense) => {
+                        setSummaryModal(null);
+                        openEditModal(expense);
+                    }}
+                />
+            )}
 
             {modal && (
                 <ExpenseModal
@@ -1247,28 +1302,32 @@ function SharedExpenseRow({
                 <strong className="whitespace-nowrap">
                     {formatCurrency(expense.totalAmount ?? expense.amount)}
                 </strong>
-                <input
-                    ref={proofInput}
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-                    className="sr-only"
-                    aria-label={`Selecionar comprovante para ${expense.description}`}
-                    onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) onProofUpload(file);
-                        event.target.value = "";
-                    }}
-                />
-                <button
-                    type="button"
-                    aria-label={`Anexar comprovante a ${expense.description}`}
-                    title="Anexar comprovante"
-                    disabled={proofUploading}
-                    onClick={() => proofInput.current?.click()}
-                    className="grid size-7 place-items-center rounded text-[#817b84] hover:bg-[#f1edf3] disabled:opacity-50"
-                >
-                    <Paperclip size={14} />
-                </button>
+                {canEdit && (
+                    <>
+                        <input
+                            ref={proofInput}
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                            className="sr-only"
+                            aria-label={`Selecionar comprovante para ${expense.description}`}
+                            onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (file) onProofUpload(file);
+                                event.target.value = "";
+                            }}
+                        />
+                        <button
+                            type="button"
+                            aria-label={`Anexar comprovante a ${expense.description}`}
+                            title="Anexar comprovante"
+                            disabled={proofUploading}
+                            onClick={() => proofInput.current?.click()}
+                            className="grid size-7 place-items-center rounded text-[#817b84] hover:bg-[#f1edf3] disabled:opacity-50"
+                        >
+                            <Paperclip size={14} />
+                        </button>
+                    </>
+                )}
                 {canEdit && (
                     <button
                         type="button"
@@ -1795,7 +1854,9 @@ function SubgroupModal({
                         <p className="text-sm text-[#625c66]">Residência: {homes[0]?.name}</p>
                     )}
                     <label className="grid gap-1.5 text-xs font-medium">
-                        Nome do subgrupo
+                        <span>
+                            Nome do subgrupo <span className="text-red-600">*</span>
+                        </span>
                         <input
                             autoFocus
                             required
@@ -1803,11 +1864,14 @@ function SubgroupModal({
                             value={name}
                             onChange={(event) => onNameChange(event.target.value)}
                             placeholder="Ex.: Grupo do café"
-                            className="h-10 rounded-md border border-[#cfc6d1] bg-white px-3 text-sm font-normal"
+                            aria-invalid={error === "Informe o nome do subgrupo." && !name.trim()}
+                            className={`h-10 rounded-md border ${error === "Informe o nome do subgrupo." && !name.trim() ? "border-red-500" : "border-[#cfc6d1]"} bg-white px-3 text-sm font-normal`}
                         />
                     </label>
                     <fieldset className="grid gap-2">
-                        <legend className="text-xs font-medium">Integrantes do grupo</legend>
+                        <legend className="text-xs font-medium">
+                            Integrantes do grupo <span className="text-red-600">*</span>
+                        </legend>
                         {loadingMembers ? (
                             <p role="status" className="text-sm text-[#716b74]">
                                 Carregando moradores…
@@ -1817,7 +1881,9 @@ function SubgroupModal({
                                 Nenhum morador ativo disponível.
                             </p>
                         ) : (
-                            <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[#ddd6df] p-2">
+                            <div
+                                className={`max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2 ${error === "Selecione pelo menos um morador." && selectedMemberIds.length === 0 ? "border-red-500" : "border-[#ddd6df]"}`}
+                            >
                                 {members.map((member) => (
                                     <label
                                         key={member.id}
@@ -2183,6 +2249,212 @@ function SubgroupModal({
     );
 }
 
+function ExpenseSummaryDialog({
+    type,
+    expenses,
+    onClose,
+    onSelectExpense,
+}: {
+    type: ExpenseSummaryModal;
+    expenses: Expense[];
+    onClose: () => void;
+    onSelectExpense: (expense: Expense) => void;
+}) {
+    const [page, setPage] = useState(0);
+    const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+    const now = new Date();
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const monthExpenses = selectedMonth
+        ? sortExpenses(expenses.filter((expense) => expense.date?.startsWith(selectedMonth)))
+        : null;
+    const rows =
+        monthExpenses ??
+        (type === "PENDING"
+            ? sortExpenses(expenses.filter((expense) => expense.paymentStatus === "PENDING"))
+            : type === "PAID_THIS_MONTH"
+              ? sortExpenses(
+                    expenses.filter(
+                        (expense) =>
+                            expense.paymentStatus === "PAID" &&
+                            expense.paidAt?.startsWith(monthPrefix)
+                    )
+                )
+              : Array.from({ length: 3 }, (_, index) => {
+                    const month = new Date(now.getFullYear(), now.getMonth() - index, 1);
+                    const prefix = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
+                    const monthExpenses = expenses.filter((expense) =>
+                        expense.date?.startsWith(prefix)
+                    );
+                    return {
+                        id: prefix,
+                        description: new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(
+                            month
+                        ),
+                        amount: centsToAmount(
+                            monthExpenses.reduce(
+                                (sum, expense) => sum + amountToCents(expense.amount),
+                                0
+                            )
+                        ),
+                        date: null,
+                        subgroup: null,
+                        paymentStatus: "PAID" as const,
+                        paidBy: null,
+                        paidAt: null,
+                        canEdit: false,
+                    } satisfies Expense;
+                }));
+    const pageCount = Math.max(1, Math.ceil(rows.length / 3));
+    const visibleRows = rows.slice(page * 3, page * 3 + 3);
+    const title = selectedMonth
+        ? new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(
+              new Date(`${selectedMonth}-01T00:00:00`)
+          )
+        : type === "PENDING"
+          ? "Total a pagar"
+          : type === "PAID_THIS_MONTH"
+            ? "Total pago"
+            : "Média Mensal";
+    const subtitle = selectedMonth
+        ? "Despesas deste mês"
+        : type === "PENDING"
+          ? "Todas as contas faltantes a pagar"
+          : type === "PAID_THIS_MONTH"
+            ? "Todas as contas pagas no último mês"
+            : "Média de conta de cada Mês";
+
+    return (
+        <div
+            className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-[#17131a]/70 p-4"
+            onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+        >
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="expense-summary-title"
+                className="my-auto w-full max-w-[370px] rounded-2xl bg-[#fff] px-4 py-3.5 shadow-2xl"
+            >
+                <header className="mb-3 flex items-start justify-between">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                        <span
+                            className={`grid size-7 shrink-0 place-items-center rounded-lg ${type === "PENDING" ? "bg-red-100 text-red-600" : type === "PAID_THIS_MONTH" ? "bg-green-200 text-green-700" : "bg-[#eeeaf0] text-[#79737c]"}`}
+                        >
+                            {type === "PENDING" ? (
+                                <Wallet size={17} />
+                            ) : type === "PAID_THIS_MONTH" ? (
+                                <Check size={18} />
+                            ) : (
+                                <span>↗</span>
+                            )}
+                        </span>
+                        <div className="min-w-0">
+                            <h2 id="expense-summary-title" className="truncate text-sm font-bold">
+                                {title}
+                            </h2>
+                            <p className="truncate text-[10px] text-[#817b84]">{subtitle}</p>
+                        </div>
+                    </div>
+                    {selectedMonth && (
+                        <button
+                            type="button"
+                            aria-label="Voltar aos meses"
+                            onClick={() => {
+                                setSelectedMonth(null);
+                                setPage(0);
+                            }}
+                            className="ml-2 grid size-6 shrink-0 cursor-pointer place-items-center rounded hover:bg-[#f1edf3]"
+                        >
+                            <ArrowLeft size={16} />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        aria-label="Fechar"
+                        onClick={onClose}
+                        className="ml-2 grid size-6 shrink-0 cursor-pointer place-items-center rounded hover:bg-[#f1edf3]"
+                    >
+                        <X size={17} />
+                    </button>
+                </header>
+
+                {visibleRows.length === 0 ? (
+                    <p className="rounded-lg border border-[#dedade] px-3 py-5 text-center text-xs text-[#817b84]">
+                        {type === "PENDING"
+                            ? "Nenhuma conta pendente."
+                            : "Nenhuma despesa encontrada neste período."}
+                    </p>
+                ) : (
+                    <ul className="space-y-2.5">
+                        {visibleRows.map((expense) => (
+                            <li key={expense.id}>
+                                <button
+                                    type="button"
+                                    disabled={
+                                        type === "LAST_3_MONTHS"
+                                            ? Boolean(selectedMonth && !expense.canEdit)
+                                            : !expense.canEdit
+                                    }
+                                    onClick={() => {
+                                        if (type === "LAST_3_MONTHS" && !selectedMonth) {
+                                            setSelectedMonth(expense.id);
+                                            setPage(0);
+                                        } else {
+                                            onSelectExpense(expense);
+                                        }
+                                    }}
+                                    className="flex min-h-[48px] w-full cursor-pointer items-center gap-2 rounded-lg border border-[#dedade] px-2.5 py-1.5 text-left hover:bg-[#faf9fa] disabled:cursor-default disabled:hover:bg-white"
+                                >
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-[10px] font-semibold">
+                                            {expense.description}
+                                        </span>
+                                        <span className="block truncate text-[8px] text-[#817b84]">
+                                            ◷ Vencimento:{" "}
+                                            {expense.date
+                                                ? formatDate(expense.date)
+                                                : "Sem vencimento"}
+                                        </span>
+                                    </span>
+                                    <span className="max-w-[72px] truncate rounded-full border border-[#cfc9ce] bg-[#f4f1f3] px-2 py-1 text-[9px]">
+                                        {expense.subgroup?.nome ?? (scopeLabel(expense) || "Casa")}
+                                    </span>
+                                    <span className="shrink-0 rounded-full border border-[#cfc9ce] bg-[#f4f1f3] px-2 py-1 text-[9px] font-semibold">
+                                        {formatCurrency(expense.amount)}
+                                    </span>
+                                    <ChevronRight size={14} className="shrink-0 text-[#b6c3cf]" />
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+
+                {pageCount > 1 && (
+                    <nav
+                        aria-label="Paginação das despesas"
+                        className="mt-3 flex items-center justify-center gap-1.5"
+                    >
+                        {Array.from({ length: pageCount }, (_, index) => (
+                            <button
+                                key={index}
+                                type="button"
+                                onClick={() => setPage(index)}
+                                aria-current={page === index ? "page" : undefined}
+                                className={`grid size-5 cursor-pointer place-items-center rounded text-[9px] ${page === index ? "bg-[#b4c9a9] font-semibold text-[#38572c]" : "text-[#817b84] hover:bg-[#f1edf3]"}`}
+                            >
+                                {index + 1}
+                            </button>
+                        ))}
+                    </nav>
+                )}
+            </section>
+        </div>
+    );
+}
+
+function scopeLabel(expense: Expense) {
+    return expense.scope === "PERSONAL" ? "Pessoal" : (expense.homeName ?? "Casa");
+}
+
 function SummaryCard({
     icon,
     iconClass,
@@ -2191,6 +2463,7 @@ function SummaryCard({
     valueClass,
     detail,
     detailIcon,
+    onClick,
 }: {
     icon: ReactNode;
     iconClass: string;
@@ -2199,9 +2472,14 @@ function SummaryCard({
     valueClass: string;
     detail: string;
     detailIcon?: ReactNode;
+    onClick: () => void;
 }) {
     return (
-        <div className="min-h-[126px] rounded-xl border border-[#d7ceda] p-3">
+        <button
+            type="button"
+            onClick={onClick}
+            className="min-h-[126px] cursor-pointer rounded-xl border border-[#d7ceda] p-3 text-left transition-colors hover:border-[#9cbe8b] hover:bg-[#fbfef9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
+        >
             <div className="mb-2 flex items-center gap-2.5">
                 <span className={`grid size-7 place-items-center rounded-lg ${iconClass}`}>
                     {icon}
@@ -2214,7 +2492,7 @@ function SummaryCard({
                 {detailIcon}
                 {detail}
             </p>
-        </div>
+        </button>
     );
 }
 
@@ -2350,8 +2628,8 @@ function ExpenseRow({
     const group = expense.sourceLabel ?? expense.subgroup?.nome ?? expense.homeName ?? "Casa";
     return (
         <tr className="text-[#333039] hover:bg-[#fcf9fd]">
-            <td className="px-3 py-3">
-                {personalMode ? (
+            {personalMode && (
+                <td className="px-3 py-3">
                     <input
                         type="checkbox"
                         aria-label={`Marcar ${expense.description} como paga`}
@@ -2359,13 +2637,8 @@ function ExpenseRow({
                         disabled={paymentUpdating}
                         onChange={onTogglePaid}
                     />
-                ) : (
-                    <span
-                        className="block size-3 rounded-sm border border-[#cfc8d1]"
-                        aria-hidden="true"
-                    />
-                )}
-            </td>
+                </td>
+            )}
             <th scope="row" className="max-w-[180px] px-3 py-3 text-xs font-semibold">
                 <span className="block truncate">{expense.description}</span>
                 <span className="mt-0.5 block text-[10px] font-normal text-[#8b8490]">
@@ -2417,27 +2690,31 @@ function ExpenseRow({
             </td>
             <td className="px-3 py-3 text-center text-[#a19aa5]">
                 <div className="flex items-center justify-center gap-1">
-                    <input
-                        ref={proofInput}
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-                        className="sr-only"
-                        aria-label={`Selecionar comprovante para ${expense.description}`}
-                        onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            if (file) onProofUpload(file);
-                            event.target.value = "";
-                        }}
-                    />
-                    <button
-                        type="button"
-                        aria-label={`Anexar comprovante para ${expense.description}`}
-                        disabled={proofUploading}
-                        onClick={() => proofInput.current?.click()}
-                        className="grid size-7 place-items-center rounded text-[#817b84] hover:bg-[#f1edf3] disabled:opacity-50"
-                    >
-                        <Paperclip size={15} />
-                    </button>
+                    {expense.canEdit && (
+                        <>
+                            <input
+                                ref={proofInput}
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                                className="sr-only"
+                                aria-label={`Selecionar comprovante para ${expense.description}`}
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    if (file) onProofUpload(file);
+                                    event.target.value = "";
+                                }}
+                            />
+                            <button
+                                type="button"
+                                aria-label={`Anexar comprovante para ${expense.description}`}
+                                disabled={proofUploading}
+                                onClick={() => proofInput.current?.click()}
+                                className="grid size-7 place-items-center rounded text-[#817b84] hover:bg-[#f1edf3] disabled:opacity-50"
+                            >
+                                <Paperclip size={15} />
+                            </button>
+                        </>
+                    )}
                     {!!expense.proofs?.length && (
                         <div className="flex items-center gap-1">
                             {expense.proofs.map((proof, index) => (
@@ -2471,7 +2748,7 @@ function ExpenseRow({
                 </button>
             </td>
             <td className="px-3 py-3">
-                {(!personalMode || expense.canEdit) && (
+                {expense.canEdit && (
                     <div className="flex justify-center gap-1.5">
                         <button
                             type="button"
@@ -2614,7 +2891,9 @@ function ExpenseModal({
                         </label>
                     )}
                     <label className="grid gap-1.5 text-xs font-medium">
-                        Descrição
+                        <span>
+                            Descrição <span className="text-red-600">*</span>
+                        </span>
                         <input
                             autoFocus
                             required
@@ -2624,13 +2903,18 @@ function ExpenseModal({
                                 onChange({ ...form, description: event.target.value })
                             }
                             placeholder="Digite o nome da despesa"
-                            className="h-10 rounded-md border border-[#cfc6d1] bg-white px-3 text-sm font-normal outline-none focus:border-[#65a34b] focus:ring-2 focus:ring-[#65a34b]/20"
+                            aria-invalid={!!error && !form.description.trim()}
+                            className={`h-10 rounded-md border ${error && !form.description.trim() ? "border-red-500" : "border-[#cfc6d1]"} bg-white px-3 text-sm font-normal outline-none focus:border-[#65a34b] focus:ring-2 focus:ring-[#65a34b]/20`}
                         />
                     </label>
 
                     <label className="grid max-w-[250px] gap-1.5 text-xs font-medium">
-                        Valor total da despesa
-                        <span className="flex h-10 items-center rounded-md border border-[#cfc6d1] bg-white px-3 text-sm font-normal text-[#605a64]">
+                        <span>
+                            Valor total da despesa <span className="text-red-600">*</span>
+                        </span>
+                        <span
+                            className={`flex h-10 items-center rounded-md border ${error && (!form.amount || amountToCents(form.amount) <= 0) ? "border-red-500" : "border-[#cfc6d1]"} bg-white px-3 text-sm font-normal text-[#605a64]`}
+                        >
                             R$
                             <input
                                 required
@@ -2772,8 +3056,12 @@ function ExpenseModal({
 
                     <div className="grid gap-4 sm:grid-cols-2">
                         <label className="grid gap-1.5 text-xs font-medium">
-                            Data de vencimento
-                            <span className="flex h-10 items-center gap-2 rounded-md border border-[#cfc6d1] bg-white px-2.5">
+                            <span>
+                                Data de vencimento <span className="text-red-600">*</span>
+                            </span>
+                            <span
+                                className={`flex h-10 items-center gap-2 rounded-md border ${error && (!form.date || !isValidDate(form.date)) ? "border-red-500" : "border-[#cfc6d1]"} bg-white px-2.5`}
+                            >
                                 <CalendarDays size={15} className="text-[#8d8690]" />
                                 <input
                                     required

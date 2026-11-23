@@ -55,6 +55,14 @@ export class PersonalTasksController {
         return this.tasksService.completePersonal(taskId, user.id);
     }
 
+    @Patch(":taskId/reopen")
+    reopen(
+        @Param("taskId", new ParseUUIDPipe({ version: "4" })) taskId: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.tasksService.reopenPersonal(taskId, user.id);
+    }
+
     @Delete(":taskId")
     remove(
         @Param("taskId", new ParseUUIDPipe({ version: "4" })) taskId: string,

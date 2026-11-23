@@ -28,12 +28,12 @@ export class HouseRulesService {
     }
 
     async create(residenceId: string, data: CreateHouseRuleDto, userId: string) {
-        const member = await this.residenceAccess.requireMembership(residenceId, userId);
+        const member = await this.residenceAccess.requireManager(residenceId, userId);
         return this.mapRule(await this.repository.create(residenceId, member.memberId, data));
     }
 
     async update(residenceId: string, ruleId: string, data: CreateHouseRuleDto, userId: string) {
-        const member = await this.residenceAccess.requireMembership(residenceId, userId);
+        const member = await this.residenceAccess.requireManager(residenceId, userId);
         const updated = await this.repository.update(residenceId, ruleId, member.memberId, data);
         if (!updated.count) throw new NotFoundException("A regra não está disponível.");
         const rule = await this.repository.findOne(residenceId, ruleId);

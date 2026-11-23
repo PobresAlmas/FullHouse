@@ -174,19 +174,21 @@ export class RoomsRepository {
                 throw new ConflictException("Você já demonstrou interesse neste anúncio.");
             const declined = await transaction.interesse_anuncio.findFirst({
                 where: { anuncio_id: anuncioId, usuario_id: userId, status: "RECUSADO" },
+                include: { negociacao_anuncio: { select: { id: true } } },
             });
-            const interest = declined
-                ? await transaction.interesse_anuncio.update({
-                      where: { id: declined.id },
-                      data: { status: "PENDENTE", mensagem: message?.trim() || null },
-                  })
-                : await transaction.interesse_anuncio.create({
-                      data: {
-                          anuncio_id: anuncioId,
-                          usuario_id: userId,
-                          mensagem: message?.trim() || null,
-                      },
-                  });
+            const interest =
+                declined && !declined.negociacao_anuncio
+                    ? await transaction.interesse_anuncio.update({
+                          where: { id: declined.id },
+                          data: { status: "PENDENTE", mensagem: message?.trim() || null },
+                      })
+                    : await transaction.interesse_anuncio.create({
+                          data: {
+                              anuncio_id: anuncioId,
+                              usuario_id: userId,
+                              mensagem: message?.trim() || null,
+                          },
+                      });
             await transaction.notificacao.create({
                 data: {
                     usuario_id: listing.usuario_id,
@@ -230,6 +232,25 @@ export class RoomsRepository {
             update: {},
             create: { interesse_id: interestId },
             select: { id: true },
+        });
+    }
+
+    async closeNegotiationAfterMembershipRemoval(negotiationId: string, interestId: string) {
+        await this.prisma.$transaction(async (transaction) => {
+            await transaction.convite_casa.updateMany({
+                where: {
+                    negociacao_anuncio_id: negotiationId,
+                    status: { in: ["PENDENTE", "ACEITO"] },
+                },
+                data: { status: "CANCELADO" },
+            });
+            await transaction.interesse_anuncio.updateMany({
+                where: {
+                    id: interestId,
+                    status: { in: ["PENDENTE", "ACEITO"] },
+                },
+                data: { status: "RECUSADO" },
+            });
         });
     }
 

@@ -379,6 +379,17 @@ export class ExpensesRepository {
                         },
                     },
                     { participacao: { usuario_id: userId, data_saida: null } },
+                    {
+                        casa: {
+                            participacao: {
+                                some: {
+                                    usuario_id: userId,
+                                    data_saida: null,
+                                    papel: { in: ["LIDER", "ADMINISTRADOR"] },
+                                },
+                            },
+                        },
+                    },
                 ],
             },
             select: {
@@ -396,12 +407,18 @@ export class ExpensesRepository {
         });
     }
 
-    create(data: CreateExpenseDto, casaId: string, paidByParticipationId: string) {
+    create(
+        data: CreateExpenseDto,
+        casaId: string,
+        paidByParticipationId: string,
+        creatorUserId: string
+    ) {
         const paid = data.paymentStatus === ExpensePaymentStatus.PAID;
         const subgroupId = data.subgroupId ?? null;
         const expenseData = {
             escopo: "CASA",
             casa_id: casaId,
+            criado_por_usuario_id: creatorUserId,
             subgrupo_id: subgroupId,
             descricao: data.description.trim(),
             valor_total: new Prisma.Decimal(data.amount.replace(",", ".")),
@@ -487,6 +504,7 @@ export class ExpensesRepository {
                 escopo: "INDIVIDUAL",
                 casa_id: null,
                 usuario_id: userId,
+                criado_por_usuario_id: userId,
                 subgrupo_id: null,
                 descricao: data.description.trim(),
                 valor_total: new Prisma.Decimal(data.amount.replace(",", ".")),
@@ -554,35 +572,6 @@ export class ExpensesRepository {
                                 participacao: { some: { usuario_id: userId, data_saida: null } },
                             },
                         },
-                        OR: [
-                            { subgrupo_id: null },
-                            {
-                                subgrupo: {
-                                    is: {
-                                        excluido_em: null,
-                                        OR: [
-                                            {
-                                                membro_subgrupo: {
-                                                    some: {
-                                                        saiu_em: null,
-                                                        participacao: {
-                                                            usuario_id: userId,
-                                                            data_saida: null,
-                                                        },
-                                                    },
-                                                },
-                                            },
-                                            {
-                                                participacao: {
-                                                    usuario_id: userId,
-                                                    data_saida: null,
-                                                },
-                                            },
-                                        ],
-                                    },
-                                },
-                            },
-                        ],
                     },
                 ],
             },
@@ -591,6 +580,7 @@ export class ExpensesRepository {
                 escopo: true,
                 casa_id: true,
                 usuario_id: true,
+                criado_por_usuario_id: true,
                 subgrupo_id: true,
                 status: true,
                 descricao: true,
@@ -970,7 +960,17 @@ export class ExpensesRepository {
                 estrategia_rateio: true,
                 quitada_em: true,
                 casa_id: true,
-                casa: { select: { nome: true } },
+                criado_por_usuario_id: true,
+                casa: {
+                    select: {
+                        nome: true,
+                        participacao: {
+                            where: { usuario_id: userId, data_saida: null },
+                            select: { papel: true },
+                            take: 1,
+                        },
+                    },
+                },
                 subgrupo: { select: { id: true, nome: true } },
                 participacao: {
                     select: { usuario: { select: { nome: true, apelido: true } } },
@@ -1020,6 +1020,7 @@ export class ExpensesRepository {
                 id: true,
                 escopo: true,
                 usuario_id: true,
+                criado_por_usuario_id: true,
                 casa_id: true,
                 descricao: true,
                 valor_total: true,
@@ -1042,7 +1043,7 @@ export class ExpensesRepository {
                         nome: true,
                         participacao: {
                             where: { data_saida: null },
-                            select: { id: true, usuario_id: true },
+                            select: { id: true, usuario_id: true, papel: true },
                         },
                     },
                 },
@@ -1144,7 +1145,13 @@ export class ExpensesRepository {
                         ? { id: expense.subgrupo.id, nome: expense.subgrupo.nome }
                         : null,
                     sourceLabel: expense.subgrupo?.nome ?? "Casa",
-                    canEdit: false,
+                    canEdit:
+                        expense.criado_por_usuario_id === userId ||
+                        ["LIDER", "ADMINISTRADOR"].includes(
+                            expense.casa?.participacao.find(
+                                (member) => member.usuario_id === userId
+                            )?.papel ?? ""
+                        ),
                     scope: "HOME",
                     paidBy: null,
                     paidAt: currentParticipation?.pago_em?.toISOString() ?? null,

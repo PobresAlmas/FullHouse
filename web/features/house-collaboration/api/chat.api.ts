@@ -8,10 +8,17 @@ export type ChatMessage = {
 };
 
 export async function getChat(residenceId: string) {
-    const response = await api.get<{ id: string; residenceId: string; messages: ChatMessage[] }>(
-        `/residences/${residenceId}/chat`
-    );
+    const response = await api.get<{
+        id: string;
+        residenceId: string;
+        lastReadMessageId?: string | null;
+        messages: ChatMessage[];
+    }>(`/residences/${residenceId}/chat`);
     return response.data;
+}
+
+export async function markChatRead(residenceId: string, messageId: string) {
+    await api.post(`/residences/${residenceId}/chat/read`, { messageId });
 }
 
 export async function getChatMessages(residenceId: string, afterId?: string) {

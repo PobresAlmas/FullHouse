@@ -4,8 +4,22 @@ import { House } from "lucide-react";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { SettingsLink } from "./SettingsLink";
-import { useContext } from "react";
+import { useContext, useEffect, useSyncExternalStore } from "react";
 import { AppShellContext } from "./AppShellContext";
+import { AppHeaderControlContext } from "./AppHeaderControlContext";
+
+function getGreeting() {
+    const hour = new Date().getHours();
+    return hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+}
+
+function subscribeToGreeting(onChange: () => void) {
+    const now = new Date();
+    const nextHour = new Date(now);
+    nextHour.setHours(now.getHours() + 1, 0, 0, 0);
+    const timeout = setTimeout(onChange, nextHour.getTime() - now.getTime());
+    return () => clearTimeout(timeout);
+}
 
 export function AppPageHeader({
     greetingName,
@@ -30,7 +44,23 @@ export function AppPageHeader({
     profileBackgroundColor?: string;
 }) {
     const insideShell = useContext(AppShellContext);
+    const headerControlContext = useContext(AppHeaderControlContext);
     const firstName = greetingName.trim().split(/\s+/)[0] || "Morador";
+    const greeting = useSyncExternalStore(subscribeToGreeting, getGreeting, () => "Olá");
+
+    useEffect(() => {
+        if (!insideShell || global || !headerControlContext) return;
+        headerControlContext.registerControl(residenceControl ?? null);
+        headerControlContext.registerPageState({ residenceName, subtitle });
+    }, [global, headerControlContext, insideShell, residenceControl, residenceName, subtitle]);
+
+    useEffect(() => {
+        if (!insideShell || global || !headerControlContext) return;
+        return () => {
+            headerControlContext.registerControl(null);
+            headerControlContext.registerPageState(null);
+        };
+    }, [global, headerControlContext, insideShell]);
 
     if (insideShell && !global) return null;
 
@@ -38,7 +68,9 @@ export function AppPageHeader({
         <>
             <header className="sticky top-0 z-40 flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] bg-[#fffaff] px-5 py-3 md:fixed md:left-[220px] md:right-0 md:h-[72px] md:min-h-[72px] md:flex-nowrap md:px-7">
                 <div>
-                    <h1 className="text-xl font-bold leading-tight">Bom dia, {firstName}</h1>
+                    <h1 className="text-xl font-bold leading-tight">
+                        {greeting}, {firstName}
+                    </h1>
                     {residenceName ? (
                         <p className="flex items-center gap-1 text-xs text-[#77717c]">
                             <House size={12} />

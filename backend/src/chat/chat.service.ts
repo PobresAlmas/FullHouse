@@ -13,12 +13,16 @@ export class ChatService {
     ) {}
 
     async getConversation(residenceId: string, userId: string) {
-        await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
         const conversation = await this.repository.getOrCreateResidenceConversation(residenceId);
-        const messages = await this.repository.findMessages(conversation.id);
+        const [messages, readMarker] = await Promise.all([
+            this.repository.findMessages(conversation.id),
+            this.repository.findLastReadMessageId(conversation.id, membership.memberId),
+        ]);
         return {
             id: conversation.id,
             residenceId,
+            lastReadMessageId: readMarker?.ultima_mensagem_lida_id ?? null,
             messages: messages.map((message) => this.mapMessage(message)),
         };
     }
@@ -28,6 +32,13 @@ export class ChatService {
         const conversation = await this.repository.getOrCreateResidenceConversation(residenceId);
         const messages = await this.repository.findMessages(conversation.id, afterId);
         return messages.map((message) => this.mapMessage(message));
+    }
+
+    async markRead(residenceId: string, userId: string, messageId: string) {
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const conversation = await this.repository.getOrCreateResidenceConversation(residenceId);
+        await this.repository.markRead(conversation.id, membership.memberId, messageId);
+        return { messageId };
     }
 
     async send(residenceId: string, userId: string, content: string) {

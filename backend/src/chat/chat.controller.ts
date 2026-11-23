@@ -14,6 +14,7 @@ import { Observable, Subject, interval, filter, take, switchMap, takeUntil, merg
 import { CurrentUser } from "../auth/decorators/current-user.decorator.js";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth-guard.js";
 import { SendMessageDto } from "./dto/send-message.dto.js";
+import { MarkChatReadDto } from "./dto/mark-chat-read.dto.js";
 import { ChatMessagesQueryDto } from "./dto/chat-messages-query.dto.js";
 import { ChatService } from "./chat.service.js";
 import type { ChatMessage } from "./chat.service.js";
@@ -40,6 +41,15 @@ export class ChatController {
         @Query() query: ChatMessagesQueryDto
     ) {
         return this.chat.getMessages(residenceId, user.id, query.afterId);
+    }
+
+    @Post("read")
+    markRead(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @CurrentUser() user: { id: string },
+        @Body() body: MarkChatReadDto
+    ) {
+        return this.chat.markRead(residenceId, user.id, body.messageId);
     }
 
     @Post("messages")
