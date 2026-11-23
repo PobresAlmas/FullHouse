@@ -1,8 +1,9 @@
 import { HomeRepository } from "./home.repository.js";
 import { HomeService } from "./home.service.js";
+import { personalTaskList } from "../tasks/task-visibility.js";
 
 describe("HomeRepository personal data isolation", () => {
-    it("filters both task and expense sources by the authenticated user and personal scope", async () => {
+    it("uses the personal task list and keeps expenses restricted to individual records", async () => {
         const prisma = {
             instancia_tarefa: { findMany: vi.fn().mockResolvedValue([]) },
             despesa: { findMany: vi.fn().mockResolvedValue([]) },
@@ -13,12 +14,7 @@ describe("HomeRepository personal data isolation", () => {
         await repository.findPersonalExpenses("user-1");
 
         expect(prisma.instancia_tarefa.findMany).toHaveBeenCalledWith(
-            expect.objectContaining({
-                where: {
-                    definicao_tarefa: { escopo: "INDIVIDUAL", usuario_id: "user-1" },
-                    status: { not: "CANCELADA" },
-                },
-            })
+            expect.objectContaining({ where: personalTaskList("user-1") })
         );
         expect(prisma.despesa.findMany).toHaveBeenCalledWith(
             expect.objectContaining({

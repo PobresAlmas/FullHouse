@@ -31,6 +31,10 @@ function makeRequest() {
         instancia_tarefa_id: offeredTaskId,
         alvo_instancia_tarefa_id: targetTaskId,
         solicitante_participacao_id: requesterMemberId,
+        participacao_solicitacao_troca_tarefa_solicitante_participacao_idToparticipacao: {
+            usuario_id: "requester-user-id",
+            data_saida: null,
+        },
         instancia_tarefa: makeTask(offeredTaskId, requesterMemberId),
         instancia_tarefa_alvo: makeTask(targetTaskId, recipientMemberId),
     };
@@ -385,6 +389,18 @@ describe("TaskExchangeService", () => {
             where: { id: requestId, status: "PENDENTE" },
             data: { status: "ACEITA", alvo_instancia_tarefa_id: replacementTaskId },
         });
+        expect(transaction.notificacao.create).toHaveBeenCalledWith({
+            data: {
+                usuario_id: "requester-user-id",
+                casa_id: residenceId,
+                tipo: "TAREFA",
+                titulo: "Troca de tarefa aceita",
+                mensagem:
+                    "Você ficou com “Tarefa replacement-task-id”. A tarefa “Tarefa offered-task-id” ficou com o outro morador.",
+                entidade_tipo: "TROCA_TAREFA",
+                entidade_id: requestId,
+            },
+        });
     });
 
     it("uses the suggested task when the recipient does not replace it", async () => {
@@ -470,6 +486,7 @@ describe("TaskExchangeService", () => {
             service.respond(residenceId, requestId, "ACEITA", targetTaskId, userId)
         ).rejects.toThrow("A responsabilidade da tarefa foi alterada.");
         expect(transaction.solicitacao_troca_tarefa.updateMany).not.toHaveBeenCalled();
+        expect(transaction.notificacao.create).not.toHaveBeenCalled();
     });
 
     it("keeps the request pending if the reciprocal task is no longer available", async () => {

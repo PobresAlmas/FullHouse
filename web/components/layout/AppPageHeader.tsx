@@ -66,29 +66,39 @@ export function AppPageHeader({
 
     return (
         <>
-            <header className="sticky top-0 z-40 flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] bg-[#fffaff] px-5 py-3 md:fixed md:left-[220px] md:right-0 md:h-[72px] md:min-h-[72px] md:flex-nowrap md:px-7">
-                <div>
+            <header
+                className={`sticky top-0 z-40 flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-[#d9d0dc] bg-[#fffaff] px-5 py-3 md:fixed md:left-[220px] md:right-0 md:h-[72px] md:min-h-[72px] md:flex-nowrap md:px-7 ${residenceControl ? "md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : ""}`}
+            >
+                <div className="min-w-0 flex-1">
                     <h1 className="text-xl font-bold leading-tight">
                         {greeting}, {firstName}
                     </h1>
                     {residenceName ? (
-                        <p className="flex items-center gap-1 text-xs text-[#77717c]">
-                            <House size={12} />
+                        <p className="truncate text-xs text-[#77717c]" title={residenceName}>
+                            <House
+                                size={12}
+                                className="mr-1 inline-block align-text-bottom"
+                                aria-hidden="true"
+                            />
                             {residenceName}
                         </p>
                     ) : (
                         subtitle && <div className="text-xs text-[#96909a]">{subtitle}</div>
                     )}
                 </div>
-                {residenceControl && <div className="shrink-0">{residenceControl}</div>}
-                <div className="flex items-center gap-3 text-[#514c56]">
+                {residenceControl && (
+                    <div className="order-last grid shrink-0 basis-full place-items-center md:order-none">
+                        {residenceControl}
+                    </div>
+                )}
+                <div className="flex items-center gap-3 text-[#514c56] md:justify-self-end">
                     <NotificationBell />
                     <SettingsLink />
                     {profile ?? (
                         <Link
                             href="/settings?section=account"
                             aria-label="Abrir configurações da conta"
-                            className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4e812f]"
+                            className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-full transition hover:ring-2 hover:ring-[#4e812f]/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4e812f]"
                         >
                             <UserAvatar
                                 name={profileName || greetingName}

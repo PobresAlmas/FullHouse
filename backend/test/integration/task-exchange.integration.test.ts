@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../../src/prisma/prisma.service.js";
+import { ResidenceAccessService } from "../../src/residences/residence-access.service.js";
 import { TaskExchangeService } from "../../src/tasks/task-exchange.service.js";
+import { TasksRepository } from "../../src/tasks/tasks.repository.js";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 
@@ -89,21 +91,7 @@ describe.skipIf(!testDatabaseUrl)("Task exchange PostgreSQL integration", () => 
         offeredTaskId = offeredTask.id;
         reciprocalTaskId = reciprocalTask.id;
 
-        const membershipByUser = new Map(
-            userIds.map((userId, index) => [userId, memberIds[index]])
-        );
-        const access = {
-            requireMembership: vi.fn(async (_residence: string, userId: string) => ({
-                residenceId,
-                memberId: membershipByUser.get(userId),
-                role: "MORADOR",
-                creationEditPolicy: "TODOS",
-            })),
-            requireActiveMember: vi.fn(async (_residence: string, memberId: string) =>
-                memberIds.includes(memberId) ? { id: memberId } : null
-            ),
-        };
-        taskExchangeService = new TaskExchangeService(prisma, access as never);
+        taskExchangeService = new TaskExchangeService(prisma, new ResidenceAccessService(prisma));
         rollbackConstraint = undefined;
     });
 
@@ -125,7 +113,10 @@ describe.skipIf(!testDatabaseUrl)("Task exchange PostgreSQL integration", () => 
                 },
             });
         }
-        if (residenceId) await prisma.casa.deleteMany({ where: { id: residenceId } });
+        if (residenceId) {
+            await prisma.notificacao.deleteMany({ where: { casa_id: residenceId } });
+            await prisma.casa.deleteMany({ where: { id: residenceId } });
+        }
         if (userIds?.length) await prisma.usuario.deleteMany({ where: { id: { in: userIds } } });
     });
 
@@ -163,6 +154,64 @@ describe.skipIf(!testDatabaseUrl)("Task exchange PostgreSQL integration", () => 
             status: "ACEITA",
             alvo_instancia_tarefa_id: reciprocalTaskId,
         });
+    });
+
+    it("shows a private task only to the current assignee after a transfer", async () => {
+        const repository = new TasksRepository(prisma);
+        const offered = await prisma.instancia_tarefa.findUniqueOrThrow({
+            where: { id: offeredTaskId },
+        });
+        await prisma.definicao_tarefa.update({
+            where: { id: offered.definicao_tarefa_id },
+            data: { visibilidade: "PRIVADA", responsavel_fixo_participacao_id: memberIds[0] },
+        });
+
+        await expect(repository.findPersonalTasks(userIds[0])).resolves.toMatchObject([
+            { id: offeredTaskId },
+        ]);
+        await expect(
+            repository.findTask(residenceId, offeredTaskId, userIds[1])
+        ).resolves.toBeNull();
+
+        const request = await taskExchangeService.create(
+            residenceId,
+            { taskId: offeredTaskId, recipientMemberId: memberIds[1] },
+            userIds[0]
+        );
+        await taskExchangeService.respond(
+            residenceId,
+            request.id,
+            "ACEITA",
+            undefined,
+            userIds[1],
+            true
+        );
+
+        const currentAssigneeTasks = await repository.findPersonalTasks(userIds[1]);
+        expect(currentAssigneeTasks.map((task) => task.id)).toEqual([
+            offeredTaskId,
+            reciprocalTaskId,
+        ]);
+        await expect(repository.findTasks(residenceId, {}, userIds[1])).resolves.toMatchObject([
+            { id: offeredTaskId },
+            { id: reciprocalTaskId },
+        ]);
+        await expect(
+            repository.findTask(residenceId, offeredTaskId, userIds[1])
+        ).resolves.toMatchObject({
+            id: offeredTaskId,
+        });
+        await expect(repository.findPersonalTask(userIds[1], offeredTaskId)).resolves.toBeNull();
+
+        for (const userId of [userIds[0], userIds[2]]) {
+            await expect(repository.findPersonalTasks(userId)).resolves.toEqual([]);
+            await expect(repository.findTasks(residenceId, {}, userId)).resolves.toMatchObject([
+                { id: reciprocalTaskId },
+            ]);
+            await expect(
+                repository.findTask(residenceId, offeredTaskId, userId)
+            ).resolves.toBeNull();
+        }
     });
 
     it("rolls back both assignments if saving the accepted request fails", async () => {

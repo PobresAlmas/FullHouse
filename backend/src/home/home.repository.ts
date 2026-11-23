@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { personalTaskList } from "../tasks/task-visibility.js";
 
 const taskSelect = {
     id: true,
@@ -16,10 +17,7 @@ export class HomeRepository {
 
     findPersonalTasks(userId: string) {
         return this.prisma.instancia_tarefa.findMany({
-            where: {
-                definicao_tarefa: { escopo: "INDIVIDUAL", usuario_id: userId },
-                status: { not: "CANCELADA" },
-            },
+            where: personalTaskList(userId),
             select: taskSelect,
             orderBy: [{ prazo_limite: "asc" }, { data_prevista: "asc" }],
         });

@@ -404,7 +404,8 @@ export class TasksService {
             dueAt.getTime() < Date.now();
         const memberAssignee =
             task.participacao_instancia_tarefa_responsavel_participacao_idToparticipacao;
-        const userAssignee = task.usuario;
+        const assigneeId = memberAssignee?.id ?? task.usuario?.id;
+        const assigneeUser = memberAssignee?.usuario ?? task.usuario;
         const recurrence = task.definicao_tarefa.regra_recorrencia as { repeats?: boolean } | null;
         const reminder = task.lembrete[0] ?? null;
 
@@ -421,14 +422,15 @@ export class TasksService {
             rotationMemberIds:
                 task.definicao_tarefa.fila_rodizio?.map((entry) => entry.participacao_id) ?? [],
             residenceId: task.definicao_tarefa.casa_id,
-            assignee: memberAssignee
-                ? {
-                      id: memberAssignee.id,
-                      name: memberAssignee.usuario.apelido || memberAssignee.usuario.nome,
-                  }
-                : userAssignee
-                  ? { id: userAssignee.id, name: userAssignee.apelido || userAssignee.nome }
-                  : null,
+            assignee:
+                assigneeId && assigneeUser
+                    ? {
+                          id: assigneeId,
+                          name: assigneeUser.apelido || assigneeUser.nome,
+                          photo: assigneeUser.foto_url ?? undefined,
+                          avatarBackgroundColor: assigneeUser.cor_avatar,
+                      }
+                    : null,
             dueAt: dueAt.toISOString(),
             periodicity: task.definicao_tarefa.periodicidade,
             repeats: recurrence?.repeats ?? false,
