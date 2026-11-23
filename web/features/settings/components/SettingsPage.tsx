@@ -179,6 +179,7 @@ export function SettingsPage({
     const listingButtonRef = useRef<HTMLButtonElement>(null);
     const settingsHeadingRef = useRef<HTMLHeadingElement>(null);
     const [saving, setSaving] = useState(false);
+    const [memberToRemove, setMemberToRemove] = useState<ResidenceMember | null>(null);
     const [categoryModalOpen, setCategoryModalOpen] = useState(false);
     const [categoryDraft, setCategoryDraft] = useState("");
     const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -197,6 +198,10 @@ export function SettingsPage({
 
     const residence =
         residenceState && residenceState.userId === userId ? residenceState.residence : null;
+    const visibleSubnav =
+        residence || loadingResidence || authLoading || residenceErrorText
+            ? subnav
+            : subnav.filter(({ id }) => id === "account" || id === "house");
     const manager =
         residence?.membership?.role === "LIDER" || residence?.membership?.role === "ADMINISTRADOR";
     const canListRoom =
@@ -414,8 +419,6 @@ export function SettingsPage({
 
     async function removeMember(member: ResidenceMember) {
         if (!residence || !manager) return;
-        if (!window.confirm(`Remover ${member.name} desta casa? O histórico será preservado.`))
-            return;
         setSaving(true);
         setSectionError("");
         setNotice("");
@@ -423,6 +426,7 @@ export function SettingsPage({
             await removeResidenceMember(residence.id, member.id);
             setMembers((current) => current.filter((item) => item.id !== member.id));
             setNotice(`${member.name} foi removido da casa.`);
+            setMemberToRemove(null);
         } catch (error: unknown) {
             setSectionError(errorText(error));
         } finally {
@@ -557,7 +561,7 @@ export function SettingsPage({
                                 className="rounded-xl border border-[#d9d0dc] bg-[#fffaff] p-3 md:p-4 lg:fixed lg:bottom-6 lg:left-[calc(220px+1.75rem)] lg:top-[88px] lg:z-30 lg:w-[350px] lg:overflow-y-auto lg:p-4"
                             >
                                 <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1">
-                                    {subnav.map(({ id, label, icon: Icon }) => (
+                                    {visibleSubnav.map(({ id, label, icon: Icon }) => (
                                         <li key={id}>
                                             <Link
                                                 href={sectionHref(id)}
@@ -725,7 +729,7 @@ export function SettingsPage({
                                                 onAccessChange={(member, allowed) =>
                                                     void saveMemberAccess(member, allowed)
                                                 }
-                                                onRemove={(member) => void removeMember(member)}
+                                                onRemove={setMemberToRemove}
                                             />
                                         </div>
                                     )}
@@ -761,7 +765,7 @@ export function SettingsPage({
                                             onAccessChange={(member, allowed) =>
                                                 void saveMemberAccess(member, allowed)
                                             }
-                                            onRemove={(member) => void removeMember(member)}
+                                            onRemove={setMemberToRemove}
                                         />
                                     )}
 
@@ -804,7 +808,7 @@ export function SettingsPage({
                                             onAccessChange={(member, allowed) =>
                                                 void saveMemberAccess(member, allowed)
                                             }
-                                            onRemove={(member) => void removeMember(member)}
+                                            onRemove={setMemberToRemove}
                                         />
                                     )}
 
@@ -1192,6 +1196,55 @@ export function SettingsPage({
                     </div>
                 </main>
             </div>
+            {memberToRemove && (
+                <div
+                    className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !saving)
+                            setMemberToRemove(null);
+                    }}
+                >
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="remove-member-title"
+                        className="w-full max-w-md rounded-2xl border border-[#e1d9e5] bg-[#fffaff] p-5 shadow-xl"
+                    >
+                        <h2 id="remove-member-title" className="text-lg font-bold">
+                            Remover morador?
+                        </h2>
+                        <p className="mt-2 text-sm text-[#625c66]">
+                            Remover {memberToRemove.name} desta casa? O histórico será preservado.
+                        </p>
+                        {sectionError && (
+                            <p
+                                role="alert"
+                                className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                            >
+                                {sectionError}
+                            </p>
+                        )}
+                        <div className="mt-5 flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={saving}
+                                onClick={() => setMemberToRemove(null)}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                disabled={saving}
+                                onClick={() => void removeMember(memberToRemove)}
+                            >
+                                {saving ? "Removendo…" : "Remover"}
+                            </Button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }

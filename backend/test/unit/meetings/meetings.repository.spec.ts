@@ -22,13 +22,17 @@ describe("MeetingsRepository", () => {
             update: ReturnType<typeof vi.fn>;
         };
         participante_reuniao: { updateMany: ReturnType<typeof vi.fn> };
+        notificacao: { createMany: ReturnType<typeof vi.fn> };
     };
     let repository: MeetingsRepository;
 
     beforeEach(() => {
         tx = {
             participacao: {
-                findMany: vi.fn().mockResolvedValue([{ id: memberId }, { id: "member-2" }]),
+                findMany: vi.fn().mockResolvedValue([
+                    { id: memberId, usuario_id: "organizer-user" },
+                    { id: "member-2", usuario_id: "resident-user" },
+                ]),
             },
             reuniao: {
                 create: vi.fn().mockResolvedValue({ id: meetingId }),
@@ -36,6 +40,7 @@ describe("MeetingsRepository", () => {
                 update: vi.fn().mockResolvedValue({}),
             },
             participante_reuniao: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+            notificacao: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
         };
         prisma = {
             reuniao: {
@@ -66,6 +71,15 @@ describe("MeetingsRepository", () => {
                 }),
             })
         );
+        expect(tx.notificacao.createMany).toHaveBeenCalledWith({
+            data: [
+                expect.objectContaining({
+                    usuario_id: "resident-user",
+                    casa_id: homeId,
+                    entidade_id: meetingId,
+                }),
+            ],
+        });
     });
 
     it("passes invitation creation failures through the transaction for rollback", async () => {
@@ -106,6 +120,11 @@ describe("MeetingsRepository", () => {
                 }),
             })
         );
+        expect(tx.notificacao.createMany).toHaveBeenCalledWith({
+            data: [
+                expect.objectContaining({ usuario_id: "resident-user", entidade_id: meetingId }),
+            ],
+        });
     });
 
     it("scopes cancellation to the meeting organizer", async () => {

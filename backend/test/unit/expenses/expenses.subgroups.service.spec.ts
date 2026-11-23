@@ -36,6 +36,7 @@ describe("ExpensesService subgroups", () => {
     let residenceAccess: {
         requireMembership: ReturnType<typeof vi.fn>;
         requireCreateEditPermission: ReturnType<typeof vi.fn>;
+        requireManager: ReturnType<typeof vi.fn>;
     };
     let service: ExpensesService;
 
@@ -70,6 +71,7 @@ describe("ExpensesService subgroups", () => {
             requireCreateEditPermission: vi
                 .fn()
                 .mockResolvedValue({ memberId: "creator-participation" }),
+            requireManager: vi.fn().mockResolvedValue({ memberId: "creator-participation" }),
         };
         service = new ExpensesService(
             repository as never,
@@ -166,8 +168,20 @@ describe("ExpensesService subgroups", () => {
         await service.create(internet, "member-user");
 
         expect(repository.create).toHaveBeenCalledTimes(2);
-        expect(repository.create).toHaveBeenNthCalledWith(1, energy, "home-id", "member-1");
-        expect(repository.create).toHaveBeenNthCalledWith(2, internet, "home-id", "member-1");
+        expect(repository.create).toHaveBeenNthCalledWith(
+            1,
+            energy,
+            "home-id",
+            "member-1",
+            "member-user"
+        );
+        expect(repository.create).toHaveBeenNthCalledWith(
+            2,
+            internet,
+            "home-id",
+            "member-1",
+            "member-user"
+        );
     });
 
     it.each([

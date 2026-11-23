@@ -186,12 +186,27 @@ export class RoomsService {
         return Promise.all(
             interests.map(async (interest) => {
                 let negotiationId = interest.negociacao_anuncio?.id ?? null;
-                if (interest.status === status_interesse_anuncio_enum.ACEITO && !negotiationId) {
+                let status = interest.status;
+                if (status === status_interesse_anuncio_enum.ACEITO && !negotiationId) {
                     negotiationId = (await this.repository.ensureNegotiation(interest.id)).id;
+                }
+                if (status === status_interesse_anuncio_enum.ACEITO && negotiationId) {
+                    const negotiation =
+                        await this.repository.findNegotiationForAccess(negotiationId);
+                    if (negotiation && (await this.negotiationEndedAfterRemoval(negotiation))) {
+                        await this.repository.closeNegotiationAfterMembershipRemoval(
+                            negotiationId,
+                            interest.id
+                        );
+                        status = status_interesse_anuncio_enum.RECUSADO;
+                        negotiationId = null;
+                    }
+                } else {
+                    negotiationId = null;
                 }
                 return {
                     id: interest.id,
-                    status: interest.status,
+                    status,
                     mensagem: interest.mensagem,
                     negotiationId,
                     anuncio: toRoomListingResponse(interest.anuncio_quarto),
@@ -205,7 +220,7 @@ export class RoomsService {
         userId: string,
         query: RoomNegotiationMessagesQueryDto
     ) {
-        const negotiation = await this.requireNegotiationParticipant(negotiationId, userId);
+        const negotiation = await this.requireNegotiationParticipant(negotiationId, userId, true);
         const listing = negotiation.interesse_anuncio.anuncio_quarto;
         const advertiserId = listing.participacao.usuario_id;
         const invitation = negotiation.convite_casa[0];
@@ -213,6 +228,8 @@ export class RoomsService {
             invitation?.status === "PENDENTE" && invitation.expira_em.getTime() <= Date.now()
                 ? "EXPIRADO"
                 : invitation?.status;
+        const endedAfterRemoval = await this.negotiationEndedAfterRemoval(negotiation);
+        const displayedInvitationStatus = endedAfterRemoval ? "CANCELADO" : invitationStatus;
         const page = await this.repository.listNegotiationMessages(
             negotiationId,
             query.before,
@@ -221,8 +238,9 @@ export class RoomsService {
         let canInvite = false;
         if (
             advertiserId === userId &&
-            invitationStatus !== "PENDENTE" &&
-            invitationStatus !== "ACEITO"
+            negotiation.interesse_anuncio.status === status_interesse_anuncio_enum.ACEITO &&
+            displayedInvitationStatus !== "PENDENTE" &&
+            (displayedInvitationStatus !== "ACEITO" || endedAfterRemoval)
         ) {
             try {
                 await this.residenceAccess.requireManager(listing.casa_id, userId);
@@ -240,14 +258,14 @@ export class RoomsService {
             casaId: listing.casa_id,
             podeConvidar: canInvite,
             convite:
-                invitation && invitationStatus
+                invitation && displayedInvitationStatus
                     ? {
                           id: invitation.id,
-                          status: invitationStatus,
+                          status: displayedInvitationStatus,
                           expiraEm: invitation.expira_em.toISOString(),
                           podeResponder:
                               invitation.usuario_convidado_id === userId &&
-                              invitationStatus === "PENDENTE",
+                              displayedInvitationStatus === "PENDENTE",
                       }
                     : null,
             anuncio: toRoomListingResponse(listing, advertiserId === userId),
@@ -294,7 +312,7 @@ export class RoomsService {
     }
 
     async sendNegotiationInvitation(negotiationId: string, userId: string) {
-        const negotiation = await this.requireNegotiationParticipant(negotiationId, userId);
+        const negotiation = await this.requireNegotiationParticipant(negotiationId, userId, true);
         const interest = negotiation.interesse_anuncio;
         if (interest.usuario.id === userId) {
             throw new ForbiddenException("Somente o anunciante pode enviar o convite.");
@@ -333,7 +351,11 @@ export class RoomsService {
         return result;
     }
 
-    private async requireNegotiationParticipant(negotiationId: string, userId: string) {
+    private async requireNegotiationParticipant(
+        negotiationId: string,
+        userId: string,
+        allowClosedAdvertiser = false
+    ) {
         const negotiation = await this.repository.findNegotiationForAccess(negotiationId);
         if (!negotiation) throw new NotFoundException("Negociação não encontrada.");
         const interest = negotiation.interesse_anuncio;
@@ -341,7 +363,25 @@ export class RoomsService {
         if (interest.usuario.id !== userId && advertiserId !== userId) {
             throw new NotFoundException("Negociação não encontrada.");
         }
+        if (await this.negotiationEndedAfterRemoval(negotiation)) {
+            if (interest.usuario.id === userId || !allowClosedAdvertiser) {
+                throw new NotFoundException("Negociação não encontrada.");
+            }
+        }
         return negotiation;
+    }
+
+    private async negotiationEndedAfterRemoval(negotiation: {
+        convite_casa: { status: string; usuario_convidado_id: string | null }[];
+        interesse_anuncio: { anuncio_quarto: { casa_id: string } };
+    }) {
+        const invitation = negotiation.convite_casa[0];
+        if (!invitation || !["ACEITO", "CANCELADO"].includes(invitation.status)) return false;
+        if (invitation.status === "CANCELADO" || !invitation.usuario_convidado_id) return true;
+        const residences = await this.residenceAccess.listForUser(invitation.usuario_convidado_id);
+        return !residences.some(
+            (residence) => residence.id === negotiation.interesse_anuncio.anuncio_quarto.casa_id
+        );
     }
 
     private async requireOwner(id: string, userId: string) {

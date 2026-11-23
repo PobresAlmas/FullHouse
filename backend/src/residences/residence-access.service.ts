@@ -327,6 +327,25 @@ export class ResidenceAccessService {
                     throw new ConflictException("A casa precisa manter ao menos um administrador.");
                 }
             }
+            await tx.convite_casa.updateMany({
+                where: {
+                    casa_id: residenceId,
+                    usuario_convidado_id: target.usuario_id,
+                    status: { in: ["PENDENTE", "ACEITO"] },
+                    negociacao_anuncio: {
+                        interesse_anuncio: { usuario_id: target.usuario_id },
+                    },
+                },
+                data: { status: "CANCELADO" },
+            });
+            await tx.interesse_anuncio.updateMany({
+                where: {
+                    usuario_id: target.usuario_id,
+                    status: { in: ["PENDENTE", "ACEITO"] },
+                    anuncio_quarto: { casa_id: residenceId },
+                },
+                data: { status: "RECUSADO" },
+            });
             await tx.participacao.update({
                 where: { id: memberId },
                 data: { data_saida: new Date() },

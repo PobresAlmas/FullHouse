@@ -141,7 +141,11 @@ export function AppSidebar({
 
     return (
         <aside className="flex shrink-0 flex-col border-b border-[#d9d0dc] bg-[#f8f4fa] px-3 py-3 md:sticky md:top-0 md:h-screen md:min-h-0 md:w-[220px] md:self-start md:overflow-y-auto md:border-b-0 md:border-r md:px-4 md:py-5">
-            <div className="mb-3 flex items-center gap-3 rounded-lg px-1 md:mb-7">
+            <Link
+                href="/"
+                aria-label="FullHouse, ir para a página inicial"
+                className="mb-3 flex cursor-pointer items-center gap-3 rounded-lg px-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f] md:mb-7"
+            >
                 <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#234a1b]">
                     <Image
                         src="/logo.png"
@@ -161,7 +165,7 @@ export function AppSidebar({
                             : "Nenhuma casa associada"}
                     </span>
                 </span>
-            </div>
+            </Link>
 
             <nav aria-label="Navegação principal" className="grid grid-cols-4 gap-1 md:grid-cols-1">
                 {(hasNoResidence

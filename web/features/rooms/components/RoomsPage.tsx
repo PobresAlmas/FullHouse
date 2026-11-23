@@ -491,6 +491,8 @@ export function RoomsPage() {
             <div className="min-w-0 flex-1">
                 <AppPageHeader
                     greetingName={memberName}
+                    profileName={user?.nickname?.trim() || memberName}
+                    profilePhoto={user?.photo}
                     residenceName={residence?.name ?? "Busca pública de quartos"}
                     settingsHref={user ? "/settings" : undefined}
                     residenceControl={

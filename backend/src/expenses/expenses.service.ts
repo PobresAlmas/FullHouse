@@ -6,6 +6,7 @@ import { ResidenceAccessService } from "../residences/residence-access.service.j
 import { CreateExpenseSubgroupDto } from "./dto/create-expense-subgroup.dto.js";
 import { UpsertExpenseReminderDto } from "./dto/upsert-expense-reminder.dto.js";
 import { StorageService } from "../storage/storage.service.js";
+import { isResidenceManager } from "../residences/residence-access.service.js";
 
 @Injectable()
 export class ExpensesService {
@@ -145,7 +146,8 @@ export class ExpensesService {
         const expense = await this.repository.create(
             data,
             home.id,
-            subgroup?.membro_subgrupo[0]?.participacao_id ?? home.participacao[0].id
+            subgroup?.membro_subgrupo[0]?.participacao_id ?? home.participacao[0].id,
+            userId
         );
 
         return this.mapExpense(expense);
@@ -161,13 +163,30 @@ export class ExpensesService {
         }
         const expenses = await this.repository.findForUser(userId, paymentStatus);
 
-        return expenses.map((expense) => this.mapExpense(expense));
+        return expenses.map((expense) =>
+            this.mapExpense(
+                expense,
+                expense.criado_por_usuario_id === userId ||
+                    Boolean(
+                        expense.casa?.participacao?.some((member) =>
+                            isResidenceManager(member.papel)
+                        )
+                    )
+            )
+        );
     }
 
     async update(id: string, data: UpdateExpenseDto, userId: string) {
         const existing = await this.repository.findEditableExpense(id, userId);
         if (!existing) {
             throw new NotFoundException("A despesa não está disponível.");
+        }
+        if (existing.escopo === "CASA" && existing.casa_id) {
+            await this.requireExpenseOwnerOrManager(
+                existing.casa_id,
+                existing.criado_por_usuario_id,
+                userId
+            );
         }
 
         if (data.paymentDate && data.paymentStatus !== ExpensePaymentStatus.PAID) {
@@ -212,8 +231,7 @@ export class ExpensesService {
         const homeId = data.homeId ?? subgroup?.casa_id ?? existing.casa_id;
         const home = homeId ? await this.repository.findHomeForUser(homeId, userId) : null;
         if (!home) throw new NotFoundException("A casa da despesa não está mais disponível.");
-        await this.residenceAccess.requireCreateEditPermission(home.id, userId);
-
+        await this.requireExpenseOwnerOrManager(home.id, existing.criado_por_usuario_id, userId);
         if (subgroup && subgroup.casa_id !== home.id) {
             throw new NotFoundException("O subgrupo selecionado não está disponível.");
         }
@@ -253,7 +271,11 @@ export class ExpensesService {
         }
 
         if (existing.casa_id) {
-            await this.residenceAccess.requireCreateEditPermission(existing.casa_id, userId);
+            await this.requireExpenseOwnerOrManager(
+                existing.casa_id,
+                existing.criado_por_usuario_id,
+                userId
+            );
         }
 
         await this.repository.softDelete(id);
@@ -293,7 +315,11 @@ export class ExpensesService {
         const expense = await this.repository.findEditableExpense(id, userId);
         if (!expense) throw new NotFoundException("A despesa não está disponível.");
         if (expense.casa_id) {
-            await this.residenceAccess.requireCreateEditPermission(expense.casa_id, userId);
+            await this.requireExpenseOwnerOrManager(
+                expense.casa_id,
+                expense.criado_por_usuario_id,
+                userId
+            );
         }
         if (!file || file.size > 10 * 1024 * 1024) {
             throw new BadRequestException("O comprovante deve ter no máximo 10 MB.");
@@ -322,32 +348,48 @@ export class ExpensesService {
         return { id: proof.id, url: proof.arquivo_url, type: proof.tipo_arquivo };
     }
 
-    private mapExpense(expense: {
-        id: string;
-        descricao: string;
-        valor_total: { toFixed: (decimalPlaces: number) => string };
-        data_vencimento: Date | null;
-        status: string;
-        estrategia_rateio: "IGUALITARIO" | "PERSONALIZADO" | "PERCENTUAL";
-        subgrupo: { id: string; nome: string } | null;
-        casa_id?: string | null;
-        casa?: { nome: string } | null;
-        participacao: {
-            usuario: { nome: string; apelido: string | null };
-        } | null;
-        quitada_em: Date | null;
-        lembrete?: { id: string; titulo: string; lembrar_em: Date }[];
-        comprovante_pagamento?: {
+    private async requireExpenseOwnerOrManager(
+        homeId: string,
+        creatorUserId: string | null,
+        userId: string
+    ) {
+        if (creatorUserId === userId) return;
+        await this.residenceAccess.requireManager(homeId, userId);
+    }
+
+    private mapExpense(
+        expense: {
             id: string;
-            arquivo_url: string;
-            tipo_arquivo: "IMAGEM" | "PDF";
-        }[];
-        rateio_despesa?: {
-            participacao_id: string;
-            valor_devido: { toFixed: (decimalPlaces: number) => string };
-            participacao: { usuario: { nome: string; apelido: string | null } };
-        }[];
-    }) {
+            descricao: string;
+            valor_total: { toFixed: (decimalPlaces: number) => string };
+            data_vencimento: Date | null;
+            status: string;
+            estrategia_rateio: "IGUALITARIO" | "PERSONALIZADO" | "PERCENTUAL";
+            subgrupo: { id: string; nome: string } | null;
+            casa_id?: string | null;
+            criado_por_usuario_id?: string | null;
+            casa?: {
+                nome: string;
+                participacao?: { papel: Parameters<typeof isResidenceManager>[0] }[];
+            } | null;
+            participacao: {
+                usuario: { nome: string; apelido: string | null };
+            } | null;
+            quitada_em: Date | null;
+            lembrete?: { id: string; titulo: string; lembrar_em: Date }[];
+            comprovante_pagamento?: {
+                id: string;
+                arquivo_url: string;
+                tipo_arquivo: "IMAGEM" | "PDF";
+            }[];
+            rateio_despesa?: {
+                participacao_id: string;
+                valor_devido: { toFixed: (decimalPlaces: number) => string };
+                participacao: { usuario: { nome: string; apelido: string | null } };
+            }[];
+        },
+        canEdit = true
+    ) {
         return {
             id: expense.id,
             description: expense.descricao,
@@ -360,7 +402,7 @@ export class ExpensesService {
             allocationStrategy: expense.estrategia_rateio,
             sourceLabel: expense.subgrupo?.nome ?? expense.casa?.nome ?? "Casa",
             totalAmount: expense.valor_total.toFixed(2),
-            canEdit: true,
+            canEdit,
             paidBy: expense.participacao
                 ? expense.participacao.usuario.apelido || expense.participacao.usuario.nome
                 : null,

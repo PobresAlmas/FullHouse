@@ -54,6 +54,68 @@ export class ChatRepository {
         });
     }
 
+    findLastReadMessageId(conversationId: string, memberId: string) {
+        return this.prisma.leitura_conversa.findUnique({
+            where: {
+                conversa_id_participacao_id: {
+                    conversa_id: conversationId,
+                    participacao_id: memberId,
+                },
+            },
+            select: { ultima_mensagem_lida_id: true },
+        });
+    }
+
+    async markRead(conversationId: string, memberId: string, messageId: string) {
+        const target = await this.prisma.mensagem.findFirst({
+            where: { id: messageId, conversa_id: conversationId, excluido_em: null },
+            select: { id: true, enviada_em: true },
+        });
+        if (!target) return;
+
+        const current = await this.prisma.leitura_conversa.findUnique({
+            where: {
+                conversa_id_participacao_id: {
+                    conversa_id: conversationId,
+                    participacao_id: memberId,
+                },
+            },
+            select: { ultima_mensagem_lida_id: true },
+        });
+        if (current?.ultima_mensagem_lida_id) {
+            const currentMessage = await this.prisma.mensagem.findFirst({
+                where: {
+                    id: current.ultima_mensagem_lida_id,
+                    conversa_id: conversationId,
+                },
+                select: { enviada_em: true, id: true },
+            });
+            if (
+                currentMessage &&
+                (currentMessage.enviada_em > target.enviada_em ||
+                    (currentMessage.enviada_em.getTime() === target.enviada_em.getTime() &&
+                        currentMessage.id >= target.id))
+            ) {
+                return;
+            }
+        }
+
+        await this.prisma.leitura_conversa.upsert({
+            where: {
+                conversa_id_participacao_id: {
+                    conversa_id: conversationId,
+                    participacao_id: memberId,
+                },
+            },
+            create: {
+                conversa_id: conversationId,
+                participacao_id: memberId,
+                ultima_mensagem_lida_id: target.id,
+            },
+            update: { ultima_mensagem_lida_id: target.id, atualizado_em: new Date() },
+        });
+    }
+
     createMessage(conversationId: string, memberId: string, content: string) {
         return this.prisma.mensagem.create({
             data: {

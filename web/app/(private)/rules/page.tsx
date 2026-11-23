@@ -22,7 +22,13 @@ export default function HouseRulesPage() {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [error, setError] = useState("");
+    const [formError, setFormError] = useState("");
+    const [validationSubmitted, setValidationSubmitted] = useState(false);
     const [busy, setBusy] = useState(false);
+    const activeResidence = residences.find((item) => item.id === residenceId);
+    const canManageRules =
+        activeResidence?.membership?.role === "LIDER" ||
+        activeResidence?.membership?.role === "ADMINISTRADOR";
     const loadRules = useCallback(async (id: string) => {
         try {
             setRules(await getHouseRules(id));
@@ -53,20 +59,27 @@ export default function HouseRulesPage() {
     }
 
     function startEdit(rule: HouseRule) {
+        if (!canManageRules) return;
         setEditing(rule);
         setTitle(rule.title);
         setDescription(rule.description);
-        setError("");
+        setFormError("");
+        setValidationSubmitted(false);
     }
     function clearForm() {
         setEditing(null);
         setTitle("");
         setDescription("");
+        setFormError("");
+        setValidationSubmitted(false);
     }
     async function submit(event: FormEvent) {
         event.preventDefault();
+        if (!canManageRules) return;
+        setValidationSubmitted(true);
+        setFormError("");
         if (!title.trim() || !description.trim()) {
-            setError("Preencha o título e a descrição da regra.");
+            setFormError("Preencha o título e a descrição da regra.");
             return;
         }
         setBusy(true);
@@ -77,7 +90,7 @@ export default function HouseRulesPage() {
             clearForm();
             await loadRules(residenceId);
         } catch {
-            setError("Não foi possível salvar a regra. Verifique os dados e tente novamente.");
+            setFormError("Não foi possível salvar a regra. Verifique os dados e tente novamente.");
         } finally {
             setBusy(false);
         }
@@ -108,51 +121,73 @@ export default function HouseRulesPage() {
                         {error}
                     </p>
                 )}
-                <section className="my-5 rounded-xl border bg-white p-5">
-                    <h2 className="mb-4 text-lg font-semibold">
-                        {editing ? "Editar regra" : "Nova regra"}
-                    </h2>
-                    <form onSubmit={submit} className="grid gap-3">
-                        <label className="grid gap-1 text-sm font-medium">
-                            Título
-                            <input
-                                aria-label="Título"
-                                maxLength={150}
-                                className="rounded-md border px-3 py-2"
-                                value={title}
-                                onChange={(event) => setTitle(event.target.value)}
-                            />
-                        </label>
-                        <label className="grid gap-1 text-sm font-medium">
-                            Descrição
-                            <textarea
-                                aria-label="Descrição"
-                                maxLength={5000}
-                                rows={3}
-                                className="rounded-md border px-3 py-2"
-                                value={description}
-                                onChange={(event) => setDescription(event.target.value)}
-                            />
-                        </label>
-                        <div className="flex gap-2">
-                            <button
-                                disabled={busy || !residenceId}
-                                className="rounded-md bg-[#234a1b] px-4 py-2 font-semibold text-white"
-                            >
-                                {editing ? "Salvar alterações" : "Adicionar regra"}
-                            </button>
-                            {editing && (
-                                <button
-                                    type="button"
-                                    onClick={clearForm}
-                                    className="rounded-md border px-4 py-2"
+                {canManageRules ? (
+                    <section className="my-5 rounded-xl border bg-white p-5">
+                        <h2 className="mb-4 text-lg font-semibold">
+                            {editing ? "Editar regra" : "Nova regra"}
+                        </h2>
+                        <form onSubmit={submit} noValidate className="grid gap-3">
+                            {formError && (
+                                <p
+                                    role="alert"
+                                    className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
                                 >
-                                    Cancelar edição
-                                </button>
+                                    {formError}
+                                </p>
                             )}
-                        </div>
-                    </form>
-                </section>
+                            <label className="grid gap-1 text-sm font-medium">
+                                <span>
+                                    Título <span className="text-red-600">*</span>
+                                </span>
+                                <input
+                                    aria-label="Título"
+                                    required
+                                    aria-invalid={validationSubmitted && !title.trim()}
+                                    maxLength={150}
+                                    className={`rounded-md border px-3 py-2 ${validationSubmitted && !title.trim() ? "border-red-500" : "border-slate-300"}`}
+                                    value={title}
+                                    onChange={(event) => setTitle(event.target.value)}
+                                />
+                            </label>
+                            <label className="grid gap-1 text-sm font-medium">
+                                <span>
+                                    Descrição <span className="text-red-600">*</span>
+                                </span>
+                                <textarea
+                                    aria-label="Descrição"
+                                    required
+                                    aria-invalid={validationSubmitted && !description.trim()}
+                                    maxLength={5000}
+                                    rows={3}
+                                    className={`rounded-md border px-3 py-2 ${validationSubmitted && !description.trim() ? "border-red-500" : "border-slate-300"}`}
+                                    value={description}
+                                    onChange={(event) => setDescription(event.target.value)}
+                                />
+                            </label>
+                            <div className="flex gap-2">
+                                <button
+                                    disabled={busy || !residenceId}
+                                    className="rounded-md bg-[#234a1b] px-4 py-2 font-semibold text-white"
+                                >
+                                    {editing ? "Salvar alterações" : "Adicionar regra"}
+                                </button>
+                                {editing && (
+                                    <button
+                                        type="button"
+                                        onClick={clearForm}
+                                        className="rounded-md border px-4 py-2"
+                                    >
+                                        Cancelar edição
+                                    </button>
+                                )}
+                            </div>
+                        </form>
+                    </section>
+                ) : (
+                    <p className="my-5 rounded-xl border bg-white p-5 text-sm text-slate-600">
+                        Somente líderes e administradores podem adicionar ou editar regras.
+                    </p>
+                )}
                 <section aria-label="Mural de regras" className="grid gap-3">
                     {rules.length === 0 && (
                         <p className="rounded-xl border bg-white p-5 text-slate-600">
@@ -163,13 +198,15 @@ export default function HouseRulesPage() {
                         <article key={rule.id} className="rounded-xl border bg-white p-5">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <h2 className="text-lg font-semibold">{rule.title}</h2>
-                                <button
-                                    type="button"
-                                    onClick={() => startEdit(rule)}
-                                    className="rounded-md border px-3 py-1.5"
-                                >
-                                    Editar
-                                </button>
+                                {canManageRules && (
+                                    <button
+                                        type="button"
+                                        onClick={() => startEdit(rule)}
+                                        className="rounded-md border px-3 py-1.5"
+                                    >
+                                        Editar
+                                    </button>
+                                )}
                             </div>
                             <p className="my-2 whitespace-pre-wrap">{rule.description}</p>
                             <p className="text-xs text-slate-600">

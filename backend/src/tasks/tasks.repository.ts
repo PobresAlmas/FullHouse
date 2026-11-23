@@ -287,6 +287,18 @@ export class TasksRepository {
         });
     }
 
+    reopenPersonal(taskId: string, userId: string, status: "PENDENTE" | "ATRASADA") {
+        return this.prisma.instancia_tarefa.updateMany({
+            where: {
+                id: taskId,
+                responsavel_usuario_id: userId,
+                status: "CONCLUIDA",
+                definicao_tarefa: { escopo: "INDIVIDUAL" },
+            },
+            data: { status, concluida_em: null },
+        });
+    }
+
     async removePersonal(userId: string, taskId: string) {
         const task = await this.findPersonalTask(userId, taskId);
         if (!task) return false;
@@ -541,6 +553,17 @@ export class TasksRepository {
                 }
             }
             return completed;
+        });
+    }
+
+    reopen(taskId: string, status: "PENDENTE" | "ATRASADA") {
+        return this.prisma.instancia_tarefa.updateMany({
+            where: { id: taskId, status: "CONCLUIDA" },
+            data: {
+                status,
+                concluida_em: null,
+                concluida_por_participacao_id: null,
+            },
         });
     }
 

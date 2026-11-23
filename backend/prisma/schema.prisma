@@ -231,6 +231,7 @@ model despesa {
   escopo                   escopo_despesa_enum
   casa_id                  String?                   @db.Uuid
   usuario_id               String?                   @db.Uuid
+  criado_por_usuario_id    String?                   @db.Uuid
   subgrupo_id              String?                   @db.Uuid
   descricao                String                    @db.VarChar(255)
   valor_total              Decimal                   @db.Decimal(12, 2)
@@ -244,6 +245,7 @@ model despesa {
   cuidado_pet              cuidado_pet[]
   comprovante_pagamento    comprovante_pagamento[]
   casa                     casa?                     @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  criador                  usuario?                  @relation("despesa_criador", fields: [criado_por_usuario_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   participacao             participacao?             @relation(fields: [pago_por_participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   subgrupo                 subgrupo?                 @relation(fields: [subgrupo_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   usuario                  usuario?                  @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -800,6 +802,7 @@ model usuario {
   comprovante_pagamento       comprovante_pagamento[]
   definicao_tarefa            definicao_tarefa[]
   despesa                     despesa[]
+  despesas_criadas            despesa[]                     @relation("despesa_criador")
   instancia_tarefa            instancia_tarefa[]
   interesse_anuncio           interesse_anuncio[]
   lembrete                    lembrete[]

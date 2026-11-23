@@ -29,6 +29,8 @@ import {
     getTaskExchangeRequests,
     getTasks,
     respondToTaskExchange,
+    reopenPersonalTask,
+    reopenTask,
     updatePersonalTask,
     updateTask,
 } from "@/features/tasks/api/tasks.api";
@@ -492,6 +494,19 @@ export default function TasksPage() {
     async function markComplete(task: Task) {
         setError("");
         try {
+            if (task.status === "CONCLUIDA") {
+                const reopened = isPersonalTask(task)
+                    ? await reopenPersonalTask(task.id)
+                    : residenceId
+                      ? await reopenTask(residenceId, task.id)
+                      : null;
+                if (!reopened) return;
+                setTasks((items) =>
+                    items.map((item) => (item.id === reopened.id ? reopened : item))
+                );
+                setNotice("Tarefa reaberta.");
+                return;
+            }
             if (isPersonalTask(task)) {
                 const completed = await completePersonalTask(task.id);
                 setTasks((items) =>
@@ -544,14 +559,27 @@ export default function TasksPage() {
     async function respondToExchange(
         request: TaskExchangeRequest,
         status: "ACEITA" | "RECUSADA",
-        targetTaskId?: string
+        targetTaskId?: string,
+        acceptWithoutTarget = false
     ) {
         if (!residenceId) return;
         setError("");
         try {
-            await respondToTaskExchange(residenceId, request.id, status, targetTaskId);
+            await respondToTaskExchange(
+                residenceId,
+                request.id,
+                status,
+                targetTaskId,
+                acceptWithoutTarget
+            );
             await loadResidenceData(residenceId);
-            setNotice(status === "ACEITA" ? "Troca aceita." : "Solicitação recusada.");
+            setNotice(
+                status === "ACEITA"
+                    ? acceptWithoutTarget
+                        ? "Tarefa aceita e atribuída a você."
+                        : "Troca aceita."
+                    : "Solicitação recusada."
+            );
         } catch (requestError: unknown) {
             setError(getErrorMessage(requestError));
         }
@@ -1026,6 +1054,7 @@ function TaskRow({
     onRequestExchange: (recipientMemberId: string, targetTaskId?: string) => void;
 }) {
     const completed = task.status === "CONCLUIDA";
+    const assigneeMember = members.find((member) => member.id === task.assignee?.id);
     const [exchangeMenuOpen, setExchangeMenuOpen] = useState(false);
     const [selectedRecipientId, setSelectedRecipientId] = useState("");
     const [preferredTaskId, setPreferredTaskId] = useState("");
@@ -1056,10 +1085,10 @@ function TaskRow({
             className={`flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-l-4 border-[#d7ceda] px-3 py-2.5 ${completed ? "bg-[#eeebef]" : "bg-white"}`}
         >
             <input
-                aria-label={`Concluir ${task.title}`}
+                aria-label={completed ? `Reabrir ${task.title}` : `Concluir ${task.title}`}
                 type="checkbox"
                 checked={completed}
-                disabled={completed || task.status === "CANCELADA"}
+                disabled={task.status === "CANCELADA"}
                 onChange={onComplete}
                 className="size-[18px] shrink-0 accent-[#4e812f]"
             />
@@ -1106,6 +1135,11 @@ function TaskRow({
                 </div>
             )}
             <span
+                style={
+                    assigneeMember?.avatarBackgroundColor
+                        ? { backgroundColor: assigneeMember.avatarBackgroundColor }
+                        : undefined
+                }
                 className="grid size-7 shrink-0 place-items-center rounded-full bg-[#4f7f63] text-[10px] font-semibold text-white"
                 title={task.assignee?.name ?? "Sem responsável"}
             >
@@ -1471,7 +1505,8 @@ function ExchangeRequests({
     onRespond: (
         request: TaskExchangeRequest,
         status: "ACEITA" | "RECUSADA",
-        targetTaskId?: string
+        targetTaskId?: string,
+        acceptWithoutTarget?: boolean
     ) => void;
 }) {
     const [selectedTasks, setSelectedTasks] = useState<Record<string, string>>({});
@@ -1537,36 +1572,38 @@ function ExchangeRequests({
                                     ⇄
                                 </span>
                                 {request.incoming && request.status === "PENDENTE" ? (
-                                    <label className="min-w-0 rounded-md bg-[#f4f0f5] px-2 py-2 text-[#514c56]">
-                                        <span className="mb-1 block text-[10px]">
-                                            {request.targetTask
-                                                ? "Tarefa sugerida · confirme ou altere"
-                                                : "Sua tarefa"}
-                                        </span>
-                                        <SystemSelect
-                                            aria-label={`Escolher tarefa para trocar com ${request.requester}`}
-                                            value={selectedTargetTaskId}
-                                            onChange={(event) =>
-                                                setSelectedTasks((current) => ({
-                                                    ...current,
-                                                    [request.id]: event.target.value,
-                                                }))
-                                            }
-                                            className="w-full rounded border border-[#d1c9d3] bg-white px-1.5 py-1 text-[11px] text-[#302a32]"
-                                        >
-                                            <option value="">Escolha uma tarefa…</option>
-                                            {recipientTaskChoices.map((candidate) => (
-                                                <option key={candidate.id} value={candidate.id}>
-                                                    {candidate.title}
-                                                </option>
-                                            ))}
-                                        </SystemSelect>
-                                        {recipientTaskChoices.length === 0 && (
-                                            <span className="mt-1 block text-[10px]">
-                                                Você não tem outra tarefa aberta disponível.
+                                    recipientTaskChoices.length > 0 ? (
+                                        <label className="min-w-0 rounded-md bg-[#f4f0f5] px-2 py-2 text-[#514c56]">
+                                            <span className="mb-1 block text-[10px]">
+                                                {request.targetTask
+                                                    ? "Tarefa sugerida · confirme ou altere"
+                                                    : "Sua tarefa"}
                                             </span>
-                                        )}
-                                    </label>
+                                            <SystemSelect
+                                                aria-label={`Escolher tarefa para trocar com ${request.requester}`}
+                                                value={selectedTargetTaskId}
+                                                onChange={(event) =>
+                                                    setSelectedTasks((current) => ({
+                                                        ...current,
+                                                        [request.id]: event.target.value,
+                                                    }))
+                                                }
+                                                className="w-full rounded border border-[#d1c9d3] bg-white px-1.5 py-1 text-[11px] text-[#302a32]"
+                                            >
+                                                <option value="">Escolha uma tarefa…</option>
+                                                {recipientTaskChoices.map((candidate) => (
+                                                    <option key={candidate.id} value={candidate.id}>
+                                                        {candidate.title}
+                                                    </option>
+                                                ))}
+                                            </SystemSelect>
+                                        </label>
+                                    ) : (
+                                        <p className="min-w-0 rounded-md bg-[#f4f0f5] px-2 py-2 text-[10px] text-[#514c56]">
+                                            Você não tem outra tarefa aberta para oferecer. Ao
+                                            aceitar, ficará responsável apenas por esta tarefa.
+                                        </p>
+                                    )
                                 ) : request.targetTask ? (
                                     <div className="min-w-0 rounded-md bg-[#eee9f0] px-2 py-2">
                                         <span className="block truncate font-medium">
@@ -1599,13 +1636,21 @@ function ExchangeRequests({
                                             onRespond(
                                                 request,
                                                 "ACEITA",
-                                                selectedTargetTaskId || undefined
+                                                recipientTaskChoices.length > 0
+                                                    ? selectedTargetTaskId || undefined
+                                                    : undefined,
+                                                recipientTaskChoices.length === 0
                                             )
                                         }
-                                        disabled={!selectedTargetIsAvailable}
+                                        disabled={
+                                            recipientTaskChoices.length > 0 &&
+                                            !selectedTargetIsAvailable
+                                        }
                                         className="rounded-md bg-[#4e812f] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        Aceitar
+                                        {recipientTaskChoices.length === 0
+                                            ? "Aceitar tarefa"
+                                            : "Aceitar troca"}
                                     </button>
                                 </div>
                             ) : (

@@ -48,6 +48,7 @@ const expense: Expense = {
     amount: "120.00",
     date: "2026-10-12",
     subgroup: { id: subgroup.id, nome: subgroup.name },
+    canEdit: true,
     paymentStatus: "PENDING",
     paidBy: null,
     paidAt: null,
@@ -97,7 +98,7 @@ describe("FinancePage expense CRUD", () => {
         await user.click(screen.getByRole("button", { name: /criar subgrupo/i }));
         const dialog = screen.getByRole("dialog", { name: "Criar subgrupo" });
         expect(await screen.findByRole("group", { name: "Participantes" })).toBeInTheDocument();
-        await user.type(screen.getByLabelText("Nome do subgrupo"), " Café ");
+        await user.type(screen.getByLabelText(/Nome do subgrupo/i), " Café ");
         await user.click(screen.getByRole("checkbox", { name: "Ana" }));
         await user.click(within(dialog).getByRole("button", { name: "Criar subgrupo" }));
 
@@ -122,7 +123,7 @@ describe("FinancePage expense CRUD", () => {
         await user.click(screen.getByRole("button", { name: /criar subgrupo/i }));
         await screen.findByRole("checkbox", { name: "Ana" });
         const dialog = screen.getByRole("dialog", { name: "Criar subgrupo" });
-        await user.type(screen.getByLabelText("Nome do subgrupo"), "Café");
+        await user.type(screen.getByLabelText(/Nome do subgrupo/i), "Café");
         await user.click(within(dialog).getByRole("button", { name: "Criar subgrupo" }));
         expect(await screen.findByRole("alert")).toHaveTextContent(
             "Selecione pelo menos um morador."
@@ -130,7 +131,7 @@ describe("FinancePage expense CRUD", () => {
         await user.click(screen.getByRole("checkbox", { name: "Ana" }));
         await user.click(within(dialog).getByRole("button", { name: "Criar subgrupo" }));
         expect(await screen.findByRole("alert")).toHaveTextContent("Falha ao salvar.");
-        expect(screen.getByLabelText("Nome do subgrupo")).toHaveValue("Café");
+        expect(screen.getByLabelText(/Nome do subgrupo/i)).toHaveValue("Café");
     }, 15000);
 
     it("creates an expense from the add modal and updates the list", async () => {
@@ -140,7 +141,7 @@ describe("FinancePage expense CRUD", () => {
 
         await screen.findByText("Nenhuma despesa cadastrada");
         await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
-        await user.type(screen.getByLabelText("Descrição"), "Internet");
+        await user.type(screen.getByLabelText(/Descrição/i), "Internet");
         await user.type(screen.getByLabelText(/valor total da despesa/i), "120,00");
         fireEvent.change(screen.getByLabelText(/data de vencimento/i), {
             target: { value: "2026-10-12" },
@@ -174,7 +175,7 @@ describe("FinancePage expense CRUD", () => {
         await screen.findByText("Nenhuma despesa cadastrada");
         await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
         await selectSystemOption(user, screen.getByRole("combobox", { name: "Casa" }), "Corvinal");
-        await user.type(screen.getByLabelText("Descrição"), "Internet");
+        await user.type(screen.getByLabelText(/Descrição/i), "Internet");
         await user.type(screen.getByLabelText(/valor total da despesa/i), "120,00");
         fireEvent.change(screen.getByLabelText(/data de vencimento/i), {
             target: { value: "2026-10-12" },
@@ -231,7 +232,7 @@ describe("FinancePage expense CRUD", () => {
         render(<FinancePage />);
 
         await user.click(await screen.findByRole("button", { name: "Editar Internet" }));
-        const description = screen.getByLabelText("Descrição");
+        const description = screen.getByLabelText(/Descrição/i);
         await user.clear(description);
         await user.type(description, "Internet fibra");
         await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
@@ -278,7 +279,7 @@ describe("FinancePage expense CRUD", () => {
 
         await screen.findByText("Nenhuma despesa cadastrada");
         await user.click(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]);
-        await user.type(screen.getByLabelText("Descrição"), "Internet");
+        await user.type(screen.getByLabelText(/Descrição/i), "Internet");
         await user.type(screen.getByLabelText(/valor total da despesa/i), "120,00");
         fireEvent.change(screen.getByLabelText(/data de vencimento/i), {
             target: { value: "2026-10-12" },

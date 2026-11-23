@@ -335,8 +335,12 @@ export function HomePage() {
             <main className="min-w-0 flex-1">
                 <AppPageHeader
                     greetingName={userName}
-                    residenceName={selectedResidence?.name}
-                    subtitle="Você ainda não pertence a nenhuma casa"
+                    residenceName={context === "residence" ? selectedResidence?.name : undefined}
+                    subtitle={
+                        context === "personal"
+                            ? "Seu espaço pessoal"
+                            : "Você ainda não pertence a nenhuma casa"
+                    }
                     residenceControl={
                         residences.length > 0 ? (
                             <div

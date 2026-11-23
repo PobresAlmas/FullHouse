@@ -35,9 +35,9 @@ export class MeetingsRepository {
         return this.prisma.$transaction(async (tx) => {
             const members = await tx.participacao.findMany({
                 where: { casa_id: residenceId, data_saida: null },
-                select: { id: true },
+                select: { id: true, usuario_id: true },
             });
-            return tx.reuniao.create({
+            const meeting = await tx.reuniao.create({
                 data: {
                     casa_id: residenceId,
                     titulo: agenda.slice(0, 150),
@@ -50,6 +50,21 @@ export class MeetingsRepository {
                 },
                 include: meetingInclude,
             });
+            const recipients = members.filter(({ id }) => id !== memberId);
+            if (recipients.length) {
+                await tx.notificacao.createMany({
+                    data: recipients.map(({ usuario_id }) => ({
+                        usuario_id,
+                        casa_id: residenceId,
+                        tipo: "REUNIAO",
+                        titulo: "Nova reunião marcada",
+                        mensagem: `Uma nova reunião foi marcada: “${agenda}”. Confira os detalhes na tela de reuniões.`,
+                        entidade_tipo: "REUNIAO",
+                        entidade_id: meeting.id,
+                    })),
+                });
+            }
+            return meeting;
         });
     }
 
@@ -98,9 +113,9 @@ export class MeetingsRepository {
             await tx.reuniao.update({ where: { id: meetingId }, data: { status: "REAGENDADA" } });
             const members = await tx.participacao.findMany({
                 where: { casa_id: residenceId, data_saida: null },
-                select: { id: true },
+                select: { id: true, usuario_id: true },
             });
-            return tx.reuniao.create({
+            const meeting = await tx.reuniao.create({
                 data: {
                     casa_id: residenceId,
                     titulo: agenda.slice(0, 150),
@@ -114,6 +129,21 @@ export class MeetingsRepository {
                 },
                 include: meetingInclude,
             });
+            const recipients = members.filter(({ id }) => id !== memberId);
+            if (recipients.length) {
+                await tx.notificacao.createMany({
+                    data: recipients.map(({ usuario_id }) => ({
+                        usuario_id,
+                        casa_id: residenceId,
+                        tipo: "REUNIAO",
+                        titulo: "Reunião reagendada",
+                        mensagem: `A reunião foi reagendada: “${agenda}”. Confira os detalhes na tela de reuniões.`,
+                        entidade_tipo: "REUNIAO",
+                        entidade_id: meeting.id,
+                    })),
+                });
+            }
+            return meeting;
         });
     }
 
