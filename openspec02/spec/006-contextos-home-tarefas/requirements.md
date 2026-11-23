@@ -2,6 +2,8 @@
 
 **Origem:** G02 da [triagem dos testes manuais](../../../docs/triagem-testes-manuais.md#g02--dados-da-home-e-fluxos-de-tarefas).
 
+**Referências do projeto:** [Documento de Especificação de Requisitos — FullHouse](<../../../docs/Documento de Especificação de Requisitos - FullHouse.pdf>). RF018/US016 orienta a organização pessoal e a privacidade das tarefas individuais. RF021/US019 orienta a troca consentida entre moradores. RF007/US006 trata da conclusão de tarefas, e RN001, RN002 e RNF003 orientam acesso, permissões e responsividade. Os identificadores RF, RNF e CA abaixo são locais à SPEC-006.
+
 ## Objetivo
 
 Identificar a quem pertencem os atrasos da Home, tornar tarefas privadas e pessoais encontráveis no contexto correto e mostrar o resultado de ações e trocas.

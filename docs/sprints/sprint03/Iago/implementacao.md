@@ -1,42 +1,34 @@
 # Sprint 03 — Implementação de colaboração da casa
 
-**Responsável:** Iago  
-**Módulos:** Chat da casa, mural de regras e reuniões
+**Responsável:** Iago<br>
+**Módulo principal:** Chat da casa, mural de regras e reuniões<br>
+**OpenSpec:** [Design da SPEC-002](../../../../openspec02/spec/002-colaboracao-da-casa/design.md)
 
 ## 1. Visão geral
 
-Foram implementados os requisitos RF011, RF012 e RF013. As operações são protegidas por autenticação e validam a participação ativa do usuário na residência selecionada. As telas privadas usam a navegação e o contexto de residência do sistema.
+A entrega reúne chat da residência, mural de regras e reuniões. As páginas privadas reutilizam a navegação e validam o contexto da casa. O servidor confere o vínculo ativo em cada operação e o papel de gestão nas alterações do mural.
 
-## 2. Chat da casa
+## 2. Frontend
 
-O backend está em `backend/src/chat/`. O módulo consulta ou cria a conversa da residência, lista mensagens em ordem cronológica, associa o autor à participação autenticada e publica mensagens persistidas por SSE. A conexão é encerrada após a perda de participação e limpa os recursos quando o cliente desconecta. Uma migration garante uma única conversa da casa por residência.
+| Funcionalidade  | Arquivos                                                                                                                                                        | Comportamento                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Chat da casa    | [Página Chat](../../../../web/app/%28private%29/chat/page.tsx), [cliente HTTP e SSE](../../../../web/features/house-collaboration/api/chat.api.ts)              | Exibe histórico e autor. Ao reconectar, busca as mensagens após o último ID recebido.         |
+| Mural de regras | [Página Regras](../../../../web/app/%28private%29/rules/page.tsx), [cliente do mural](../../../../web/features/house-collaboration/api/house-rules.api.ts)      | Mostra título, descrição, data, criador e editor. Gestores têm controles de criação e edição. |
+| Reuniões        | [Página Reuniões](../../../../web/app/%28private%29/meetings/page.tsx), [cliente de reuniões](../../../../web/features/house-collaboration/api/meetings.api.ts) | Apresenta agenda, convites, respostas de presença e histórico de eventos por situação.        |
 
-A interface está em `web/app/(private)/chat/page.tsx`; o cliente e os tipos estão em `web/features/house-collaboration/api/chat.api.ts`. Após reconectar, a tela busca mensagens posteriores à última recebida.
+## 3. Backend
 
-## 3. Mural de regras
+- [Chat](../../../../backend/src/chat/) resolve a conversa `CASA`, ordena o histórico, associa a autoria à participação autenticada e publica mensagens persistidas por SSE. A conexão limpa a inscrição ao desconectar e verifica periodicamente o vínculo ativo.
+- [Mural](../../../../backend/src/house-rules/) filtra regras vigentes da casa. Criação e edição exigem gestor e gravam as participações autora e última editora.
+- [Reuniões](../../../../backend/src/meetings/) cria eventos e convites para participantes ativos. As respostas dependem de convite e vínculo ativo. Reagendamento e cancelamento exigem o organizador.
 
-O backend está em `backend/src/house-rules/`. A listagem retorna regras vigentes da residência, e as operações de criação e edição registram as participações autora e última editora.
+## 4. Regras de persistência e validação
 
-A tela `web/app/(private)/rules/page.tsx` apresenta título, descrição, data, criador e editor da regra.
+- A [migration do chat](../../../../backend/prisma/migrations/20261115000000_unique_house_conversation/migration.sql) garante uma conversa `CASA` por residência. A migração informa os identificadores quando encontra duplicatas para correção.
+- Criação e reagendamento gravam a reunião e os convites em transação. O reagendamento preserva a reunião anterior como `REAGENDADA` e vincula a substituta. O cancelamento preserva o registro.
+- A distribuição de mensagens por SSE usa memória local do backend. A distribuição entre múltiplas instâncias depende de um serviço compartilhado.
 
-## 4. Reuniões
+## 5. Rastreabilidade
 
-O backend está em `backend/src/meetings/`. Agendamento e reagendamento registram a reunião e os convites pendentes dos membros ativos em transação. Respostas exigem um convite existente e participação ativa. Reagendar preserva a reunião anterior como `REAGENDADA` e cria um novo evento associado; cancelar é permitido somente ao organizador e preserva o histórico.
-
-A tela está em `web/app/(private)/meetings/page.tsx`; o cliente HTTP está em `web/features/house-collaboration/api/meetings.api.ts`.
-
-## 5. Persistência e limites técnicos
-
-- A migration `backend/prisma/migrations/20261115000000_unique_house_conversation/migration.sql` impede conversas duplicadas do tipo casa por residência. Se encontrar duplicatas, interrompe a aplicação e informa os identificadores para resolução.
-- O envio ao vivo por SSE usa memória local e pressupõe uma instância do backend. Uma implantação com múltiplas instâncias precisará de um broker compartilhado.
-- A conexão SSE verifica periodicamente se o usuário ainda tem participação ativa.
-
-## 6. Rastreabilidade
-
-| Funcionalidade           | Implementação principal                                 | Evidência                                       |
-| ------------------------ | ------------------------------------------------------- | ----------------------------------------------- |
-| Chat e mensagens ao vivo | `backend/src/chat/` e `web/app/(private)/chat/`         | `docs/sprints/sprint03/Iago/Chat/image.png`     |
-| Regras da residência     | `backend/src/house-rules/` e `web/app/(private)/rules/` | `docs/sprints/sprint03/Iago/Regras/image.png`   |
-| Reuniões e convites      | `backend/src/meetings/` e `web/app/(private)/meetings/` | `docs/sprints/sprint03/Iago/Reuniões/image.png` |
-
-Os arquivos de testes, comandos e resultados estão em `docs/sprints/sprint03/Iago/testes.md`.
+- [Requisitos da Sprint 03](requisitos.md) e [tarefas da SPEC-002](../../../../openspec02/spec/002-colaboracao-da-casa/tasks.md).
+- [Testes e capturas](testes.md#5-evidências) de chat, regras e reuniões.

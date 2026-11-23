@@ -11,7 +11,7 @@ Permitir que interessados negociem uma vaga com o anunciante em uma conversa pri
 
 Como pessoa interessada em um quarto, quero acompanhar meu pedido, conversar com o anunciante se ele aceitar o interesse e decidir se quero entrar na residência ao receber o convite.
 
-**Referências do projeto:** [RF015 / US013 no Documento de Especificação de Requisitos](<../../../docs/Documento de Especificação de Requisitos - FullHouse.pdf>) para o contexto de Quartos e [SPEC-001 — Anunciar quarto](../001-anunciar-quarto/requirements.md) para os fluxos de publicação e gestão do anúncio. Os identificadores RF, RNF e CA abaixo são locais à SPEC-004.
+**Referências do projeto:** [Documento de Especificação de Requisitos — FullHouse](<../../../docs/Documento de Especificação de Requisitos - FullHouse.pdf>). RF015/US013 contextualiza a busca de moradia e a divulgação autorizada de endereço e contato. RN001, RN002 e RF023/US021 orientam a proteção dos dados da residência e a restrição de ações de gestão. A conversa privada, os estados de interesse e a entrada por convite são detalhados nesta spec. A publicação e a gestão em Moradores estão na [SPEC-001](../001-anunciar-quarto/requirements.md). Os identificadores RF, RNF e CA abaixo são locais à SPEC-004.
 
 ## Pré-condições
 

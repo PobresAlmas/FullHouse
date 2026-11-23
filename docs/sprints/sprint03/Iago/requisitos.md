@@ -1,47 +1,34 @@
 # Sprint 03 — Requisitos de colaboração da casa
 
-**Responsável:** Iago  
-**Módulos:** Chat da casa, mural de regras e reuniões  
-**Requisitos relacionados:** RF011, RF012 e RF013 de `docs/req.pdf`
+**Responsável:** Iago<br>
+**Módulo:** Chat da casa, mural de regras e reuniões<br>
+**OpenSpec:** [SPEC-002 — Colaboração da casa](../../../../openspec02/spec/002-colaboracao-da-casa/requirements.md)<br>
+**Requisitos relacionados:** RF011, RF012 e RF013 dos [requisitos do projeto](../../../req.pdf)
 
 ## 1. Objetivo
 
-Disponibilizar ferramentas para comunicação e organização dos moradores, mantendo os dados e as ações restritos aos participantes ativos da residência.
+Disponibilizar ferramentas para comunicação e organização dos moradores, com acesso vinculado à participação ativa na residência.
 
 ## 2. Requisitos funcionais
 
-### RF011 — Chat da casa
-
-- Moradores ativos podem consultar o histórico de mensagens da residência em ordem cronológica e enviar mensagens não vazias.
-- Cada mensagem identifica o autor e a data e hora de envio.
-- Mensagens novas são disponibilizadas aos moradores conectados em tempo real; após reconexão, o cliente recupera as mensagens que perdeu.
-- Usuários sem participação ativa não podem consultar o histórico nem manter uma conexão de mensagens da residência.
-
-### RF012 — Mural de regras
-
-- Moradores ativos podem consultar as regras vigentes da residência, criar regras e editar regras existentes.
-- O mural identifica quem criou e quem editou cada regra pela última vez.
-- Regras revogadas não aparecem na listagem padrão.
-- Apenas moradores ativos podem acessar e alterar as regras da residência.
-
-### RF013 — Reuniões
-
-- Moradores ativos podem agendar reuniões futuras com pauta e convidar os membros ativos da residência.
-- Convidados podem confirmar ou recusar presença; os participantes e suas respostas ficam visíveis aos moradores ativos.
-- Somente o organizador pode reagendar ou cancelar uma reunião.
-- O reagendamento preserva a reunião anterior no histórico e cria uma nova reunião vinculada a ela.
-- O cancelamento preserva o registro da reunião.
+| Requisito do projeto    | Referência na SPEC-002 | Comportamento                                                                                                                                                                                                                                  |
+| ----------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RF011 — Chat da casa    | RF01–RF03              | Moradores ativos consultam o histórico cronológico, enviam mensagens não vazias e recebem mensagens novas por SSE. Cada mensagem identifica autor e horário. Após reconectar, o cliente recupera o intervalo desde a última mensagem recebida. |
+| RF012 — Mural de regras | RF04–RF05              | Moradores ativos consultam regras vigentes. Líderes e administradores com vínculo ativo cadastram ou editam, com registro de autoria e da última edição.                                                                                       |
+| RF013 — Reuniões        | RF06–RF08              | Moradores ativos agendam reuniões futuras com pauta. Os convidados ativos respondem à presença e os moradores consultam as respostas. O organizador pode reagendar ou cancelar, preservando o histórico.                                       |
 
 ## 3. Critérios de aceitação
 
-1. Mensagens em branco, regras sem os dados obrigatórios e reuniões sem pauta ou com data passada são rejeitadas.
-2. Dados de chat, regras e reuniões ficam isolados por residência e exigem participação ativa.
-3. Uma resposta de presença só é aceita do morador convidado e ativo.
-4. Um morador que não seja organizador não consegue reagendar nem cancelar a reunião.
-5. Reagendamentos e cancelamentos mantêm o histórico anterior.
+1. Rejeitar mensagens em branco, regras incompletas e reuniões sem pauta ou com data passada.
+2. Restringir chat, regras e reuniões à residência autorizada. Encerrar o SSE do chat após a revogação do vínculo.
+3. Mostrar regras vigentes na listagem padrão. Exigir gestão para escrever no mural.
+4. Aceitar resposta de presença somente do participante convidado e ativo.
+5. Exigir o organizador para cancelar ou reagendar. Preservar a reunião anterior e vincular a nova quando houver reagendamento.
+
+A RF05 da SPEC-002 descreve escrita por morador ativo. O [serviço de regras nesta branch](../../../../backend/src/house-rules/house-rules.service.ts) exige papel de gestão para cadastrar e editar, conforme o comportamento registrado acima.
 
 ## 4. Rastreabilidade
 
-- Especificação e tarefas: `openspec/changes/implement-house-collaboration/`.
-- Implementação: `docs/sprints/sprint03/Iago/implementacao.md`.
-- Testes e evidências: `docs/sprints/sprint03/Iago/testes.md`.
+- [Implementação](implementacao.md) e [testes e evidências](testes.md) da Sprint 03.
+- [Registro anterior da colaboração na Sprint 02](../../sprint02/Iago/colaboracao-casa/requisitos.md).
+- A [SPEC-004 — Negociação de quartos e convites](../../../../openspec02/spec/004-negociacao-e-convites/requirements.md) trata da conversa privada de uma vaga e do convite para entrar na casa. A [SPEC-005 — Paginação da negociação](../../../../openspec02/spec/005-paginacao-da-negociacao/requirements.md) trata do histórico dessa conversa. A implementação original de ambas foi registrada por Emilson no commit `0cbc602`.
