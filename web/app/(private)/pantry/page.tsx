@@ -3,7 +3,7 @@ import { SystemSelect } from "@/components/ui/system-select";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { House, Plus, Search, Tags } from "lucide-react";
+import { House, Plus, Search, Tags, Trash2, X } from "lucide-react";
 import { getPetResidences } from "@/features/pets/api/pets.api";
 import type { PetResidence } from "@/features/pets/api/pets.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
@@ -67,6 +67,7 @@ export default function PantryPage() {
     const [responsibleFilter, setResponsibleFilter] = useState("");
     const [itemModal, setItemModal] = useState<ItemModalState>(null);
     const [movementModal, setMovementModal] = useState<MovementModalState>(null);
+    const [itemToDelete, setItemToDelete] = useState<PantryItem | null>(null);
     const [movementQuantity, setMovementQuantity] = useState("1");
     const [movementError, setMovementError] = useState("");
     const [form, setForm] = useState<ItemFormState>(initialForm);
@@ -383,13 +384,19 @@ export default function PantryPage() {
     }
 
     async function removeItem(item: PantryItem) {
-        if (!residenceId || !window.confirm(`Remover ${item.name} da despensa?`)) return;
+        setError("");
+        setItemToDelete(item);
+    }
+
+    async function confirmRemoveItem() {
+        if (!residenceId || !itemToDelete || busy) return;
         setBusy(true);
         setError("");
         try {
-            await deletePantryItem(residenceId, item.id);
-            setItems((current) => current.filter((candidate) => candidate.id !== item.id));
+            await deletePantryItem(residenceId, itemToDelete.id);
+            setItems((current) => current.filter((candidate) => candidate.id !== itemToDelete.id));
             setNotice("Item removido da despensa.");
+            setItemToDelete(null);
         } catch (deleteError: unknown) {
             setError(getErrorMessage(deleteError));
         } finally {
@@ -710,6 +717,69 @@ export default function PantryPage() {
                 onClose={() => setMovementModal(null)}
                 onSubmit={(event) => void handleMovementSubmit(event)}
             />
+            {itemToDelete && (
+                <div
+                    className="fixed inset-0 z-[60] grid place-items-center bg-[#17131a]/50 p-4"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !busy) setItemToDelete(null);
+                    }}
+                >
+                    <section
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-pantry-item-title"
+                        aria-describedby="delete-pantry-item-description"
+                        className="w-full max-w-[400px] rounded-2xl bg-[#fffaff] p-6 shadow-2xl"
+                    >
+                        <div className="mb-4 flex items-start justify-between">
+                            <div className="grid size-10 place-items-center rounded-full bg-red-100 text-red-700">
+                                <Trash2 size={19} aria-hidden="true" />
+                            </div>
+                            <button
+                                type="button"
+                                aria-label="Fechar confirmação"
+                                disabled={busy}
+                                onClick={() => setItemToDelete(null)}
+                                className="grid size-8 place-items-center rounded text-[#514c56] hover:bg-[#f1edf3] disabled:opacity-50"
+                            >
+                                <X size={18} aria-hidden="true" />
+                            </button>
+                        </div>
+                        <h2 id="delete-pantry-item-title" className="text-lg font-semibold">
+                            Remover item da despensa?
+                        </h2>
+                        <p
+                            id="delete-pantry-item-description"
+                            className="mt-2 text-sm text-[#716b74]"
+                        >
+                            “{itemToDelete.name}” será removido da lista da casa.
+                        </p>
+                        {error && (
+                            <p role="alert" className="mt-3 text-sm text-red-700">
+                                {error}
+                            </p>
+                        )}
+                        <div className="mt-6 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setItemToDelete(null)}
+                                disabled={busy}
+                                className="h-9 rounded-md border border-[#cfc6d1] px-4 text-xs font-medium hover:bg-[#f3eff5] disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void confirmRemoveItem()}
+                                disabled={busy}
+                                className="h-9 rounded-md bg-red-600 px-4 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                            >
+                                {busy ? "Removendo…" : "Remover item"}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }

@@ -37,4 +37,74 @@ export class HomeRepository {
             orderBy: [{ data_vencimento: "asc" }, { id: "asc" }],
         });
     }
+
+    findResidenceNotices(residenceId: string) {
+        return this.prisma.aviso_casa.findMany({
+            where: { casa_id: residenceId },
+            select: {
+                id: true,
+                conteudo: true,
+                criado_em: true,
+                participacao: {
+                    select: {
+                        usuario: { select: { id: true, nome: true, apelido: true } },
+                    },
+                },
+            },
+            orderBy: [{ criado_em: "desc" }, { id: "desc" }],
+            take: 8,
+        });
+    }
+
+    createResidenceNotice(residenceId: string, memberId: string, content: string) {
+        return this.prisma.aviso_casa.create({
+            data: {
+                casa_id: residenceId,
+                participacao_id: memberId,
+                conteudo: content,
+            },
+            select: {
+                id: true,
+                conteudo: true,
+                criado_em: true,
+                participacao: {
+                    select: {
+                        usuario: { select: { id: true, nome: true, apelido: true } },
+                    },
+                },
+            },
+        });
+    }
+
+    async updateResidenceNotice(
+        residenceId: string,
+        noticeId: string,
+        memberId: string,
+        content: string
+    ) {
+        const result = await this.prisma.aviso_casa.updateMany({
+            where: { id: noticeId, casa_id: residenceId, participacao_id: memberId },
+            data: { conteudo: content },
+        });
+        if (!result.count) return null;
+        return this.prisma.aviso_casa.findFirst({
+            where: { id: noticeId, casa_id: residenceId },
+            select: {
+                id: true,
+                conteudo: true,
+                criado_em: true,
+                participacao: {
+                    select: {
+                        usuario: { select: { id: true, nome: true, apelido: true } },
+                    },
+                },
+            },
+        });
+    }
+
+    deleteResidenceNotice(residenceId: string, noticeId: string, memberId: string) {
+        return this.prisma.aviso_casa.deleteMany({
+            where: { id: noticeId, casa_id: residenceId, participacao_id: memberId },
+        });
+    }
 }

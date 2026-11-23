@@ -600,9 +600,6 @@ export function SettingsPage({
                                         </p>
                                     )}
                                 </div>
-                                <span aria-hidden="true" className="text-[#8d8791]">
-                                    ⚙
-                                </span>
                             </div>
 
                             {section === "members" && listingAccessError && (

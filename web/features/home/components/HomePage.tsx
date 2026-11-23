@@ -11,9 +11,12 @@ import {
     CircleUserRound,
     LogOut,
     MessageSquare,
+    Pencil,
     PlusCircle,
+    Trash2,
     UsersRound,
     Wallet,
+    X,
 } from "lucide-react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
@@ -33,7 +36,15 @@ import {
     type TaskMember,
 } from "@/features/tasks/api/tasks.api";
 import { getExpenses, type Expense } from "@/features/expenses/api/expenses.api";
-import { getPersonalHome, type PersonalHomeData } from "../api/home.api";
+import {
+    createHouseNotice,
+    deleteHouseNotice,
+    getHouseNotices,
+    getPersonalHome,
+    type HouseNotice,
+    type PersonalHomeData,
+    updateHouseNotice,
+} from "../api/home.api";
 import { dayInBusinessTime, dayOf, getHomeTaskMetrics, HOME_TIME_ZONE } from "../lib/home-metrics";
 
 type Context = "residence" | "personal";
@@ -57,6 +68,16 @@ function dateLabel(value: string) {
         timeZone: HOME_TIME_ZONE,
         dateStyle: "short",
     }).format(new Date(`${value.slice(0, 10)}T12:00:00-03:00`));
+}
+
+function noticeDateLabel(value: string) {
+    return new Intl.DateTimeFormat("pt-BR", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: HOME_TIME_ZONE,
+    }).format(new Date(value));
 }
 
 function CardHeading({
@@ -97,6 +118,14 @@ export function HomePage() {
     const [loadingResidences, setLoadingResidences] = useState(true);
     const [residenceError, setResidenceError] = useState("");
     const [homeData, setHomeData] = useState<DashboardData | null>(null);
+    const [houseNotices, setHouseNotices] = useState<HouseNotice[]>([]);
+    const [noticeModalOpen, setNoticeModalOpen] = useState(false);
+    const [editingNoticeId, setEditingNoticeId] = useState<string | null>(null);
+    const [noticeToDelete, setNoticeToDelete] = useState<HouseNotice | null>(null);
+    const [noticeDraft, setNoticeDraft] = useState("");
+    const [noticeError, setNoticeError] = useState("");
+    const [postingNotice, setPostingNotice] = useState(false);
+    const [deletingNotice, setDeletingNotice] = useState(false);
     const [homeErrors, setHomeErrors] = useState<Record<string, string>>({});
     const [personalData, setPersonalData] = useState<PersonalHomeData | null>(null);
     const [personalError, setPersonalError] = useState<{ key: string; message: string } | null>(
@@ -176,6 +205,17 @@ export function HomePage() {
     }, [profileMenuOpen]);
 
     useEffect(() => {
+        if (!noticeModalOpen && !noticeToDelete) return;
+        function closeOnEscape(event: KeyboardEvent) {
+            if (event.key !== "Escape") return;
+            if (noticeModalOpen && !postingNotice) setNoticeModalOpen(false);
+            if (noticeToDelete && !deletingNotice) setNoticeToDelete(null);
+        }
+        document.addEventListener("keydown", closeOnEscape);
+        return () => document.removeEventListener("keydown", closeOnEscape);
+    }, [noticeModalOpen, noticeToDelete, postingNotice, deletingNotice]);
+
+    useEffect(() => {
         const currentRequest = ++requestId.current;
         if (loadingResidences || residenceError) return;
 
@@ -208,9 +248,10 @@ export function HomePage() {
             getTasks(selectedId),
             getTaskMembers(selectedId),
             getExpenses(),
+            getHouseNotices(selectedId),
         ]).then((results) => {
             if (requestId.current !== currentRequest) return;
-            const [tasks, members, expenses] = results;
+            const [tasks, members, expenses, notices] = results;
             setHomeData({
                 tasks: tasks.status === "fulfilled" ? tasks.value : [],
                 members: members.status === "fulfilled" ? members.value : [],
@@ -223,7 +264,9 @@ export function HomePage() {
                 ...(tasks.status === "rejected" ? { tasks: errorMessage(tasks.reason) } : {}),
                 ...(members.status === "rejected" ? { members: errorMessage(members.reason) } : {}),
                 ...(expenses.status === "rejected" ? { bills: errorMessage(expenses.reason) } : {}),
+                ...(notices.status === "rejected" ? { notices: errorMessage(notices.reason) } : {}),
             });
+            setHouseNotices(notices.status === "fulfilled" ? notices.value : []);
             setLoadedContextKey(requestKey);
         });
     }, [context, loadingResidences, residenceError, residences, requestKey, selectedId]);
@@ -249,6 +292,47 @@ export function HomePage() {
             setCreateError(errorMessage(error));
         } finally {
             setCreating(false);
+        }
+    }
+
+    async function submitHouseNotice(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        const content = noticeDraft.trim();
+        if (!selectedId || !content || postingNotice) return;
+        setPostingNotice(true);
+        setNoticeError("");
+        try {
+            if (editingNoticeId) {
+                const notice = await updateHouseNotice(selectedId, editingNoticeId, content);
+                setHouseNotices((current) =>
+                    current.map((item) => (item.id === notice.id ? notice : item))
+                );
+            } else {
+                const notice = await createHouseNotice(selectedId, content);
+                setHouseNotices((current) => [notice, ...current].slice(0, 8));
+            }
+            setNoticeDraft("");
+            setEditingNoticeId(null);
+            setNoticeModalOpen(false);
+        } catch (error: unknown) {
+            setNoticeError(errorMessage(error));
+        } finally {
+            setPostingNotice(false);
+        }
+    }
+
+    async function confirmDeleteNotice() {
+        if (!selectedId || !noticeToDelete || deletingNotice) return;
+        setDeletingNotice(true);
+        setNoticeError("");
+        try {
+            await deleteHouseNotice(selectedId, noticeToDelete.id);
+            setHouseNotices((current) => current.filter((item) => item.id !== noticeToDelete.id));
+            setNoticeToDelete(null);
+        } catch (error: unknown) {
+            setNoticeError(errorMessage(error));
+        } finally {
+            setDeletingNotice(false);
         }
     }
 
@@ -718,12 +802,93 @@ export function HomePage() {
                                                         className="text-[#4e812f]"
                                                     />
                                                 }
+                                                action={
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setNoticeDraft("");
+                                                            setEditingNoticeId(null);
+                                                            setNoticeError("");
+                                                            setNoticeModalOpen(true);
+                                                        }}
+                                                        aria-label="Adicionar novo aviso da casa"
+                                                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-[#3f7029] transition hover:bg-[#eef5e9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
+                                                    >
+                                                        <PlusCircle size={15} aria-hidden="true" />
+                                                        <span>Adicionar aviso</span>
+                                                    </button>
+                                                }
                                             >
                                                 Aviso da casa
                                             </CardHeading>
-                                            <Empty>
-                                                Avisos da residência não estão disponíveis.
-                                            </Empty>
+                                            {currentHomeErrors.notices ? (
+                                                <Empty>{currentHomeErrors.notices}</Empty>
+                                            ) : houseNotices.length ? (
+                                                <ul className="max-h-80 divide-y divide-[#eee8ef] overflow-y-auto">
+                                                    {houseNotices.map((notice) => (
+                                                        <li key={notice.id} className="px-4 py-3">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <p className="whitespace-pre-wrap break-words text-sm leading-5 text-[#38343c]">
+                                                                    {notice.content}
+                                                                </p>
+                                                                {notice.authorId === user?.id && (
+                                                                    <div className="-mr-1 -mt-1 flex shrink-0 items-center gap-0.5">
+                                                                        <button
+                                                                            type="button"
+                                                                            aria-label="Editar meu aviso"
+                                                                            title="Editar aviso"
+                                                                            onClick={() => {
+                                                                                setEditingNoticeId(
+                                                                                    notice.id
+                                                                                );
+                                                                                setNoticeDraft(
+                                                                                    notice.content
+                                                                                );
+                                                                                setNoticeError("");
+                                                                                setNoticeModalOpen(
+                                                                                    true
+                                                                                );
+                                                                            }}
+                                                                            className="grid size-8 place-items-center rounded-lg text-[#625c66] transition hover:bg-[#f1edf3] hover:text-[#3f7029] focus-visible:outline-2 focus-visible:outline-[#4e812f]"
+                                                                        >
+                                                                            <Pencil
+                                                                                size={14}
+                                                                                aria-hidden="true"
+                                                                            />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            aria-label="Excluir meu aviso"
+                                                                            title="Excluir aviso"
+                                                                            onClick={() => {
+                                                                                setNoticeError("");
+                                                                                setNoticeToDelete(
+                                                                                    notice
+                                                                                );
+                                                                            }}
+                                                                            className="grid size-8 place-items-center rounded-lg text-[#8c5555] transition hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-red-600"
+                                                                        >
+                                                                            <Trash2
+                                                                                size={14}
+                                                                                aria-hidden="true"
+                                                                            />
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <p className="mt-1.5 text-[11px] text-[#89828d]">
+                                                                {notice.authorName} ·{" "}
+                                                                {noticeDateLabel(notice.createdAt)}
+                                                            </p>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <Empty>
+                                                    Nenhum aviso por enquanto. Compartilhe algo
+                                                    importante com a casa.
+                                                </Empty>
+                                            )}
                                         </section>
                                     )}
 
@@ -834,6 +999,176 @@ export function HomePage() {
                     )}
                 </div>
             </main>
+            {noticeModalOpen && (
+                <div
+                    className="fixed inset-0 z-[60] grid place-items-center bg-[#17131a]/50 p-4"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !postingNotice)
+                            setNoticeModalOpen(false);
+                    }}
+                >
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="house-notice-title"
+                        aria-describedby="house-notice-help"
+                        className="w-full max-w-[440px] rounded-2xl border border-[#e2dbe5] bg-[#fffaff] p-5 shadow-2xl sm:p-6"
+                    >
+                        <div className="mb-4 flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#edf5e9] text-[#4e812f]">
+                                    <MessageSquare size={19} aria-hidden="true" />
+                                </span>
+                                <div>
+                                    <h2
+                                        id="house-notice-title"
+                                        className="text-lg font-semibold text-[#29252d]"
+                                    >
+                                        {editingNoticeId ? "Editar aviso" : "Novo aviso da casa"}
+                                    </h2>
+                                    <p
+                                        id="house-notice-help"
+                                        className="mt-1 text-sm leading-5 text-[#716b74]"
+                                    >
+                                        Compartilhe uma informação breve com todos os moradores.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                aria-label="Fechar"
+                                disabled={postingNotice}
+                                onClick={() => setNoticeModalOpen(false)}
+                                className="grid size-8 shrink-0 place-items-center rounded-lg text-[#625c66] transition hover:bg-[#f1edf3] disabled:opacity-50"
+                            >
+                                <X size={18} aria-hidden="true" />
+                            </button>
+                        </div>
+                        <form onSubmit={submitHouseNotice}>
+                            <label
+                                htmlFor="house-notice-content"
+                                className="mb-1.5 block text-sm font-medium text-[#514c56]"
+                            >
+                                Aviso
+                            </label>
+                            <textarea
+                                id="house-notice-content"
+                                autoFocus
+                                value={noticeDraft}
+                                onChange={(event) => setNoticeDraft(event.target.value)}
+                                maxLength={280}
+                                rows={4}
+                                placeholder="Ex.: A manutenção da internet será amanhã às 10h."
+                                aria-invalid={Boolean(noticeError)}
+                                aria-describedby={
+                                    noticeError
+                                        ? "house-notice-error house-notice-count"
+                                        : "house-notice-count"
+                                }
+                                className="w-full resize-y rounded-xl border border-[#d8d1da] bg-white px-3 py-2.5 text-sm leading-5 text-[#29252d] outline-none transition placeholder:text-[#a19aa4] focus:border-[#4e812f] focus:ring-2 focus:ring-[#4e812f]/20"
+                            />
+                            <div className="mt-1 flex items-start justify-between gap-3">
+                                <p className="text-xs text-[#89828d]">Até 280 caracteres</p>
+                                <p
+                                    id="house-notice-count"
+                                    aria-live="polite"
+                                    className="shrink-0 text-xs text-[#89828d]"
+                                >
+                                    {noticeDraft.length}/280
+                                </p>
+                            </div>
+                            {noticeError && (
+                                <p
+                                    id="house-notice-error"
+                                    role="alert"
+                                    className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+                                >
+                                    {noticeError}
+                                </p>
+                            )}
+                            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                <button
+                                    type="button"
+                                    disabled={postingNotice}
+                                    onClick={() => setNoticeModalOpen(false)}
+                                    className="min-h-10 rounded-lg border border-[#d8d1da] px-4 text-sm font-medium text-[#514c56] transition hover:bg-[#f5f1f6] disabled:opacity-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!noticeDraft.trim() || postingNotice}
+                                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#4e812f] px-4 text-sm font-semibold text-white transition hover:bg-[#426e29] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <PlusCircle size={16} aria-hidden="true" />
+                                    {postingNotice
+                                        ? editingNoticeId
+                                            ? "Salvando…"
+                                            : "Publicando…"
+                                        : editingNoticeId
+                                          ? "Salvar alterações"
+                                          : "Publicar aviso"}
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            )}
+            {noticeToDelete && (
+                <div
+                    className="fixed inset-0 z-[70] grid place-items-center bg-[#17131a]/50 p-4"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !deletingNotice)
+                            setNoticeToDelete(null);
+                    }}
+                >
+                    <section
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-house-notice-title"
+                        className="w-full max-w-[380px] rounded-2xl border border-[#e2dbe5] bg-[#fffaff] p-5 shadow-2xl"
+                    >
+                        <div className="mb-3 flex items-center gap-3">
+                            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-red-50 text-red-700">
+                                <Trash2 size={17} aria-hidden="true" />
+                            </span>
+                            <h2
+                                id="delete-house-notice-title"
+                                className="font-semibold text-[#29252d]"
+                            >
+                                Excluir este aviso?
+                            </h2>
+                        </div>
+                        <p className="line-clamp-3 text-sm leading-5 text-[#716b74]">
+                            “{noticeToDelete.content}” deixará de aparecer para os moradores da
+                            casa.
+                        </p>
+                        {noticeError && (
+                            <p role="alert" className="mt-3 text-sm text-red-700">
+                                {noticeError}
+                            </p>
+                        )}
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                disabled={deletingNotice}
+                                onClick={() => setNoticeToDelete(null)}
+                                className="min-h-9 rounded-lg border border-[#d8d1da] px-3 text-sm font-medium text-[#514c56] hover:bg-[#f5f1f6] disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                disabled={deletingNotice}
+                                onClick={() => void confirmDeleteNotice()}
+                                className="min-h-9 rounded-lg bg-red-600 px-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {deletingNotice ? "Excluindo…" : "Excluir aviso"}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }

@@ -156,6 +156,7 @@ export default function ShoppingListPage() {
     const [draftError, setDraftError] = useState("");
     const [duplicateWarning, setDuplicateWarning] = useState(false);
     const [editingItem, setEditingItem] = useState<EditingItem>(null);
+    const [itemToDelete, setItemToDelete] = useState<ShoppingListItem | null>(null);
     const [editDraft, setEditDraft] = useState<ItemDraft>(emptyDraft);
     const [editError, setEditError] = useState("");
     const [showBought, setShowBought] = useState(true);
@@ -383,23 +384,26 @@ export default function ShoppingListPage() {
         }
     }
 
-    async function removeItem(item: ShoppingListItem) {
+    function removeItem(item: ShoppingListItem) {
+        setError("");
+        setItemToDelete(item);
+    }
+
+    async function confirmRemoveItem() {
         const isPersonal = scope === "PERSONAL";
         const activeContextId = isPersonal ? "personal" : residenceId;
-        if (
-            busy ||
-            (!isPersonal && !residenceId) ||
-            !window.confirm("Remover este item da lista? Esta ação não pode ser desfeita.")
-        )
-            return;
+        if (busy || !itemToDelete || (!isPersonal && !residenceId)) return;
         setBusy(true);
         setError("");
         try {
-            await deleteShoppingListItem(residenceId, item, isPersonal);
+            await deleteShoppingListItem(residenceId, itemToDelete, isPersonal);
             if (currentResidence.current === activeContextId) {
-                setItems((current) => current.filter((candidate) => candidate.id !== item.id));
+                setItems((current) =>
+                    current.filter((candidate) => candidate.id !== itemToDelete.id)
+                );
                 setNotice("Item removido da lista.");
             }
+            setItemToDelete(null);
         } catch (removeError: unknown) {
             const message = getErrorMessage(removeError);
             if (
@@ -888,6 +892,69 @@ export default function ShoppingListPage() {
                                 </button>
                             </div>
                         </form>
+                    </section>
+                </div>
+            )}
+            {itemToDelete && (
+                <div
+                    className="fixed inset-0 z-[60] grid place-items-center bg-[#17131a]/50 p-4"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !busy) setItemToDelete(null);
+                    }}
+                >
+                    <section
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-shopping-item-title"
+                        aria-describedby="delete-shopping-item-description"
+                        className="w-full max-w-[400px] rounded-2xl bg-[#fffaff] p-6 shadow-2xl"
+                    >
+                        <div className="mb-4 flex items-start justify-between">
+                            <div className="grid size-10 place-items-center rounded-full bg-red-100 text-red-700">
+                                <Trash2 size={19} aria-hidden="true" />
+                            </div>
+                            <button
+                                type="button"
+                                aria-label="Fechar confirmação"
+                                disabled={busy}
+                                onClick={() => setItemToDelete(null)}
+                                className="grid size-8 place-items-center rounded text-[#514c56] hover:bg-[#f1edf3] disabled:opacity-50"
+                            >
+                                <X size={18} aria-hidden="true" />
+                            </button>
+                        </div>
+                        <h2 id="delete-shopping-item-title" className="text-lg font-semibold">
+                            Remover item da lista?
+                        </h2>
+                        <p
+                            id="delete-shopping-item-description"
+                            className="mt-2 text-sm text-[#716b74]"
+                        >
+                            “{itemToDelete.name}” será removido permanentemente da lista de compras.
+                        </p>
+                        {error && (
+                            <p role="alert" className="mt-3 text-sm text-red-700">
+                                {error}
+                            </p>
+                        )}
+                        <div className="mt-6 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setItemToDelete(null)}
+                                disabled={busy}
+                                className="h-9 rounded-md border border-[#cfc6d1] px-4 text-xs font-medium hover:bg-[#f3eff5] disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void confirmRemoveItem()}
+                                disabled={busy}
+                                className="h-9 rounded-md bg-red-600 px-4 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                            >
+                                {busy ? "Removendo…" : "Remover item"}
+                            </button>
+                        </div>
                     </section>
                 </div>
             )}
