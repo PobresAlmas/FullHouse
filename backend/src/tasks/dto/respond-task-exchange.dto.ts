@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsUUID } from "class-validator";
+import { IsBoolean, IsIn, IsOptional, IsUUID } from "class-validator";
 
 export class RespondTaskExchangeDto {
     @IsIn(["ACEITA", "RECUSADA"])
@@ -7,4 +7,8 @@ export class RespondTaskExchangeDto {
     @IsOptional()
     @IsUUID("4")
     targetTaskId?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    acceptWithoutTarget?: boolean;
 }

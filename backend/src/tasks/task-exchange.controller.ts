@@ -43,12 +43,21 @@ export class TaskExchangeController {
         @Body() data: RespondTaskExchangeDto,
         @CurrentUser() user: { id: string }
     ) {
-        return this.exchangeService.respond(
-            residenceId,
-            requestId,
-            data.status,
-            data.targetTaskId,
-            user.id
-        );
+        return data.acceptWithoutTarget
+            ? this.exchangeService.respond(
+                  residenceId,
+                  requestId,
+                  data.status,
+                  data.targetTaskId,
+                  user.id,
+                  true
+              )
+            : this.exchangeService.respond(
+                  residenceId,
+                  requestId,
+                  data.status,
+                  data.targetTaskId,
+                  user.id
+              );
     }
 }

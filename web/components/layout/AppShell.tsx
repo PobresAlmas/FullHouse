@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { isValidElement } from "react";
 import { usePathname } from "next/navigation";
 import { AppPageHeader } from "./AppPageHeader";
 import { AppSidebar, type AppSection } from "./AppSidebar";
 import { AppShellContext } from "./AppShellContext";
+import { AppHeaderControlContext, type AppHeaderPageState } from "./AppHeaderControlContext";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { getResidences, type Residence } from "@/features/residences/api/residences.api";
 
@@ -30,12 +33,40 @@ function routeInfo(pathname: string): { section: AppSection; subtitle?: string }
         : { section: "home", subtitle: "Seu espaço para organizar a vida em casa." };
 }
 
+function sameHeaderNode(left: ReactNode, right: ReactNode): boolean {
+    if (Object.is(left, right)) return true;
+    if (Array.isArray(left) && Array.isArray(right)) {
+        return (
+            left.length === right.length &&
+            left.every((item, index) => sameHeaderNode(item, right[index]))
+        );
+    }
+    if (!isValidElement(left) || !isValidElement(right)) return false;
+    if (left.type !== right.type || left.key !== right.key) return false;
+    const leftProps = left.props as Record<string, unknown>;
+    const rightProps = right.props as Record<string, unknown>;
+    const keys = new Set([...Object.keys(leftProps), ...Object.keys(rightProps)]);
+    for (const key of keys) {
+        if (key === "children") {
+            if (!sameHeaderNode(leftProps.children as ReactNode, rightProps.children as ReactNode))
+                return false;
+        } else if (typeof leftProps[key] === "function" && typeof rightProps[key] === "function") {
+            continue;
+        } else if (!Object.is(leftProps[key], rightProps[key])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { user } = useAuth();
     const [residences, setResidences] = useState<Residence[]>([]);
     const [residenceId, setResidenceId] = useState("");
     const [residencesLoaded, setResidencesLoaded] = useState(false);
+    const [pageControl, setPageControl] = useState<ReactNode | null>(null);
+    const [pageState, setPageState] = useState<AppHeaderPageState | null>(null);
     const { section, subtitle } = routeInfo(pathname);
     const residence = residences.find((item) => item.id === residenceId) ?? residences[0];
 
@@ -58,6 +89,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     const noResidence = residencesLoaded ? residences.length === 0 : undefined;
     const greetingName = user?.name?.trim() || user?.nickname?.trim() || user?.email || "Morador";
+    const registerControl = useCallback((control: ReactNode | null) => {
+        setPageControl((current) => (sameHeaderNode(current, control) ? current : control));
+    }, []);
+    const registerPageState = useCallback(
+        (state: AppHeaderPageState | null) =>
+            setPageState((current) =>
+                current?.residenceName === state?.residenceName &&
+                sameHeaderNode(current?.subtitle, state?.subtitle)
+                    ? current
+                    : state
+            ),
+        []
+    );
+    const headerControlContext = useMemo(
+        () => ({ registerControl, registerPageState }),
+        [registerControl, registerPageState]
+    );
 
     return (
         <AppShellContext.Provider value={false}>
@@ -75,10 +123,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         profileName={user?.nickname?.trim() || greetingName}
                         profilePhoto={user?.photo}
                         profileBackgroundColor={user?.avatarBackgroundColor}
-                        residenceName={residence?.name}
-                        subtitle={subtitle}
+                        residenceName={pageState ? pageState.residenceName : residence?.name}
+                        subtitle={pageState?.subtitle ?? subtitle}
                         residenceControl={
-                            residences.length > 1 ? (
+                            pageControl ??
+                            (residences.length > 1 ? (
                                 <select
                                     aria-label="Residência atual"
                                     value={residenceId}
@@ -91,10 +140,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                         </option>
                                     ))}
                                 </select>
-                            ) : undefined
+                            ) : undefined)
                         }
                     />
-                    <AppShellContext.Provider value>{children}</AppShellContext.Provider>
+                    <AppShellContext.Provider value>
+                        <AppHeaderControlContext.Provider value={headerControlContext}>
+                            {children}
+                        </AppHeaderControlContext.Provider>
+                    </AppShellContext.Provider>
                 </div>
             </div>
         </AppShellContext.Provider>

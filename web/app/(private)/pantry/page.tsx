@@ -54,6 +54,7 @@ export default function PantryPage() {
     const [categories, setCategories] = useState<PantryCategory[]>([]);
     const [items, setItems] = useState<PantryItem[]>([]);
     const [showExpired, setShowExpired] = useState(true);
+    const [personalMode, setPersonalMode] = useState(false);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -138,7 +139,7 @@ export default function PantryPage() {
                 return false;
             if (activeTab === "communal" && item.property !== "COMUNITARIO") return false;
             if (activeTab === "private" && item.property === "COMUNITARIO") return false;
-            if (activeTab === "mine" && !item.isMine) return false;
+            if ((personalMode || activeTab === "mine") && !item.isMine) return false;
             if (categoryFilter && item.categoryId !== categoryFilter) return false;
             if (responsibleFilter === "__house__" && item.property !== "COMUNITARIO") return false;
             if (
@@ -172,6 +173,7 @@ export default function PantryPage() {
         categoryFilter,
         expirationFilter,
         items,
+        personalMode,
         responsibleFilter,
         search,
         showExpired,
@@ -188,6 +190,7 @@ export default function PantryPage() {
     );
 
     async function changeResidence(id: string) {
+        setPersonalMode(false);
         setResidenceId(id);
         setMembers([]);
         setCategories([]);
@@ -419,28 +422,58 @@ export default function PantryPage() {
             <div className="min-w-0 flex-1">
                 <AppPageHeader
                     greetingName={memberName}
-                    residenceName={residence?.name ?? "Nenhuma casa ativa"}
+                    residenceName={
+                        personalMode ? undefined : (residence?.name ?? "Nenhuma casa ativa")
+                    }
+                    subtitle={personalMode ? "Itens pessoais da despensa" : undefined}
                     settingsHref="/settings"
                     residenceControl={
-                        residences.length > 1 ? (
-                            <label className="flex items-center gap-2 rounded-xl bg-[#e8e5e9] p-1 text-xs">
-                                <span className="sr-only">Trocar residência</span>
-                                <SystemSelect
-                                    value={residenceId}
-                                    onChange={(event) => void changeResidence(event.target.value)}
-                                    className="max-w-56 rounded-lg border-0 bg-[#4e812f] px-4 py-2 text-white outline-none"
+                        residences.length > 0 ? (
+                            <div
+                                className="flex rounded-xl bg-[#e8e5e9] p-1 text-xs"
+                                aria-label="Contexto da despensa"
+                            >
+                                <button
+                                    type="button"
+                                    aria-pressed={personalMode}
+                                    onClick={() => {
+                                        setPersonalMode(true);
+                                        setActiveTab("all");
+                                    }}
+                                    className={`min-w-28 rounded-lg px-5 py-2 ${personalMode ? "bg-[#4e812f] text-white" : "text-[#3e3a41]"}`}
                                 >
-                                    {residences.map((item) => (
-                                        <option
-                                            key={item.id}
-                                            value={item.id}
-                                            className="bg-white text-[#29252d]"
-                                        >
-                                            {item.name}
-                                        </option>
-                                    ))}
-                                </SystemSelect>
-                            </label>
+                                    Pessoal
+                                </button>
+                                {residences.length === 1 ? (
+                                    <button
+                                        type="button"
+                                        aria-pressed={!personalMode}
+                                        onClick={() => setPersonalMode(false)}
+                                        className={`rounded-lg px-4 py-2 ${!personalMode ? "bg-[#4e812f] text-white" : "text-[#3e3a41]"}`}
+                                    >
+                                        {residence?.name}
+                                    </button>
+                                ) : (
+                                    <SystemSelect
+                                        aria-label="Trocar residência"
+                                        value={residenceId}
+                                        onChange={(event) =>
+                                            void changeResidence(event.target.value)
+                                        }
+                                        className={`max-w-48 rounded-lg px-3 py-2 outline-none ${!personalMode ? "bg-[#4e812f] text-white" : "bg-transparent text-[#3e3a41]"}`}
+                                    >
+                                        {residences.map((item) => (
+                                            <option
+                                                key={item.id}
+                                                value={item.id}
+                                                className="bg-white text-[#29252d]"
+                                            >
+                                                {item.name}
+                                            </option>
+                                        ))}
+                                    </SystemSelect>
+                                )}
+                            </div>
                         ) : null
                     }
                 />

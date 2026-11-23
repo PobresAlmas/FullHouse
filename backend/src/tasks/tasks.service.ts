@@ -115,6 +115,21 @@ export class TasksService {
         return this.findPersonalOne(taskId, userId);
     }
 
+    async reopenPersonal(taskId: string, userId: string) {
+        const task = await this.repository.findPersonalTask(userId, taskId);
+        if (!task) throw new NotFoundException("A tarefa não está disponível.");
+        if (task.status !== "CONCLUIDA") {
+            throw new BadRequestException("Esta tarefa não está concluída.");
+        }
+        const dueAt = task.prazo_limite ?? task.data_prevista;
+        const status = dueAt.getTime() < Date.now() ? "ATRASADA" : "PENDENTE";
+        const reopened = await this.repository.reopenPersonal(taskId, userId, status);
+        if (reopened.count !== 1) {
+            throw new BadRequestException("O estado da tarefa foi alterado. Atualize a lista.");
+        }
+        return this.findPersonalOne(taskId, userId);
+    }
+
     async removePersonal(taskId: string, userId: string) {
         if (!(await this.repository.removePersonal(userId, taskId))) {
             throw new NotFoundException("A tarefa não está disponível.");
@@ -335,6 +350,29 @@ export class TasksService {
             currentUserId: userId,
         });
         await this.repository.complete(taskId, membership.memberId, plan);
+        return this.findOne(residenceId, taskId, userId);
+    }
+
+    async reopen(residenceId: string, taskId: string, userId: string) {
+        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const task = await this.requireTask(residenceId, taskId, userId);
+        if (task.status !== "CONCLUIDA") {
+            throw new BadRequestException("Esta tarefa não está concluída.");
+        }
+        if (
+            !isResidenceManager(membership.role) &&
+            task.responsavel_participacao_id !== membership.memberId
+        ) {
+            throw new BadRequestException(
+                "Somente o responsável, um líder ou um administrador pode reabrir esta tarefa."
+            );
+        }
+        const dueAt = task.prazo_limite ?? task.data_prevista;
+        const status = dueAt.getTime() < Date.now() ? "ATRASADA" : "PENDENTE";
+        const reopened = await this.repository.reopen(taskId, status);
+        if (reopened.count !== 1) {
+            throw new BadRequestException("O estado da tarefa foi alterado. Atualize a lista.");
+        }
         return this.findOne(residenceId, taskId, userId);
     }
 

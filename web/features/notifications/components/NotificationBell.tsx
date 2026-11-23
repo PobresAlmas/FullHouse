@@ -232,6 +232,12 @@ function SignedInNotificationBell({
                             {notifications.map((notification) => {
                                 const href =
                                     roomInterestHref(notification) ??
+                                    (notification.entidadeTipo === "REUNIAO"
+                                        ? "/meetings"
+                                        : undefined) ??
+                                    (notification.entidadeTipo === "TROCA_TAREFA"
+                                        ? "/tasks"
+                                        : undefined) ??
                                     (notification.negotiationId
                                         ? `/rooms/negotiations/${notification.negotiationId}`
                                         : undefined);

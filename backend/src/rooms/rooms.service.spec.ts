@@ -70,6 +70,7 @@ describe("RoomsService", () => {
 
     beforeEach(() => {
         vi.resetAllMocks();
+        residenceAccess.listForUser.mockResolvedValue([{ id: "house-1" }]);
     });
 
     it("lists house announcements with private fields and pending counts only for the active author", async () => {

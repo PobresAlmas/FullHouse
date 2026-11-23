@@ -76,6 +76,15 @@ export class TasksController {
         return this.tasksService.complete(residenceId, taskId, user.id);
     }
 
+    @Patch(":taskId/reopen")
+    reopen(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @Param("taskId", new ParseUUIDPipe({ version: "4" })) taskId: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.tasksService.reopen(residenceId, taskId, user.id);
+    }
+
     @Delete(":taskId")
     remove(
         @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,

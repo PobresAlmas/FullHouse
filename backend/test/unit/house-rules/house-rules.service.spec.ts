@@ -20,7 +20,10 @@ describe("HouseRulesService", () => {
         participacao_regra_convivencia_atualizada_por_participacao_idToparticipacao: null,
     };
     let repository: Record<string, ReturnType<typeof vi.fn>>;
-    let access: { requireMembership: ReturnType<typeof vi.fn> };
+    let access: {
+        requireMembership: ReturnType<typeof vi.fn>;
+        requireManager: ReturnType<typeof vi.fn>;
+    };
     let service: HouseRulesService;
 
     beforeEach(() => {
@@ -30,7 +33,10 @@ describe("HouseRulesService", () => {
             update: vi.fn().mockResolvedValue({ count: 1 }),
             findOne: vi.fn().mockResolvedValue(rule),
         };
-        access = { requireMembership: vi.fn().mockResolvedValue({ memberId }) };
+        access = {
+            requireMembership: vi.fn().mockResolvedValue({ memberId }),
+            requireManager: vi.fn().mockResolvedValue({ memberId }),
+        };
         service = new HouseRulesService(
             repository as unknown as HouseRulesRepository,
             access as unknown as ResidenceAccessService

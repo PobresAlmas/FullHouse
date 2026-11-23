@@ -112,6 +112,7 @@ export class TaskExchangeService {
                           visibilidade: "PUBLICA",
                       },
                   },
+                  include: { definicao_tarefa: true },
               })
             : null;
         if (data.targetTaskId && !suggestedTask) {
@@ -148,7 +149,7 @@ export class TaskExchangeService {
                             "Esta tarefa já possui uma solicitação pendente."
                         );
                     }
-                    return transaction.solicitacao_troca_tarefa.create({
+                    const request = await transaction.solicitacao_troca_tarefa.create({
                         data: {
                             instancia_tarefa_id: task.id,
                             alvo_instancia_tarefa_id: suggestedTask?.id ?? null,
@@ -157,6 +158,21 @@ export class TaskExchangeService {
                             tipo: "PONTUAL",
                         },
                     });
+                    const suggestedText = suggestedTask
+                        ? ` e sugeriu trocar pela tarefa “${suggestedTask.definicao_tarefa.titulo}”`
+                        : "";
+                    await transaction.notificacao.create({
+                        data: {
+                            usuario_id: recipient.usuario_id,
+                            casa_id: residenceId,
+                            tipo: "TAREFA",
+                            titulo: "Nova solicitação de troca de tarefa",
+                            mensagem: `Você recebeu uma solicitação para trocar a tarefa “${task.definicao_tarefa.titulo}”${suggestedText}.`,
+                            entidade_tipo: "TROCA_TAREFA",
+                            entidade_id: request.id,
+                        },
+                    });
+                    return request;
                 },
                 { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
             );
@@ -181,7 +197,8 @@ export class TaskExchangeService {
         requestId: string,
         status: "ACEITA" | "RECUSADA",
         targetTaskId: string | undefined,
-        userId: string
+        userId: string,
+        acceptWithoutTarget = false
     ) {
         const membership = await this.residenceAccess.requireMembership(residenceId, userId);
         const request = await this.prisma.solicitacao_troca_tarefa.findFirst({
@@ -197,7 +214,9 @@ export class TaskExchangeService {
             },
         });
         if (!request) throw new NotFoundException("A solicitação não está disponível.");
-        const selectedTargetTaskId = targetTaskId ?? request.alvo_instancia_tarefa_id ?? undefined;
+        const selectedTargetTaskId = acceptWithoutTarget
+            ? undefined
+            : (targetTaskId ?? request.alvo_instancia_tarefa_id ?? undefined);
         const targetTask =
             status === "ACEITA" && selectedTargetTaskId
                 ? await this.prisma.instancia_tarefa.findFirst({
@@ -209,7 +228,7 @@ export class TaskExchangeService {
                       },
                   })
                 : null;
-        if (status === "ACEITA" && !targetTask) {
+        if (status === "ACEITA" && !targetTask && !acceptWithoutTarget) {
             throw new BadRequestException("Escolha uma tarefa sua aberta para completar a troca.");
         }
         if (targetTask?.id === request.instancia_tarefa_id) {
@@ -218,7 +237,11 @@ export class TaskExchangeService {
 
         return this.prisma.$transaction(
             async (transaction) => {
-                if (status === "ACEITA" && targetTask) {
+                if (status === "ACEITA") {
+                    const affectedTaskIds = [
+                        request.instancia_tarefa_id,
+                        ...(targetTask ? [targetTask.id] : []),
+                    ];
                     const pending = await transaction.solicitacao_troca_tarefa.findFirst({
                         where: {
                             status: "PENDENTE",
@@ -226,12 +249,12 @@ export class TaskExchangeService {
                             OR: [
                                 {
                                     instancia_tarefa_id: {
-                                        in: [request.instancia_tarefa_id, targetTask.id],
+                                        in: affectedTaskIds,
                                     },
                                 },
                                 {
                                     alvo_instancia_tarefa_id: {
-                                        in: [request.instancia_tarefa_id, targetTask.id],
+                                        in: affectedTaskIds,
                                     },
                                 },
                             ],
@@ -256,29 +279,31 @@ export class TaskExchangeService {
                     if (updatedTask.count !== 1) {
                         throw new BadRequestException("A responsabilidade da tarefa foi alterada.");
                     }
-                    const updatedTargetTask = await transaction.instancia_tarefa.updateMany({
-                        where: {
-                            id: targetTask.id,
-                            responsavel_participacao_id: membership.memberId,
-                            status: { in: [...OPEN_STATUSES] },
-                        },
-                        data: {
-                            responsavel_participacao_id: request.solicitante_participacao_id,
-                            responsavel_usuario_id: null,
-                        },
-                    });
-                    if (updatedTargetTask.count !== 1) {
-                        throw new BadRequestException(
-                            "A tarefa oferecida não está mais disponível."
-                        );
+                    if (targetTask) {
+                        const updatedTargetTask = await transaction.instancia_tarefa.updateMany({
+                            where: {
+                                id: targetTask.id,
+                                responsavel_participacao_id: membership.memberId,
+                                status: { in: [...OPEN_STATUSES] },
+                            },
+                            data: {
+                                responsavel_participacao_id: request.solicitante_participacao_id,
+                                responsavel_usuario_id: null,
+                            },
+                        });
+                        if (updatedTargetTask.count !== 1) {
+                            throw new BadRequestException(
+                                "A tarefa oferecida não está mais disponível."
+                            );
+                        }
                     }
                 }
                 const updatedRequest = await transaction.solicitacao_troca_tarefa.updateMany({
                     where: { id: request.id, status: "PENDENTE" },
                     data: {
                         status,
-                        ...(status === "ACEITA" && targetTask
-                            ? { alvo_instancia_tarefa_id: targetTask.id }
+                        ...(status === "ACEITA"
+                            ? { alvo_instancia_tarefa_id: targetTask?.id ?? null }
                             : {}),
                     },
                 });

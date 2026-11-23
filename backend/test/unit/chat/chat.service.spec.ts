@@ -18,6 +18,7 @@ describe("ChatService", () => {
     let repository: {
         getOrCreateResidenceConversation: ReturnType<typeof vi.fn>;
         findMessages: ReturnType<typeof vi.fn>;
+        findLastReadMessageId: ReturnType<typeof vi.fn>;
         createMessage: ReturnType<typeof vi.fn>;
     };
     let access: {
@@ -30,6 +31,7 @@ describe("ChatService", () => {
         repository = {
             getOrCreateResidenceConversation: vi.fn().mockResolvedValue(conversation),
             findMessages: vi.fn().mockResolvedValue([message]),
+            findLastReadMessageId: vi.fn().mockResolvedValue(null),
             createMessage: vi.fn().mockResolvedValue(message),
         };
         access = {
