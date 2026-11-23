@@ -30,9 +30,21 @@ export default function VerifyEmailForm() {
     }, [seconds]);
 
     async function onSubmit() {
+        if (!email) {
+            setErrorMessage("Não foi possível identificar o e-mail desta solicitação.");
+            return;
+        }
+
+        setErrorMessage("");
         const response = await verifyResetCode(email, code);
 
-        if (response.valid) router.push(`/create-new-password?email=${email}&code=${code}`);
+        if (!response.valid) {
+            setErrorMessage("Código inválido ou expirado. Confira o código e tente novamente.");
+            return;
+        }
+
+        const params = new URLSearchParams({ email, code });
+        router.push(`/create-new-password?${params.toString()}`);
     }
 
     async function resendCode() {
@@ -59,12 +71,12 @@ export default function VerifyEmailForm() {
             onSubmit={onSubmit}
         >
             <OtpInput length={6} onChange={setCode} />
-            <SubmitButton text="Confirmar código" />
             {errorMessage && (
                 <p role="alert" className="text-center text-sm text-red-500">
                     {errorMessage}
                 </p>
             )}
+            <SubmitButton text="Confirmar código" />
             <p className="text-center text-muted-foreground">
                 Não recebeu o código? <br />
                 {canResend ? (

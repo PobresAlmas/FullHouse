@@ -104,6 +104,21 @@ describe("PetsService", () => {
         expect(repository.findPets).not.toHaveBeenCalled();
     });
 
+    it("lists active residence members without exposing their email addresses", async () => {
+        repository.findResidenceMembers.mockResolvedValue([
+            {
+                id: "participation-2",
+                papel: "MORADOR",
+                usuario: { nome: "Ana Souza", apelido: "Ana", email: "ana@example.com" },
+            },
+        ]);
+
+        await expect(service.findResidenceMembers("residence-1", "user-1")).resolves.toEqual([
+            { id: "participation-2", name: "Ana", role: "MORADOR" },
+        ]);
+        expect(residenceAccess.requireMembership).toHaveBeenCalledWith("residence-1", "user-1");
+    });
+
     it("updates pet fields without allowing residence or creator changes", async () => {
         await expect(
             service.update("residence-1", "pet-1", { name: "Luna" }, "user-1")

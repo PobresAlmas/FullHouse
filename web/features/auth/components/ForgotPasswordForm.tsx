@@ -22,12 +22,12 @@ export default function ForgotPasswordForm() {
         setErrorMessage("");
         try {
             await forgotPassword(data.email);
-            router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+
+            const params = new URLSearchParams({ email: data.email });
+            router.push(`/verify-email?${params.toString()}`);
         } catch (error: unknown) {
             setErrorMessage(
-                isApiError(error)
-                    ? error.message
-                    : "Não foi possível enviar o código. Tente novamente."
+                isApiError(error) ? error.message : "Não foi possível enviar o código."
             );
         }
     }

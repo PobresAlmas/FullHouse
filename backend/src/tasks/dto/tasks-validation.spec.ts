@@ -34,6 +34,27 @@ describe("task DTO validation", () => {
         await expect(validate(dto)).resolves.not.toHaveLength(0);
     });
 
+    it("returns correctly encoded Portuguese task validation messages", async () => {
+        const dto = plainToInstance(CreateTaskDto, {
+            title: " ",
+            dueAt: "not-a-date",
+            periodicity: "UNKNOWN",
+        });
+
+        const errors = await validate(dto);
+        expect(errors.find((error) => error.property === "title")?.constraints).toMatchObject({
+            minLength: "Informe o título da tarefa.",
+        });
+        expect(errors.find((error) => error.property === "dueAt")?.constraints).toMatchObject({
+            isDateString: "Informe uma data e horário válidos.",
+        });
+        expect(errors.find((error) => error.property === "periodicity")?.constraints).toMatchObject(
+            {
+                isEnum: "Selecione uma frequência válida.",
+            }
+        );
+    });
+
     it("validates partial task updates and rejects invalid recurrence and rotation fields", async () => {
         const valid = plainToInstance(UpdateTaskDto, { title: "New title", repeats: false });
         const invalid = plainToInstance(UpdateTaskDto, {

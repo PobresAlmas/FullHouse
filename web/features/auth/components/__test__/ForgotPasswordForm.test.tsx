@@ -32,12 +32,34 @@ describe("ForgotPasswordForm", () => {
         expect(push).toHaveBeenCalledWith("/verify-email?email=user%40example.com");
     });
 
+    it("preserves plus-address aliases in the verification URL", async () => {
+        const user = userEvent.setup();
+        forgotPassword.mockResolvedValue({});
+        render(<ForgotPasswordForm />);
+        await user.type(screen.getByLabelText("E-mail"), "user+alias@example.com");
+        await user.click(screen.getByRole("button", { name: "Enviar código" }));
+
+        await waitFor(() => expect(forgotPassword).toHaveBeenCalledWith("user+alias@example.com"));
+        expect(push).toHaveBeenCalledWith("/verify-email?email=user%2Balias%40example.com");
+    });
+
     it("does not submit an invalid email", async () => {
         const user = userEvent.setup();
         render(<ForgotPasswordForm />);
         await user.type(screen.getByLabelText("E-mail"), "not-an-email");
         await user.click(screen.getByRole("button", { name: "Enviar código" }));
         expect(forgotPassword).not.toHaveBeenCalled();
+        expect(push).not.toHaveBeenCalled();
+    });
+
+    it("shows an API error when requesting a recovery code fails", async () => {
+        const user = userEvent.setup();
+        forgotPassword.mockRejectedValue(new Error("Serviço indisponível."));
+        render(<ForgotPasswordForm />);
+        await user.type(screen.getByLabelText("E-mail"), "user@example.com");
+        await user.click(screen.getByRole("button", { name: "Enviar código" }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent("Serviço indisponível.");
         expect(push).not.toHaveBeenCalled();
     });
 });

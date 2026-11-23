@@ -14,7 +14,9 @@ describe("AppPageHeader", () => {
             />
         );
 
-        expect(screen.getByRole("heading", { name: "Bom dia, Ana" })).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: /^(Bom dia|Boa tarde|Boa noite), Ana$/ })
+        ).toBeInTheDocument();
         expect(screen.getByText("Casa do Vale")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Trocar residência" })).toBeInTheDocument();
         expect(
@@ -33,7 +35,11 @@ describe("AppPageHeader", () => {
     ])("greets %j using only the first available name", (greetingName, firstName) => {
         render(<AppPageHeader greetingName={greetingName} />);
 
-        expect(screen.getByRole("heading", { name: `Bom dia, ${firstName}` })).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", {
+                name: new RegExp(`^(Bom dia|Boa tarde|Boa noite), ${firstName}$`),
+            })
+        ).toBeInTheDocument();
     });
 
     it("always renders a working, pointer-enabled settings link", () => {

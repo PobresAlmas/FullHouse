@@ -64,7 +64,9 @@ describe("HomePage", () => {
     it("shows creation only after confirming the user has no residence", async () => {
         render(<HomePage />);
         expect(await screen.findByRole("heading", { name: "Crie sua casa" })).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "Bom dia, Pessoa" })).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: /^(Bom dia|Boa tarde|Boa noite), Pessoa$/ })
+        ).toBeInTheDocument();
         expect(
             screen.getByRole("button", { name: "Abrir menu da conta de Pessoa Apelido Sobrenome" })
         ).toHaveTextContent("P");

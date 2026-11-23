@@ -157,7 +157,7 @@ export class TasksService {
         );
         const repeats = data.repeats ?? false;
         if (repeats && (!data.periodicity || data.periodicity === TaskPeriodicity.PERSONALIZADA)) {
-            throw new BadRequestException("Selecione uma frequÃªncia para a repetiÃ§Ã£o.");
+            throw new BadRequestException("Selecione uma frequência para a repetição.");
         }
         const mayAssignOthers = membership.canEditContent ?? true;
         const rotationIds = data.assigneeIds ?? [];
@@ -218,7 +218,7 @@ export class TasksService {
         const existing = await this.requireTask(residenceId, taskId, userId);
         if (existing.status === "CONCLUIDA" || existing.status === "CANCELADA") {
             throw new BadRequestException(
-                "NÃ£o Ã© possÃ­vel editar uma tarefa concluÃ­da ou cancelada."
+                "Não é possível editar uma tarefa concluída ou cancelada."
             );
         }
 
@@ -228,7 +228,7 @@ export class TasksService {
         const willRepeat = data.repeats ?? currentRecurrence?.repeats ?? false;
         const frequency = data.periodicity ?? existing.definicao_tarefa.periodicidade;
         if (willRepeat && frequency === TaskPeriodicity.PERSONALIZADA) {
-            throw new BadRequestException("Selecione uma frequÃªncia para a repetiÃ§Ã£o.");
+            throw new BadRequestException("Selecione uma frequência para a repetição.");
         }
 
         const assignmentType = data.assignmentType ?? existing.definicao_tarefa.tipo_atribuicao;
@@ -314,10 +314,10 @@ export class TasksService {
         const membership = await this.residenceAccess.requireMembership(residenceId, userId);
         const task = await this.requireTask(residenceId, taskId, userId);
         if (task.status === "CONCLUIDA") {
-            throw new BadRequestException("A tarefa jÃ¡ foi concluÃ­da.");
+            throw new BadRequestException("A tarefa já foi concluída.");
         }
         if (task.status === "CANCELADA") {
-            throw new BadRequestException("NÃ£o Ã© possÃ­vel concluir uma tarefa cancelada.");
+            throw new BadRequestException("Não é possível concluir uma tarefa cancelada.");
         }
         if (
             !isResidenceManager(membership.role) &&
@@ -386,14 +386,14 @@ export class TasksService {
     private async requireActiveMember(residenceId: string, memberId: string) {
         const member = await this.residenceAccess.requireActiveMember(residenceId, memberId);
         if (!member) {
-            throw new BadRequestException("O responsÃ¡vel nÃ£o pertence a esta residÃªncia ativa.");
+            throw new BadRequestException("O responsável não pertence a esta residência ativa.");
         }
         return { id: member.id, userId: member.usuario_id };
     }
 
     private async requireTask(residenceId: string, taskId: string, userId: string) {
         const task = await this.repository.findTask(residenceId, taskId, userId);
-        if (!task) throw new NotFoundException("A tarefa nÃ£o estÃ¡ disponÃ­vel.");
+        if (!task) throw new NotFoundException("A tarefa não está disponível.");
         return task;
     }
 

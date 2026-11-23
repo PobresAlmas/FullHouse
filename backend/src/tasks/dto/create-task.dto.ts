@@ -37,14 +37,14 @@ export enum TaskVisibility {
 export class CreateTaskDto {
     @IsString()
     @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
-    @MinLength(1, { message: "Informe o tÃ­tulo da tarefa." })
-    @MaxLength(150, { message: "O tÃ­tulo deve ter no mÃ¡ximo 150 caracteres." })
+    @MinLength(1, { message: "Informe o título da tarefa." })
+    @MaxLength(150, { message: "O título deve ter no máximo 150 caracteres." })
     title!: string;
 
     @IsOptional()
     @IsString()
     @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
-    @MaxLength(2000, { message: "A descriÃ§Ã£o deve ter no mÃ¡ximo 2000 caracteres." })
+    @MaxLength(2000, { message: "A descrição deve ter no máximo 2000 caracteres." })
     description?: string | null;
 
     @IsOptional()
@@ -55,7 +55,7 @@ export class CreateTaskDto {
     tags?: string[];
 
     @IsOptional()
-    @IsUUID("4", { message: "Selecione um responsÃ¡vel vÃ¡lido." })
+    @IsUUID("4", { message: "Selecione um responsável válido." })
     assigneeId?: string | null;
 
     @IsOptional()
@@ -77,7 +77,7 @@ export class CreateTaskDto {
     @IsEnum(TaskVisibility)
     visibility?: TaskVisibility;
 
-    @IsDateString({}, { message: "Informe uma data e horÃ¡rio vÃ¡lidos." })
+    @IsDateString({}, { message: "Informe uma data e horário válidos." })
     dueAt!: string;
 
     @IsOptional()
@@ -85,7 +85,7 @@ export class CreateTaskDto {
     repeats?: boolean;
 
     @IsOptional()
-    @IsEnum(TaskPeriodicity, { message: "Selecione uma frequÃªncia vÃ¡lida." })
+    @IsEnum(TaskPeriodicity, { message: "Selecione uma frequência válida." })
     periodicity?: TaskPeriodicity;
 
     @IsOptional()
