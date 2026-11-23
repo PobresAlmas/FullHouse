@@ -4,9 +4,11 @@ Aplicação para organizar uma casa compartilhada: tarefas, despesas, despensa, 
 
 ## Requisitos
 
-- Node.js 22 ou superior
+- Node.js 26.8.1, versão de referência em `.nvmrc` e `devbox.json`. Para os testes web, o jsdom aceita Node 22.22.2+ na série 22, 24.15.0+ na série 24 ou 26+.
 - pnpm 12 (`corepack enable` usa a versão declarada nos projetos)
 - Docker com Docker Compose
+
+Se você usa nvm, rode `nvm install` e `nvm use` na raiz antes de executar os comandos do projeto. Quando o pre-commit recebe Node abaixo de 22, ele tenta ativar a versão de `.nvmrc` já instalada via nvm.
 
 ## Arquitetura
 

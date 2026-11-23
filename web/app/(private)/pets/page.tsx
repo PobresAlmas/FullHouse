@@ -115,7 +115,8 @@ export default function PetsPage() {
     const currentMember = residence?.membership ?? null;
     const canEditResidenceContent = canCreateOrEditResidenceContent(
         currentMember?.role,
-        residence?.creationEditPolicy
+        residence?.creationEditPolicy,
+        currentMember?.canEditContent
     );
     const canManageResidenceContent = isResidenceManager(currentMember?.role);
 
@@ -202,6 +203,7 @@ export default function PetsPage() {
 
     async function handlePetSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
+        if (!canEditResidenceContent) return;
         setFormError("");
         if (!residenceId) {
             setFormError("Selecione uma casa ativa para cadastrar o pet.");
@@ -238,7 +240,7 @@ export default function PetsPage() {
     }
 
     async function handlePetDelete() {
-        if (!selectedPet || !residence) return;
+        if (!selectedPet || !residence || !canManageResidenceContent) return;
         setSaving(true);
         try {
             await deletePet(residence.id, selectedPet.id);
@@ -272,7 +274,7 @@ export default function PetsPage() {
 
     async function handleCareSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (!selectedPet) return;
+        if (!selectedPet || !canEditResidenceContent) return;
         setSavingCare(true);
         setError("");
         try {
@@ -305,7 +307,7 @@ export default function PetsPage() {
     }
 
     async function handleCareDelete(log: PetCareLog) {
-        if (!selectedPet) return;
+        if (!selectedPet || !canManageResidenceContent) return;
         try {
             await deletePetCareLog(selectedPet.id, log.id);
             await choosePet(selectedPet);
@@ -515,8 +517,7 @@ export default function PetsPage() {
                                     </form>
                                 ) : (
                                     <p role="status" className="text-sm text-[#77717c]">
-                                        A configuração desta residência permite apenas que líderes e
-                                        administradores editem pets.
+                                        Seu acesso a pets nesta casa é somente leitura.
                                     </p>
                                 )}
                             </section>

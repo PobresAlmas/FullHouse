@@ -456,6 +456,53 @@ describe("SettingsPage", () => {
         );
     });
 
+    it("saves the global policy and can restore individual inheritance", async () => {
+        const user = userEvent.setup();
+        const member = {
+            id: "member-2",
+            name: "João Lima",
+            role: "MORADOR",
+            canEditContent: true,
+            accessIsInherited: false,
+        };
+        mocks.members.mockResolvedValue([member]);
+        mocks.updateMemberAccess.mockResolvedValue({
+            ...member,
+            canEditContent: false,
+            accessIsInherited: true,
+        });
+        render(<SettingsPage section="permissions" tab="general" />);
+
+        await user.click(
+            await screen.findByRole("combobox", { name: "Política de edição da casa" })
+        );
+        await user.click(
+            screen.getByRole("option", { name: "Somente líderes e administradores podem editar" })
+        );
+        await waitFor(() =>
+            expect(mocks.updatePermission).toHaveBeenCalledWith("home-1", "LIDERES")
+        );
+        expect(await screen.findByText("Política da casa atualizada.")).toBeInTheDocument();
+
+        await user.click(await screen.findByRole("combobox", { name: "Permissão de João Lima" }));
+        await user.click(screen.getByRole("option", { name: "Herdar política da casa" }));
+        await waitFor(() =>
+            expect(mocks.updateMemberAccess).toHaveBeenCalledWith("home-1", "member-2", null)
+        );
+    });
+
+    it("applies read-only individual access to pantry categories in Settings", async () => {
+        mocks.residences.mockResolvedValue([
+            { ...house, membership: { id: "member-2", role: "MORADOR", canEditContent: false } },
+        ]);
+        render(<SettingsPage section="preferences" tab="categories" />);
+        expect(await screen.findByText("Bebidas")).toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: "Adicionar categoria" })
+        ).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Excluir Bebidas" })).not.toBeInTheDocument();
+    });
+
     it("shows actual notifications and marks them as read", async () => {
         const user = userEvent.setup();
         mocks.notifications.mockResolvedValue({

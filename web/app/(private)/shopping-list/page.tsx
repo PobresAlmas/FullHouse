@@ -18,6 +18,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { getPetResidences } from "@/features/pets/api/pets.api";
 import type { PetResidence } from "@/features/pets/api/pets.api";
+import { canCreateOrEditResidenceContent } from "@/features/residences/permissions";
 import {
     createShoppingListItem,
     deleteShoppingListItem,
@@ -157,6 +158,11 @@ export default function ShoppingListPage() {
         () => residences.find((item) => item.id === residenceId) ?? null,
         [residences, residenceId]
     );
+    const canEditList = canCreateOrEditResidenceContent(
+        residence?.membership?.role,
+        residence?.creationEditPolicy,
+        residence?.membership?.canEditContent
+    );
     const memberName = user?.name?.trim() || user?.email?.split("@")[0] || "Morador";
     const pendingItems = useMemo(() => items.filter((item) => item.status === "PENDENTE"), [items]);
     const boughtItems = useMemo(() => items.filter((item) => item.status === "COMPRADO"), [items]);
@@ -228,7 +234,7 @@ export default function ShoppingListPage() {
     }
 
     async function submitNewItem(addDuplicateAnyway = false) {
-        if (busy || createInFlight.current) return;
+        if (!canEditList || busy || createInFlight.current) return;
         setDraftError("");
         if (!residenceId) return;
         const input = parseDraft(draft);
@@ -268,7 +274,7 @@ export default function ShoppingListPage() {
     }
 
     async function changeStatus(item: ShoppingListItem, status: ShoppingListStatus) {
-        if (!residenceId || busy) return;
+        if (!residenceId || !canEditList || busy) return;
         setBusy(true);
         setError("");
         setNotice("");
@@ -298,6 +304,7 @@ export default function ShoppingListPage() {
     }
 
     function beginEdit(item: ShoppingListItem) {
+        if (!canEditList) return;
         setEditingItem(item);
         setEditDraft({
             name: item.name,
@@ -310,7 +317,7 @@ export default function ShoppingListPage() {
 
     async function saveEdit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (!residenceId || !editingItem || busy) return;
+        if (!residenceId || !canEditList || !editingItem || busy) return;
         const input = parseDraft(editDraft);
         if (!input) {
             setEditError(
@@ -352,6 +359,7 @@ export default function ShoppingListPage() {
         if (
             busy ||
             !residenceId ||
+            !canEditList ||
             !window.confirm("Remover este item da lista? Esta ação não pode ser desfeita.")
         )
             return;
@@ -455,127 +463,140 @@ export default function ShoppingListPage() {
                                 <p className="mb-4 text-sm text-[#77717c]">
                                     Compartilhe os itens que faltam com os moradores da casa.
                                 </p>
-                                <form
-                                    onSubmit={(event) => {
-                                        event.preventDefault();
-                                        void submitNewItem();
-                                    }}
-                                    className="grid gap-3"
-                                >
-                                    <div className="grid gap-3 md:grid-cols-[minmax(180px,1fr)_150px_150px]">
-                                        <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
-                                            Item
-                                            <input
-                                                required
-                                                maxLength={100}
-                                                value={draft.name}
-                                                onChange={(event) => {
-                                                    setDraft({
-                                                        ...draft,
-                                                        name: event.target.value,
-                                                    });
-                                                    setDuplicateWarning(false);
-                                                }}
-                                                placeholder="Ex.: Café"
-                                                className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                            />
-                                        </label>
-                                        <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
-                                            Quantidade (opcional)
-                                            <input
-                                                inputMode="decimal"
-                                                value={draft.quantity}
-                                                onChange={(event) =>
-                                                    setDraft({
-                                                        ...draft,
-                                                        quantity: event.target.value,
-                                                    })
-                                                }
-                                                placeholder="Ex.: 1,5"
-                                                className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                            />
-                                        </label>
-                                        <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
-                                            Unidade (opcional)
-                                            <SystemSelect
-                                                value={draft.unit}
-                                                onChange={(event) =>
-                                                    setDraft({
-                                                        ...draft,
-                                                        unit: event.target.value as
-                                                            ShoppingListUnit | "",
-                                                    })
-                                                }
-                                                className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                            >
-                                                <option value="">Sem quantidade</option>
-                                                {Object.entries(unitLabels).map(([unit, label]) => (
-                                                    <option key={unit} value={unit}>
-                                                        {label}
-                                                    </option>
-                                                ))}
-                                            </SystemSelect>
-                                        </label>
-                                    </div>
-                                    <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
-                                        Observação (opcional)
-                                        <input
-                                            maxLength={500}
-                                            value={draft.notes}
-                                            onChange={(event) =>
-                                                setDraft({ ...draft, notes: event.target.value })
-                                            }
-                                            placeholder="Marca, tamanho ou detalhe"
-                                            className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
-                                        />
-                                    </label>
-                                    {duplicateWarning && (
-                                        <div
-                                            role="alert"
-                                            className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
-                                        >
-                                            <p>
-                                                Já existe um item pendente com esse nome. Deseja
-                                                adicionar outro?
-                                            </p>
-                                            <div className="mt-2 flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    disabled={busy}
-                                                    onClick={() => void submitNewItem(true)}
-                                                    className="rounded-md bg-[#4e812f] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                                {canEditList ? (
+                                    <form
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            void submitNewItem();
+                                        }}
+                                        className="grid gap-3"
+                                    >
+                                        <div className="grid gap-3 md:grid-cols-[minmax(180px,1fr)_150px_150px]">
+                                            <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
+                                                Item
+                                                <input
+                                                    required
+                                                    maxLength={100}
+                                                    value={draft.name}
+                                                    onChange={(event) => {
+                                                        setDraft({
+                                                            ...draft,
+                                                            name: event.target.value,
+                                                        });
+                                                        setDuplicateWarning(false);
+                                                    }}
+                                                    placeholder="Ex.: Café"
+                                                    className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
+                                                />
+                                            </label>
+                                            <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
+                                                Quantidade (opcional)
+                                                <input
+                                                    inputMode="decimal"
+                                                    value={draft.quantity}
+                                                    onChange={(event) =>
+                                                        setDraft({
+                                                            ...draft,
+                                                            quantity: event.target.value,
+                                                        })
+                                                    }
+                                                    placeholder="Ex.: 1,5"
+                                                    className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
+                                                />
+                                            </label>
+                                            <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
+                                                Unidade (opcional)
+                                                <SystemSelect
+                                                    value={draft.unit}
+                                                    onChange={(event) =>
+                                                        setDraft({
+                                                            ...draft,
+                                                            unit: event.target.value as
+                                                                ShoppingListUnit | "",
+                                                        })
+                                                    }
+                                                    className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
                                                 >
-                                                    Adicionar mesmo assim
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setDuplicateWarning(false)}
-                                                    className="rounded-md border border-amber-300 px-3 py-1.5 text-xs"
-                                                >
-                                                    Cancelar
-                                                </button>
-                                            </div>
+                                                    <option value="">Sem quantidade</option>
+                                                    {Object.entries(unitLabels).map(
+                                                        ([unit, label]) => (
+                                                            <option key={unit} value={unit}>
+                                                                {label}
+                                                            </option>
+                                                        )
+                                                    )}
+                                                </SystemSelect>
+                                            </label>
                                         </div>
-                                    )}
-                                    {draftError && (
-                                        <p
-                                            role="alert"
-                                            className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
-                                        >
-                                            {draftError}
+                                        <label className="grid gap-1.5 text-xs font-medium text-[#514c56]">
+                                            Observação (opcional)
+                                            <input
+                                                maxLength={500}
+                                                value={draft.notes}
+                                                onChange={(event) =>
+                                                    setDraft({
+                                                        ...draft,
+                                                        notes: event.target.value,
+                                                    })
+                                                }
+                                                placeholder="Marca, tamanho ou detalhe"
+                                                className="h-10 rounded-lg border border-[#d9d1de] bg-white px-3 text-sm outline-none focus:border-[#4e812f]"
+                                            />
+                                        </label>
+                                        {duplicateWarning && (
+                                            <div
+                                                role="alert"
+                                                className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+                                            >
+                                                <p>
+                                                    Já existe um item pendente com esse nome. Deseja
+                                                    adicionar outro?
+                                                </p>
+                                                <div className="mt-2 flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        disabled={busy}
+                                                        onClick={() => void submitNewItem(true)}
+                                                        className="rounded-md bg-[#4e812f] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                                                    >
+                                                        Adicionar mesmo assim
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDuplicateWarning(false)}
+                                                        className="rounded-md border border-amber-300 px-3 py-1.5 text-xs"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {draftError && (
+                                            <p
+                                                role="alert"
+                                                className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+                                            >
+                                                {draftError}
+                                            </p>
+                                        )}
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="submit"
+                                                disabled={busy || loading || !residenceId}
+                                                className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#4e812f] px-5 text-sm font-medium text-white hover:bg-[#3f6c26] disabled:opacity-50"
+                                            >
+                                                <Plus size={17} />{" "}
+                                                {busy ? "Salvando…" : "Adicionar à lista"}
+                                            </button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    residence && (
+                                        <p className="text-sm text-[#625c66]">
+                                            Seu acesso à lista desta casa é somente leitura.
                                         </p>
-                                    )}
-                                    <div className="flex justify-end">
-                                        <button
-                                            type="submit"
-                                            disabled={busy || loading || !residenceId}
-                                            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#4e812f] px-5 text-sm font-medium text-white hover:bg-[#3f6c26] disabled:opacity-50"
-                                        >
-                                            <Plus size={17} />{" "}
-                                            {busy ? "Salvando…" : "Adicionar à lista"}
-                                        </button>
-                                    </div>
-                                </form>
+                                    )
+                                )}
                             </section>
 
                             <section className="overflow-hidden rounded-xl border border-[#d6cdd9] bg-[#fffaff]">
@@ -602,6 +623,7 @@ export default function ShoppingListPage() {
                                                 key={item.id}
                                                 item={item}
                                                 busy={busy}
+                                                canEdit={canEditList}
                                                 onStatus={(status) =>
                                                     void changeStatus(item, status)
                                                 }
@@ -652,6 +674,7 @@ export default function ShoppingListPage() {
                                                     key={item.id}
                                                     item={item}
                                                     busy={busy}
+                                                    canEdit={canEditList}
                                                     onStatus={(status) =>
                                                         void changeStatus(item, status)
                                                     }
@@ -668,7 +691,7 @@ export default function ShoppingListPage() {
                 </main>
             </div>
 
-            {editingItem && (
+            {editingItem && canEditList && (
                 <div
                     className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
                     onMouseDown={(event) => {
@@ -797,12 +820,14 @@ export default function ShoppingListPage() {
 function ShoppingItemRow({
     item,
     busy,
+    canEdit,
     onStatus,
     onEdit,
     onDelete,
 }: {
     item: ShoppingListItem;
     busy: boolean;
+    canEdit: boolean;
     onStatus: (status: ShoppingListStatus) => void;
     onEdit: () => void;
     onDelete: () => void;
@@ -810,15 +835,19 @@ function ShoppingItemRow({
     const bought = item.status === "COMPRADO";
     return (
         <li className="flex items-start gap-3 px-4 py-3">
-            <button
-                type="button"
-                disabled={busy}
-                onClick={() => onStatus(bought ? "PENDENTE" : "COMPRADO")}
-                aria-label={bought ? `Reabrir ${item.name}` : `Marcar ${item.name} como comprado`}
-                className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border ${bought ? "border-[#4e812f] bg-[#4e812f] text-white" : "border-[#bdb5c1] bg-white text-transparent hover:border-[#4e812f]"} disabled:opacity-50`}
-            >
-                {bought && <Check size={15} />}
-            </button>
+            {canEdit && (
+                <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onStatus(bought ? "PENDENTE" : "COMPRADO")}
+                    aria-label={
+                        bought ? `Reabrir ${item.name}` : `Marcar ${item.name} como comprado`
+                    }
+                    className={`mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border ${bought ? "border-[#4e812f] bg-[#4e812f] text-white" : "border-[#bdb5c1] bg-white text-transparent hover:border-[#4e812f]"} disabled:opacity-50`}
+                >
+                    {bought && <Check size={15} />}
+                </button>
+            )}
             <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <span className={`font-medium ${bought ? "text-[#77717c] line-through" : ""}`}>
@@ -839,26 +868,28 @@ function ShoppingItemRow({
                           : "Na lista compartilhada"}
                 </p>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
-                <button
-                    type="button"
-                    disabled={busy}
-                    onClick={onEdit}
-                    aria-label={`Editar ${item.name}`}
-                    className="grid size-8 place-items-center rounded-md text-[#625c66] hover:bg-[#f1edf3] disabled:opacity-40"
-                >
-                    <Pencil size={15} />
-                </button>
-                <button
-                    type="button"
-                    disabled={busy}
-                    onClick={onDelete}
-                    aria-label={`Excluir ${item.name}`}
-                    className="grid size-8 place-items-center rounded-md text-[#9a5555] hover:bg-red-50 disabled:opacity-40"
-                >
-                    <Trash2 size={15} />
-                </button>
-            </div>
+            {canEdit && (
+                <div className="flex shrink-0 items-center gap-1">
+                    <button
+                        type="button"
+                        disabled={busy}
+                        onClick={onEdit}
+                        aria-label={`Editar ${item.name}`}
+                        className="grid size-8 place-items-center rounded-md text-[#625c66] hover:bg-[#f1edf3] disabled:opacity-40"
+                    >
+                        <Pencil size={15} />
+                    </button>
+                    <button
+                        type="button"
+                        disabled={busy}
+                        onClick={onDelete}
+                        aria-label={`Excluir ${item.name}`}
+                        className="grid size-8 place-items-center rounded-md text-[#9a5555] hover:bg-red-50 disabled:opacity-40"
+                    >
+                        <Trash2 size={15} />
+                    </button>
+                </div>
+            )}
         </li>
     );
 }

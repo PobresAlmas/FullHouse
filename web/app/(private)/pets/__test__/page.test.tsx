@@ -68,6 +68,29 @@ describe("PetsPage", () => {
         vi.mocked(getPet).mockResolvedValue(pet);
     });
 
+    it.each([
+        ["TODOS", false, false],
+        ["LIDERES", true, true],
+    ] as const)(
+        "allows pet editing by effective access and keeps deletion with management (%s, %s)",
+        async (policy, override, canEdit) => {
+            const user = userEvent.setup();
+            vi.mocked(getPetResidences).mockResolvedValue([
+                createResidenceFixture({
+                    creationEditPolicy: policy,
+                    membership: { id: pet.createdById, role: "MORADOR", canEditContent: override },
+                }),
+            ]);
+            vi.mocked(getPets).mockResolvedValue([pet]);
+            render(<PetsPage />);
+            await user.click(await screen.findByRole("button", { name: /Mel/ }));
+            expect(Boolean(screen.queryByRole("button", { name: "Salvar alterações" }))).toBe(
+                canEdit
+            );
+            expect(screen.queryByRole("button", { name: /Excluir pet/ })).not.toBeInTheDocument();
+        }
+    );
+
     it("shows the linked residence and creates a pet", async () => {
         const user = userEvent.setup();
         vi.mocked(createPet).mockResolvedValue(pet);

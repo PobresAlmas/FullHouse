@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PantryPage from "../page";
@@ -82,6 +82,30 @@ describe("PantryPage", () => {
             },
         });
     });
+
+    it.each([
+        ["TODOS", false, false],
+        ["LIDERES", true, true],
+    ] as const)(
+        "shows category actions using individual access (%s, %s)",
+        async (policy, override, canEdit) => {
+            const user = userEvent.setup();
+            vi.mocked(getPetResidences).mockResolvedValue([
+                createResidenceFixture({
+                    creationEditPolicy: policy,
+                    membership: { id: "member-1", role: "MORADOR", canEditContent: override },
+                }),
+            ]);
+            render(<PantryPage />);
+            await user.click(await screen.findByRole("button", { name: "Gerenciar categorias" }));
+            const modal = within(
+                await screen.findByRole("dialog", { name: "Categorias da despensa" })
+            );
+            expect(modal.getByText("Grãos")).toBeInTheDocument();
+            expect(Boolean(modal.queryByRole("button", { name: "Excluir Grãos" }))).toBe(canEdit);
+            expect(Boolean(modal.queryByRole("button", { name: "Renomear Grãos" }))).toBe(canEdit);
+        }
+    );
 
     it("registers the exact decimal movement quantity entered by the user", async () => {
         const user = userEvent.setup();

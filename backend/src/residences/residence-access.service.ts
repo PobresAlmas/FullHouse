@@ -202,7 +202,7 @@ export class ResidenceAccessService {
             : (membership.canEditContent ?? membership.creationEditPolicy === "TODOS");
         if (!canEdit) {
             throw new ForbiddenException(
-                "Somente líderes e administradores podem criar ou editar este conteúdo."
+                "Sua participação nesta casa está em modo somente leitura."
             );
         }
         return membership;

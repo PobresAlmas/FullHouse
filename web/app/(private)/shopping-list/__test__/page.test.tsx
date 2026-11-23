@@ -63,6 +63,33 @@ describe("ShoppingListPage", () => {
         expect(getShoppingListItems).toHaveBeenCalledWith(residence.id);
     });
 
+    it.each([
+        ["TODOS", false, false],
+        ["LIDERES", null, false],
+        ["LIDERES", true, true],
+    ] as const)(
+        "shows write actions for the effective shopping-list access (%s, %s)",
+        async (policy, override, canEdit) => {
+            vi.mocked(getPetResidences).mockResolvedValue([
+                createResidenceFixture({
+                    creationEditPolicy: policy,
+                    membership: { id: "another-member", role: "MORADOR", canEditContent: override },
+                }),
+            ]);
+            render(<ShoppingListPage />);
+            expect(await screen.findByText("Leite")).toBeInTheDocument();
+            const buttons = [
+                "Adicionar à lista",
+                "Editar Leite",
+                "Excluir Leite",
+                "Marcar Leite como comprado",
+            ];
+            for (const name of buttons) {
+                expect(Boolean(screen.queryByRole("button", { name }))).toBe(canEdit);
+            }
+        }
+    );
+
     it("requires quantity and unit together and accepts a comma decimal on create", async () => {
         const user = userEvent.setup();
         render(<ShoppingListPage />);
@@ -261,7 +288,7 @@ describe("ShoppingListPage", () => {
             .mockRejectedValueOnce(new Error("Network Error"))
             .mockResolvedValueOnce([item]);
         render(<ShoppingListPage />);
-        expect(await screen.findByRole("alert")).toHaveTextContent(
+        expect(await within(screen.getByRole("main")).findByRole("alert")).toHaveTextContent(
             "Não foi possível carregar a lista de compras."
         );
         expect(screen.queryByText("Sua lista de compras está vazia.")).not.toBeInTheDocument();

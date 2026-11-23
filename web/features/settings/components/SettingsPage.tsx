@@ -28,6 +28,7 @@ import type { LucideIcon } from "lucide-react";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Button } from "@/components/ui/button";
+import { SystemSelect } from "@/components/ui/system-select";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import {
     announceResidenceMembershipChanged,
@@ -36,9 +37,15 @@ import {
     updateResidenceName,
     removeResidenceMember,
     updateResidenceMemberAccess,
+    updateResidencePermissionSettings,
     RESIDENCE_MEMBERSHIP_CHANGED_EVENT,
 } from "@/features/residences/api/residences.api";
-import type { Residence, ResidenceMember } from "@/features/residences/api/residences.api";
+import type {
+    CreationEditPolicy,
+    Residence,
+    ResidenceMember,
+} from "@/features/residences/api/residences.api";
+import { canCreateOrEditResidenceContent } from "@/features/residences/permissions";
 import {
     createPantryCategory,
     deletePantryCategory,
@@ -217,7 +224,11 @@ export function SettingsPage({
         listingDraft.userId === userId &&
         listingDraft.residence.id === residence?.id &&
         listingDraft.residence.membership?.id === residence?.membership?.id;
-    const canEditCategories = residence?.creationEditPolicy === "TODOS" || manager;
+    const canEditCategories = canCreateOrEditResidenceContent(
+        residence?.membership?.role,
+        residence?.creationEditPolicy,
+        residence?.membership?.canEditContent
+    );
     const displayName = user?.nickname || user?.name || "Morador";
 
     useEffect(() => {
@@ -396,7 +407,33 @@ export function SettingsPage({
         await renameResidence(String(form.get("name") ?? ""));
     }
 
-    async function saveMemberAccess(member: ResidenceMember, allowed: boolean) {
+    async function saveCreationEditPolicy(policy: CreationEditPolicy) {
+        if (!residence || !manager || saving || residence.creationEditPolicy === policy) return;
+        setSaving(true);
+        setSectionError("");
+        setNotice("");
+        try {
+            const settings = await updateResidencePermissionSettings(residence.id, policy);
+            setResidenceState((current) =>
+                current?.userId === userId && current?.residence?.id === settings.residenceId
+                    ? {
+                          ...current,
+                          residence: {
+                              ...current.residence,
+                              creationEditPolicy: settings.creationEditPolicy,
+                          },
+                      }
+                    : current
+            );
+            setNotice("Política da casa atualizada.");
+        } catch (error: unknown) {
+            setSectionError(errorText(error));
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function saveMemberAccess(member: ResidenceMember, allowed: boolean | null) {
         if (!residence || !manager) return;
         setSaving(true);
         setSectionError("");
@@ -798,18 +835,54 @@ export function SettingsPage({
                                         )}
 
                                     {section === "permissions" && (
-                                        <SettingsMembersTable
-                                            mode="permissions"
-                                            members={members}
-                                            loading={membersLoading}
-                                            manager={Boolean(manager)}
-                                            currentUserId={userId}
-                                            busy={saving}
-                                            onAccessChange={(member, allowed) =>
-                                                void saveMemberAccess(member, allowed)
-                                            }
-                                            onRemove={setMemberToRemove}
-                                        />
+                                        <div className="grid gap-4">
+                                            <section className={cardClass}>
+                                                <label
+                                                    htmlFor="residence-edit-policy"
+                                                    className="text-sm font-semibold"
+                                                >
+                                                    Política de edição da casa
+                                                </label>
+                                                <p className="mb-2 mt-1 text-xs text-[#625c66]">
+                                                    Define o acesso de quem herda a política.
+                                                    Permissões individuais têm prioridade.
+                                                </p>
+                                                <SystemSelect
+                                                    id="residence-edit-policy"
+                                                    aria-label="Política de edição da casa"
+                                                    value={residence.creationEditPolicy}
+                                                    disabled={!manager || saving}
+                                                    onChange={(event) =>
+                                                        void saveCreationEditPolicy(
+                                                            event.target.value === "LIDERES"
+                                                                ? "LIDERES"
+                                                                : "TODOS"
+                                                        )
+                                                    }
+                                                    className="h-10 w-full sm:max-w-xs"
+                                                >
+                                                    <option value="TODOS">
+                                                        Todos os moradores podem editar
+                                                    </option>
+                                                    <option value="LIDERES">
+                                                        Somente líderes e administradores podem
+                                                        editar
+                                                    </option>
+                                                </SystemSelect>
+                                            </section>
+                                            <SettingsMembersTable
+                                                mode="permissions"
+                                                members={members}
+                                                loading={membersLoading}
+                                                manager={Boolean(manager)}
+                                                currentUserId={userId}
+                                                busy={saving}
+                                                onAccessChange={(member, allowed) =>
+                                                    void saveMemberAccess(member, allowed)
+                                                }
+                                                onRemove={setMemberToRemove}
+                                            />
+                                        </div>
                                     )}
 
                                     {section === "notifications" && (

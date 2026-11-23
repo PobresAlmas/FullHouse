@@ -166,21 +166,21 @@ regras da casa e os requisitos da Sprint 02 em `docs/sprints/sprint02/Calebe/`
 para lista de compras e categorias. Uma regra de produto nova deve entrar
 na spec do módulo e na matriz antes da implementação.
 
-- [ ] **G05.1** — Lista compartilhada. B pôde editar item de outra pessoa. Em outra
+- [x] **G05.1** — Lista compartilhada. B pôde editar item de outra pessoa. Em outra
   tentativa, a exclusão de item alheio retornou erro. A documentação
   permite operações da lista a moradores ativos. Repetir com o mesmo
   item, versões atuais e papéis conhecidos. Registrar se edição e
   exclusão devem ser de todos, do autor ou de gestores.
-- [ ] **G05.2** — Categorias da despensa. Uma conta sem papel de gestor conseguiu
+- [x] **G05.2** — Categorias da despensa. Uma conta sem papel de gestor conseguiu
   excluir categoria. O serviço usa a política de criação e edição da
   casa. Conferir em TODOS, LIDERES e com permissão individual. Definir
   se exclusão de categoria vazia segue essa política ou é exclusiva da
   gestão. Categoria em uso deve continuar protegida.
-- [ ] **G05.3** — Mural da casa. O teste registrou que qualquer pessoa pode criar uma
-  regra. A [SPEC-002](../openspec02/spec/002-colaboracao-da-casa/requirements.md) permite cadastro por morador ativo. Verificar
+- [x] **G05.3** — Mural da casa. O teste registrou que qualquer pessoa podia criar uma
+  regra. A versão anterior da [SPEC-002](../openspec02/spec/002-colaboracao-da-casa/requirements.md) previa cadastro por morador ativo. Verificar
   conta sem vínculo e morador somente leitura. Se criar ou editar
   passar a exigir outro papel, atualizar RF05/CA05 e alinhar API e tela.
-- [ ] **G05.4** — Pets. O teste levantou que outras pessoas conseguem alterar ou
+- [x] **G05.4** — Pets. O teste levantou que outras pessoas conseguem alterar ou
   excluir um pet. Verificar as duas operações separadamente. O serviço
   usa a política de edição para alterar e exige gestor para excluir.
   Comparar o papel e o contexto das contas com as ações que aparecem
@@ -189,6 +189,29 @@ na spec do módulo e na matriz antes da implementação.
 Concluir o grupo com os papéis e operações autorizados registrados por
 escrito. Em cada módulo, repetir com autor, outro morador, gestor, morador
 somente leitura e pessoa sem vínculo conforme o cenário.
+
+### Verificação de G05 — 23/11/2026
+
+A [matriz da SPEC-003](../openspec02/spec/003-configuracoes-da-casa/requirements.md#matriz-de-permissões-de-g05)
+registra as permissões. Na API com PostgreSQL de teste, A era líder, B herdava
+a política da casa, C tinha edição individual, L tinha somente leitura e X
+era administrador de outra casa, sem vínculo com a residência testada.
+
+| Item | Resultado observado na API |
+| --- | --- |
+| G05.1 | Com `TODOS`, B editou e excluiu o mesmo item de A com a versão atual. A exclusão usando a versão anterior à edição retornou `409`. L consultou a lista e recebeu `403` ao tentar criar, editar, marcar como comprado ou excluir. C marcou um item como comprado e o reabriu. |
+| G05.2 | B excluiu uma categoria vazia com `TODOS` e recebeu `403` com `LIDERES`. C renomeou e excluiu uma categoria vazia devido à edição individual. A exclusão de categoria em uso retornou `409` para A e B. |
+| G05.3 | B e L consultaram o mural e A criou e editou uma regra. B recebeu `403` ao tentar criar. C recebeu `403` ao tentar editar. |
+| G05.4 | B cadastrou o pet, C editou e L recebeu `403` ao tentar editar. B e C receberam `403` ao tentar excluir o pet, e A o excluiu. O histórico de cuidados também permitiu edição por C e remoção por A. |
+
+A troca da política global e a volta de C para a herança foram verificadas
+pela API. X recebeu `404` ao tentar consultar ou criar conteúdo nos quatro módulos.
+Os comandos e resultados dos testes automatizados estão nas
+[tarefas da SPEC-003](../openspec02/spec/003-configuracoes-da-casa/tasks.md#g05--matriz-de-permissões).
+
+Para reproduzir pela interface, abra **Configurações → Permissões** na sessão
+de A. Alterne a política global e os acessos de B, C e L. Recarregue os módulos
+nas sessões correspondentes e compare as ações de cada conta com a matriz.
 
 ## G06 — Quantidades da lista de compras e da despensa
 

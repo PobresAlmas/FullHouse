@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { House, Plus, Search, Tags } from "lucide-react";
 import { getPetResidences } from "@/features/pets/api/pets.api";
+import { canCreateOrEditResidenceContent } from "@/features/residences/permissions";
 import type { PetResidence } from "@/features/pets/api/pets.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import {
@@ -82,7 +83,11 @@ export default function PantryPage() {
     const currentMemberId = residence?.membership?.id ?? "";
     const canManageHouse =
         residence?.membership?.role === "LIDER" || residence?.membership?.role === "ADMINISTRADOR";
-    const canManageCategories = residence?.creationEditPolicy !== "LIDERES" || canManageHouse;
+    const canManageCategories = canCreateOrEditResidenceContent(
+        residence?.membership?.role,
+        residence?.creationEditPolicy,
+        residence?.membership?.canEditContent
+    );
 
     const loadResidenceData = useCallback(async (id: string) => {
         const [nextMembers, nextItems, nextCategories, preferences] = await Promise.all([
@@ -366,6 +371,7 @@ export default function PantryPage() {
     }
 
     function editCategory(category: PantryCategory) {
+        if (!canManageCategories) return;
         setEditingCategoryId(category.id);
         setCategoryDraft(category.name);
         setCategoryError("");
@@ -373,7 +379,7 @@ export default function PantryPage() {
 
     async function saveCategory(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (!residenceId || !categoryDraft.trim()) return;
+        if (!residenceId || !canManageCategories || !categoryDraft.trim()) return;
         setBusy(true);
         setCategoryError("");
         try {
@@ -395,7 +401,12 @@ export default function PantryPage() {
     }
 
     async function removeCategory(category: PantryCategory) {
-        if (!residenceId || !window.confirm(`Excluir a categoria “${category.name}”?`)) return;
+        if (
+            !residenceId ||
+            !canManageCategories ||
+            !window.confirm(`Excluir a categoria “${category.name}”?`)
+        )
+            return;
         setBusy(true);
         setCategoryError("");
         try {

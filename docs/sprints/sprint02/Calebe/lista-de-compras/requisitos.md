@@ -15,7 +15,7 @@ Esta entrega está especificada em `openspec/changes/add-shopping-list/`. Os arq
 ### RF — Acesso compartilhado por residência
 
 - Cada item pertence diretamente a uma residência; não existem listas nomeadas separadas.
-- Todo morador com vínculo ativo pode consultar e operar os itens da lista da residência.
+- Todo morador com vínculo ativo pode consultar a lista. Gestores e moradores com edição efetiva podem operar itens de qualquer autor da mesma residência, conforme a [matriz de G05](../../../../../openspec02/spec/003-configuracoes-da-casa/requirements.md#matriz-de-permissões-de-g05).
 - Cada consulta ou alteração deve validar no servidor o vínculo ativo e o escopo da residência.
 - A lista e seus itens não devem ser acessíveis por usuários sem vínculo ativo.
 
@@ -48,7 +48,7 @@ Esta entrega está especificada em `openspec/changes/add-shopping-list/`. Os arq
 1. Moradores ativos veem os itens apenas da residência selecionada.
 2. É possível criar um item apenas com nome ou informar também quantidade, unidade e observação válidas.
 3. A interface avisa sobre nome equivalente pendente e permite cancelar ou confirmar uma nova entrada separada.
-4. Moradores podem editar, concluir, reabrir e remover itens, com confirmação para remoção.
+4. Moradores com edição efetiva podem editar, concluir, reabrir e remover itens de qualquer autor da residência, com confirmação para remoção. O acesso somente leitura permite consultar.
 5. Alterações baseadas em versão antiga geram conflito e não apagam a mudança mais recente.
 6. Itens comprados registram a conclusão atual e continuam acessíveis na seção de comprados.
 7. A lista não altera estoque nem financeiro.

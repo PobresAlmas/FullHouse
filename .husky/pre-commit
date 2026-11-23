@@ -1,3 +1,13 @@
+if ! node -e 'process.exit(Number(process.versions.node.split(".")[0]) < 22 ? 1 : 0)' 2>/dev/null; then
+    nvm_script="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+    if [ -s "$nvm_script" ] && . "$nvm_script" --no-use && nvm use --silent; then
+        printf 'FullHouse: usando Node %s no pre-commit.\n' "$(node -v)"
+    else
+        printf 'FullHouse: ative Node %s antes do commit. Com nvm, rode nvm install e nvm use na raiz.\n' "$(cat .nvmrc)" >&2
+        exit 1
+    fi
+fi
+
 pnpm --dir web lint
 pnpm --dir web format:check
 pnpm --dir web test --run

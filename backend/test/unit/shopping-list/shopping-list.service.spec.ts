@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
+import {
+    BadRequestException,
+    ConflictException,
+    ForbiddenException,
+    NotFoundException,
+} from "@nestjs/common";
 import { ShoppingListService } from "../../../src/shopping-list/shopping-list.service.js";
 
 const residenceId = "residence-1";
@@ -49,6 +54,7 @@ describe("ShoppingListService", () => {
                 role: "MORADOR",
                 creationEditPolicy: "TODOS",
             }),
+            requireCreateEditPermission: vi.fn().mockResolvedValue({ memberId }),
         };
         service = new ShoppingListService(repository as never, residenceAccess as never);
     });
@@ -60,6 +66,35 @@ describe("ShoppingListService", () => {
             NotFoundException
         );
         expect(repository.findItems).not.toHaveBeenCalled();
+    });
+
+    it("allows reading but blocks every mutation before touching the list for a read-only member", async () => {
+        residenceAccess.requireCreateEditPermission.mockRejectedValue(new ForbiddenException());
+        const readOnly = "read-only-user";
+
+        await expect(service.findItems(residenceId, readOnly)).resolves.toEqual([]);
+        await expect(
+            service.createItem(residenceId, { name: "Leite" }, readOnly)
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(
+            service.updateItem(residenceId, "item-1", { version: 1, name: "Leite" }, readOnly)
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(
+            service.updateStatus(
+                residenceId,
+                "item-1",
+                { version: 1, status: "COMPRADO" } as never,
+                readOnly
+            )
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(service.removeItem(residenceId, "item-1", 1, readOnly)).rejects.toBeInstanceOf(
+            ForbiddenException
+        );
+        expect(repository.findItem).not.toHaveBeenCalled();
+        expect(repository.createItem).not.toHaveBeenCalled();
+        expect(repository.updateItem).not.toHaveBeenCalled();
+        expect(repository.updateStatus).not.toHaveBeenCalled();
+        expect(repository.deleteItem).not.toHaveBeenCalled();
     });
 
     it("sorts pending items newest first and purchased items by latest purchase", async () => {
@@ -135,7 +170,10 @@ describe("ShoppingListService", () => {
             unit: "L",
             notes: "Integral",
         });
-        expect(residenceAccess.requireMembership).toHaveBeenCalledWith(residenceId, userId);
+        expect(residenceAccess.requireCreateEditPermission).toHaveBeenCalledWith(
+            residenceId,
+            userId
+        );
     });
 
     it.each([

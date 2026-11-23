@@ -6,7 +6,8 @@ export function isResidenceManager(role?: ResidenceRole | null) {
 
 export function canCreateOrEditResidenceContent(
     role: ResidenceRole | null | undefined,
-    policy: CreationEditPolicy | undefined
+    policy: CreationEditPolicy | undefined,
+    override?: boolean | null
 ) {
-    return policy !== "LIDERES" || isResidenceManager(role);
+    return isResidenceManager(role) || (role === "MORADOR" && (override ?? policy === "TODOS"));
 }

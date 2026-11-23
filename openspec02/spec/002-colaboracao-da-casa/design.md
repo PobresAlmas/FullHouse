@@ -47,7 +47,7 @@
 | `GET /meetings`, `POST /meetings`, `PATCH /meetings/:meetingId/respond`, `/reschedule`, `/cancel` | Consulta, criação, resposta e ações do organizador.                                                    |
 
 - A [migração da conversa única](../../../backend/prisma/migrations/20261115000000_unique_house_conversation/migration.sql) cria um índice único parcial no PostgreSQL para `tipo = CASA` por residência. Subgrupos mantêm a modelagem própria. Na reversão, retirar apenas o índice, preservando mensagens e conversas.
-- Regras usam `escopo = CASA`, `status = VIGENTE`, as colunas de criador e último editor e o valor padrão de `criado_em`. A edição atualiza o conteúdo e o editor na mesma escrita. Versionamento para edições concorrentes fica para uma evolução futura.
+- Regras usam `escopo = CASA`, `status = VIGENTE`, as colunas de criador e último editor e o valor padrão de `criado_em`. A edição atualiza o conteúdo e o editor na mesma escrita. Consulta usa `requireMembership`, enquanto criação e edição usam `requireManager`. A página apresenta formulário e ações de edição apenas a gestores. Versionamento para edições concorrentes fica para uma evolução futura.
 - Reuniões gravam `pauta`, derivam o título dos primeiros 150 caracteres e usam data e horário ISO 8601 com deslocamento de fuso, persistidos em `timestamptz`. Respostas registram `respondido_em`. Reagendamento mantém a relação `reagendada_de_id` e cria substituta com convites na mesma transação.
 
 ## Estados da interface

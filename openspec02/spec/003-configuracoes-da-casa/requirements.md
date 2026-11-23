@@ -32,6 +32,23 @@ Como morador, quero consultar os dados da minha casa e ajustar minhas preferênc
 - **RF09 — Preferências aplicadas.** Respeitar as opções de exibição de vencidos e atrasadas nas listas correspondentes. Guardar a configuração de lembretes de tarefas, despesas, convites, atualizações da casa, vacinas, vermífugo e consultas. Vincular promessas de envio à geração e ao transporte efetivos dos eventos.
 - **RF10 — Centro de notificações.** Listar avisos persistidos com paginação e filtro geral/não lidas. Permitir marcar como lida, manter a contagem do sino coerente e atualizar a seção pela API autenticada.
 - **RF11 — Tema.** Aplicar Claro, Escuro e Sistema ao aplicativo, persistir a escolha no dispositivo e acompanhar as mudanças do sistema operacional no modo Sistema. A liberação depende de suporte visual completo.
+- **RF12 — Matriz de permissões de G05.** Aplicar na API e na interface as permissões da tabela abaixo para lista de compras, categorias da despensa, mural e pets.
+
+## Matriz de permissões de G05
+
+Gestores são `LIDER` e `ADMINISTRADOR` com vínculo ativo. Para `MORADOR`, **Pode editar** (`true`) e **Somente leitura** (`false`) sobrescrevem a política global. **Herdar política da casa** (`null`) permite edição em `TODOS` e deixa o morador somente leitura em `LIDERES`. A autoria do registro não muda essas permissões.
+
+| Operação                                                                                | Gestor | Morador com edição, autor ou outro | Morador somente leitura | Sem vínculo ativo na casa |
+| --------------------------------------------------------------------------------------- | ------ | ---------------------------------- | ----------------------- | ------------------------- |
+| Consultar lista, categorias, mural e pets                                               | Sim    | Sim                                | Sim                     | Sem acesso                |
+| Adicionar, editar, marcar como comprado, reabrir ou remover item da lista compartilhada | Sim    | Sim                                | Não                     | Sem acesso                |
+| Criar ou renomear categoria da despensa                                                 | Sim    | Sim                                | Não                     | Sem acesso                |
+| Remover categoria sem itens associados                                                  | Sim    | Sim                                | Não                     | Sem acesso                |
+| Criar ou editar regra do mural                                                          | Sim    | Não                                | Não                     | Sem acesso                |
+| Criar ou editar pet e registro de cuidado                                               | Sim    | Sim                                | Não                     | Sem acesso                |
+| Remover pet ou registro de cuidado                                                      | Sim    | Não                                | Não                     | Sem acesso                |
+
+Categoria com itens associados fica protegida em todos os papéis. Alterações e remoções da lista continuam exigindo a versão atual do item. A revisão G05 mantém a exclusão de pets restrita a gestores, inclusive quando um morador é o autor do cadastro.
 
 ## Requisitos não funcionais
 
@@ -79,6 +96,7 @@ Como morador, quero consultar os dados da minha casa e ajustar minhas preferênc
 - **CA10 — Centro de notificações.** Uma conta com 25 avisos consegue navegar por todos. O filtro e a marcação persistida atualizam a contagem. Uma conta não lê avisos alheios. A atualização periódica exibe os avisos já produzidos.
 - **CA11 — Tema.** Sistema acompanha o tema do sistema operacional. Escuro persiste após recarregar, com contraste e sem flash indevido. Uma opção sem adaptação visual completa não é declarada concluída.
 - **CA12 — Interface.** Desktop e celular preservam a navegação, a hierarquia e o acesso aos controles. A comparação das nove telas documenta diferenças intencionais.
+- **CA13 — Matriz de G05.** Confirmar os controles da interface e as respostas da API nas operações de RF12 para gestor, autor, outro morador, somente leitura e conta sem vínculo. Alterar entre `TODOS` e `LIDERES` com e sem permissão individual. Conferir o conflito de versão da lista e a proteção da categoria em uso.
 
 ## Fora do escopo
 

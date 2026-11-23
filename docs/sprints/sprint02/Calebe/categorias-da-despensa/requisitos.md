@@ -17,7 +17,7 @@ Esta entrega amplia a organização da despensa já documentada em `docs/sprints
 
 - As categorias pertencem a uma residência e não são compartilhadas entre casas.
 - Membros ativos podem consultar as categorias da residência.
-- Criar, renomear e remover respeita a política central de criação/edição da residência.
+- Criar, renomear e remover categoria vazia segue a política central e o acesso individual, conforme a [matriz de G05](../../../../../openspec02/spec/003-configuracoes-da-casa/requirements.md#matriz-de-permissões-de-g05). A remoção de categoria em uso fica bloqueada inclusive para gestores.
 - A residência recebe as categorias iniciais: Bebidas, Doces, Grãos, Higiene, Laticínios, Limpeza, Massas e Outros.
 - As categorias iniciais podem ser renomeadas ou removidas se não tiverem itens associados.
 

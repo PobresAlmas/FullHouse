@@ -84,3 +84,27 @@ Use este checklist como pedido de implementação. Consulte [requirements.md](re
 ## Verificação registrada
 
 O checklist original mantém 13 itens pendentes. Entre eles estão a comparação com as nove [referências visuais](../../../docs/design-references/design-references/settings/README.md), a cobertura adicional de preferências e permissões individuais, a geração de alertas, a auditoria de temas e a verificação final. O estado acima registra a verificação da change de origem.
+
+## G05 — Matriz de permissões
+
+- [x] **T50 — Reproduzir e registrar G05.1 a G05.4.** Conferir API e interface de acordo com a matriz e identificar as respostas de conflito de versão e de acesso insuficiente. **Refs:** RF05, RF06, RF12.
+- [x] **T51 — Aplicar as guardas da lista de compras.** Manter leitura para membros ativos e exigir edição efetiva para criar, editar, comprar, reabrir e excluir itens. **Refs:** RF06, RF12.
+- [x] **T52 — Alinhar os controles e as permissões.** Mostrar a política global, permitir restaurar a herança individual e refletir a permissão individual nas ações da lista, categorias e Pets. Manter a gestão do mural e a exclusão de pets conforme a matriz. **Refs:** RF05, RF06, RF07, RF12.
+- [x] **T53 — Retestar os papéis e registrar evidências.** Verificar gestor, autor, outro morador, somente leitura e pessoa sem vínculo nas operações abrangidas. **Refs:** RF12, CA05, CA06, CA13, RNF03.
+
+| Diretório | Comando                                                                                                                                                                    | Resultado                 |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `backend` | `./node_modules/.bin/vitest run`                                                                                                                                           | 515 testes aprovados.     |
+| `backend` | `./node_modules/.bin/vitest run --config ./vitest.config.e2e.ts test/shopping-list.e2e-spec.ts test/pantry.e2e-spec.ts test/house-rules.e2e-spec.ts test/pets.e2e-spec.ts` | 25 testes HTTP aprovados. |
+| `web`     | `./node_modules/.bin/vitest run`                                                                                                                                           | 337 testes aprovados.     |
+| `backend` | `./node_modules/.bin/nest build`                                                                                                                                           | Build concluído.          |
+| `web`     | `./node_modules/.bin/tsc --noEmit --incremental false`                                                                                                                     | Tipos aprovados.          |
+
+ESLint e Prettier passaram nos arquivos de código alterados. A
+[triagem de G05](../../../docs/triagem-testes-manuais.md#verificação-de-g05--23112026)
+registra os resultados da API real com PostgreSQL isolado e cinco contas.
+
+Na verificação posterior da branch `fixs`, o [pre-commit](../../../.husky/pre-commit)
+partiu do Node 20.20.0 e ativou o Node 26.8.1 de `.nvmrc` para carregar o
+jsdom. Lint e Prettier passaram nos dois projetos, assim como 335 testes web
+e 513 testes do backend.

@@ -78,6 +78,9 @@ Carregando, vazio, erro e sucesso por seção. Escritas aguardam resposta e most
 ## Decisões de implementação
 
 - Manter papéis de gestão, política global e permissão de edição individual como decisões distintas. Um override nulo herda a política global.
+- Em Permissões, mostrar a política global de `GET /residences` e permitir que gestores alterem seu valor pelo `PATCH /residences/:id/settings/permissions`. O seletor individual inclui a opção de herança e envia `canEditContent: null` para restaurá-la. Ao salvar uma mudança da política, atualizar a residência e as permissões efetivas da lista.
+- Em G05, a API usa `requireMembership` nas leituras e `requireCreateEditPermission` nas mutações da lista compartilhada, categorias e criação ou edição de pets e cuidados. `requireManager` continua protegendo o mural e as exclusões em Pets. A proteção de categoria em uso e o controle de versão da lista permanecem no serviço.
+- As telas da lista, categorias em Despensa e Configurações, e Pets calculam a permissão de edição com papel, política global e override da resposta de `GET /residences`. O mural continua exibindo as ações de escrita apenas para gestores.
 - O tema previsto usa um `ThemeProvider` compartilhado, chave `fullhouse:theme` no dispositivo e `prefers-color-scheme` para Sistema. Aplicar cedo para evitar mudança visível no carregamento e adaptar cores fixas antes de declarar o tema completo.
 - Sequenciar navegação, vínculo ativo único, contratos existentes e categorias antes da evolução dos endpoints, preferências, permissões individuais e temas. Verificar com testes de UI, DTO, serviço, autorização HTTP, duas contas e as nove imagens de referência.
 

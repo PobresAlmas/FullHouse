@@ -35,6 +35,12 @@ Use este checklist como pedido de implementação. Consulte [requirements.md](re
 - [x] **T17 — Verificação das APIs.** Verificar consistência dos três contratos HTTP e autorização baseada em participação ativa. Executar testes unitários e E2E dos módulos chat, regras e reuniões. **Refs:** RNF01–RNF02, CA01–CA09.
 - [x] **T18 — Verificação web e builds.** Executar testes web dos três fluxos e builds do backend/frontend. Corrigir falhas e registrar os comandos/resultados de verificação na documentação da Sprint 2. **Refs:** RF01–RF08, CA01–CA09.
 
+## G05 — Permissões do mural
+
+- [x] **T19 — Revalidar autorização do mural em G05.3.** Conferir consulta por membro ativo, escrita reservada a gestores e bloqueio de contas sem vínculo. **Refs:** RF04, RF05, CA04, CA05.
+
+A suíte HTTP do mural, os testes da interface e a verificação com contas distintas passaram. O resultado está na [triagem de G05](../../../docs/triagem-testes-manuais.md#verificação-de-g05--23112026).
+
 ## Verificação registrada na Sprint 02
 
 O [registro de testes da colaboração](../../../docs/sprints/sprint02/Iago/colaboracao-casa/testes.md) reúne os comandos, resultados e limites da execução original.

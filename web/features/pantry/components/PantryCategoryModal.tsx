@@ -119,8 +119,7 @@ export function PantryCategoryModal({
                             </form>
                         ) : (
                             <p className="mb-4 rounded-lg bg-[#f1edf3] p-3 text-sm text-[#625c66]">
-                                A política desta casa permite que apenas líderes e administradores
-                                alterem categorias.
+                                Seu acesso a categorias nesta casa é somente leitura.
                             </p>
                         )}
                         <ul className="divide-y divide-[#e7e0e9] rounded-xl border border-[#e1d9e5] bg-white">

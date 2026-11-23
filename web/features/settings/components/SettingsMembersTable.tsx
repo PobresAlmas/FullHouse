@@ -27,7 +27,7 @@ export function SettingsMembersTable({
     currentUserId?: string;
     busy: boolean;
     headerAction?: ReactNode;
-    onAccessChange: (member: ResidenceMember, allowed: boolean) => void;
+    onAccessChange: (member: ResidenceMember, allowed: boolean | null) => void;
     onRemove: (member: ResidenceMember) => void;
 }) {
     const [menuMemberId, setMenuMemberId] = useState<string | null>(null);
@@ -114,15 +114,19 @@ export function SettingsMembersTable({
                                                 value={
                                                     managerMember
                                                         ? "admin"
-                                                        : member.canEditContent
-                                                          ? "edit"
-                                                          : "read"
+                                                        : member.accessIsInherited
+                                                          ? "inherit"
+                                                          : member.canEditContent
+                                                            ? "edit"
+                                                            : "read"
                                                 }
                                                 disabled={!manager || managerMember || busy}
                                                 onChange={(event) =>
                                                     onAccessChange(
                                                         member,
-                                                        event.target.value === "edit"
+                                                        event.target.value === "inherit"
+                                                            ? null
+                                                            : event.target.value === "edit"
                                                     )
                                                 }
                                                 className="h-11 rounded-lg px-4 pr-4 text-sm"
@@ -131,6 +135,9 @@ export function SettingsMembersTable({
                                                     <option value="admin">Administrador</option>
                                                 ) : (
                                                     <>
+                                                        <option value="inherit">
+                                                            Herdar política da casa
+                                                        </option>
                                                         <option value="edit">Pode editar</option>
                                                         <option value="read">
                                                             Somente leitura
@@ -210,8 +217,9 @@ export function SettingsMembersTable({
                 <div className="flex items-start gap-3 border-t border-[#e8e0eb] bg-[#edf5ef] px-4 py-3 text-[10px] leading-5 text-[#4c8060]">
                     <Info size={17} className="mt-0.5 shrink-0 fill-[#4c8060] text-white" />
                     <p>
-                        Moradores com acesso somente leitura podem ver as informações da casa, mas
-                        não podem criar ou editar tarefas, despesas e itens da despensa.
+                        O acesso somente leitura permite consultar a lista de compras, categorias da
+                        despensa, regras e pets. A edição do mural e a exclusão de pets são ações
+                        reservadas a líderes e administradores.
                     </p>
                 </div>
             )}

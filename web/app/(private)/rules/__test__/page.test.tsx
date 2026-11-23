@@ -52,6 +52,23 @@ describe("HouseRulesPage", () => {
         );
     });
 
+    it.each([true, false])(
+        "lets members read the rules and reserves writing for managers (override %s)",
+        async (canEditContent) => {
+            vi.mocked(getResidences).mockResolvedValue([
+                createResidenceFixture({
+                    membership: { id: "ordinary-member", role: "MORADOR", canEditContent },
+                }),
+            ]);
+            render(<HouseRulesPage />);
+            expect(await screen.findByText("Silêncio")).toBeInTheDocument();
+            expect(
+                screen.queryByRole("button", { name: "Adicionar regra" })
+            ).not.toBeInTheDocument();
+            expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument();
+        }
+    );
+
     it("shows validation errors and updates an existing rule", async () => {
         const user = userEvent.setup();
         render(<HouseRulesPage />);

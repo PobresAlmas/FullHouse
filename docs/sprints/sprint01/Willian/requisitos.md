@@ -16,10 +16,10 @@ A funcionalidade contempla os dados básicos do animal, sua vinculação à casa
 
 **Confirmação — critérios de aceitação**
 
-- Um morador autenticado e ativo pode cadastrar pet com nome e espécie obrigatórios.
+- Um morador autenticado e ativo com permissão de edição pode cadastrar pet com nome e espécie obrigatórios.
 - Raça, data de nascimento e URL de foto são opcionais. A idade, se apresentada, é derivada da data de nascimento.
 - Os pets podem ser listados por residência, consultados por identificador, atualizados e removidos conforme a regra de autorização.
-- O histórico pode ser criado, consultado, atualizado e removido por membros ativos da residência.
+- Membros ativos podem consultar o histórico. A criação e a edição exigem permissão de edição, e a remoção é reservada a gestores.
 - O histórico é ordenado do mais recente para o mais antigo e é compartilhado com os membros ativos da casa.
 - Tipos de cuidado: `VACCINE`, `FOOD`, `VET_VISIT`, `MEDICATION` e `OTHER`.
 - Pagador e despesa, quando informados, devem pertencer à mesma residência do pet.
@@ -32,8 +32,7 @@ A funcionalidade contempla os dados básicos do animal, sua vinculação à casa
 - As rotas de Pets exigem sessão JWT válida.
 - Para leitura, criação ou edição, o usuário deve ter participação ativa na casa correspondente.
 - A política da residência também é aplicada à criação e edição de conteúdo.
-- O requisito de negócio solicita que a exclusão do pet seja permitida ao criador ou a um Administrador.
-- **Diferença identificada na implementação atual:** o serviço usa `requireManager` para excluir pet, o que limita a operação a Líder/Administrador e não verifica explicitamente se o solicitante é o criador. A matriz de testes automatizados atual cobre a autorização de Líder/Administrador; a regra criador-ou-Administrador precisa ser alinhada no código antes de declarar esse critério integralmente atendido.
+- O requisito original desse registro previa exclusão pelo criador ou por um administrador. A [matriz revisada em G05](../../../../openspec02/spec/003-configuracoes-da-casa/requirements.md#matriz-de-permissões-de-g05) reserva a exclusão de pets e registros de cuidado a líderes e administradores.
 - Cuidados e despesas vinculadas não autorizam excluir a própria despesa quando um registro de cuidado é removido. A exclusão do pet elimina seus registros de cuidado em cascata.
 
 ## 3. Campos de domínio
