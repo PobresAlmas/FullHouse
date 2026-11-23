@@ -1,3 +1,17 @@
+import { vi } from "vitest";
+
+vi.hoisted(() => {
+    // AppModule validates these values while it is imported; use test-only values here.
+    process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
+    process.env.JWT_SECRET = "test-secret";
+    process.env.JWT_EXPIRES_IN = "1d";
+    process.env.MINIO_ENDPOINT = "http://localhost:9000";
+    process.env.MINIO_ACCESS_KEY = "test";
+    process.env.MINIO_SECRET_KEY = "test";
+    process.env.MINIO_BUCKET = "test";
+    process.env.MINIO_REGION = "us-east-1";
+});
+
 import { MODULE_METADATA } from "@nestjs/common/constants";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { APP_THROTTLER_GUARD_PROVIDER, APP_THROTTLER_OPTIONS } from "./common/app-throttling.js";

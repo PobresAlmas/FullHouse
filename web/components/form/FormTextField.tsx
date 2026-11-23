@@ -12,6 +12,7 @@ interface FormTextFieldProps<T extends FieldValues> {
 export default function FormTextField<T extends FieldValues>({
     name,
     label,
+    type,
     placeholder,
     form,
 }: FormTextFieldProps<T>) {
@@ -19,6 +20,7 @@ export default function FormTextField<T extends FieldValues>({
         <TextField
             id={String(name)}
             label={label}
+            type={type}
             placeholder={placeholder}
             {...form.register(name)}
             error={form.formState.errors[name]?.message as string}

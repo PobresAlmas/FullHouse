@@ -51,7 +51,7 @@ describe("VerifyEmailForm", () => {
             expect(verifyResetCode).toHaveBeenCalledWith("user@example.com", "123456")
         );
         expect(push).toHaveBeenCalledWith(
-            "/create-new-password?email=user@example.com&code=123456"
+            "/create-new-password?email=user%40example.com&code=123456"
         );
     });
 
@@ -66,6 +66,27 @@ describe("VerifyEmailForm", () => {
             expect(verifyResetCode).toHaveBeenCalledWith("user@example.com", "000000")
         );
         expect(push).not.toHaveBeenCalled();
+        expect(screen.getByRole("alert")).toHaveTextContent(
+            "Código inválido ou expirado. Confira o código e tente novamente."
+        );
+    });
+
+    it("encodes email aliases when routing to password creation", async () => {
+        const user = userEvent.setup();
+        get.mockImplementation((key: string) =>
+            key === "email" ? "user+alias@example.com" : null
+        );
+        verifyResetCode.mockResolvedValue({ valid: true });
+        render(<VerifyEmailForm />);
+        for (const [index, digit] of [..."123456"].entries())
+            await user.type(screen.getAllByRole("textbox")[index], digit);
+        await user.click(screen.getByRole("button", { name: "Confirmar código" }));
+
+        await waitFor(() => expect(push).toHaveBeenCalledOnce());
+        const destination = new URL(push.mock.calls[0][0], "http://localhost");
+        expect(destination.searchParams.get("email")).toBe("user+alias@example.com");
+        expect(destination.searchParams.get("code")).toBe("123456");
+        expect(destination.search).toContain("user%2Balias%40example.com");
     });
 
     it("resends a code after the countdown and resets the timer", async () => {
