@@ -11,6 +11,7 @@ describe("MeetingsRepository", () => {
             findMany: ReturnType<typeof vi.fn>;
             findFirst: ReturnType<typeof vi.fn>;
             updateMany: ReturnType<typeof vi.fn>;
+            deleteMany: ReturnType<typeof vi.fn>;
         };
         $transaction: ReturnType<typeof vi.fn>;
     };
@@ -47,6 +48,7 @@ describe("MeetingsRepository", () => {
                 findMany: vi.fn().mockResolvedValue([]),
                 findFirst: vi.fn().mockResolvedValue({ id: meetingId }),
                 updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+                deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
             },
             $transaction: vi.fn((callback: (client: unknown) => unknown) => callback(tx)),
         };
@@ -137,6 +139,18 @@ describe("MeetingsRepository", () => {
                 status: "AGENDADA",
             },
             data: { status: "CANCELADA" },
+        });
+    });
+
+    it("deletes only canceled meetings organized by the active member", async () => {
+        await repository.deleteCancelled(homeId, meetingId, memberId);
+        expect(prisma.reuniao.deleteMany).toHaveBeenCalledWith({
+            where: {
+                id: meetingId,
+                casa_id: homeId,
+                criada_por_participacao_id: memberId,
+                status: "CANCELADA",
+            },
         });
     });
 });

@@ -5,9 +5,15 @@ import { Dialog } from "@base-ui/react/dialog";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Residence } from "@/features/residences/api/residences.api";
-import { getHouseRoomListings, getRoomInterests, updateRoomInterest } from "../api/rooms.api";
+import {
+    getHouseRoomListings,
+    getRoomInterests,
+    permanentlyDeleteRoomListing,
+    updateRoomInterest,
+} from "../api/rooms.api";
 import type { HouseRoomListing, RoomInterest } from "../api/rooms.api";
 import { RoomListingCard } from "./RoomListingCard";
 import { RoomListingDialog } from "./RoomListingDialog";
@@ -232,6 +238,9 @@ export function HouseRoomListings({
     const [notice, setNotice] = useState("");
     const [revision, setRevision] = useState(0);
     const [selection, setSelection] = useState<{ id: string; view: View } | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<HouseRoomListing | null>(null);
+    const [deleteError, setDeleteError] = useState("");
+    const [deleting, setDeleting] = useState(false);
     const [dismissed, setDismissed] = useState<string>();
     if (!requestedListingId && dismissed !== undefined) setDismissed(undefined);
     const trigger = useRef<HTMLElement>(null);
@@ -283,6 +292,25 @@ export function HouseRoomListings({
     function reload() {
         setError("");
         setRevision((current) => current + 1);
+    }
+
+    async function confirmDelete() {
+        if (!deleteTarget || deleting) return;
+        setDeleting(true);
+        setDeleteError("");
+        try {
+            await permanentlyDeleteRoomListing(deleteTarget.id);
+            setListings(
+                (current) => current?.filter((listing) => listing.id !== deleteTarget.id) ?? null
+            );
+            setSelection((current) => (current?.id === deleteTarget.id ? null : current));
+            setNotice(`Anúncio “${deleteTarget.titulo}” excluído.`);
+            setDeleteTarget(null);
+        } catch (cause) {
+            setDeleteError(message(cause, "Não foi possível excluir o anúncio. Tente novamente."));
+        } finally {
+            setDeleting(false);
+        }
     }
 
     return (
@@ -378,6 +406,18 @@ export function HouseRoomListings({
                                                     ? ` (${listing.pendingInterestCount})`
                                                     : ""}
                                             </Button>
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                aria-label={`Excluir anúncio ${listing.titulo}`}
+                                                onClick={() => {
+                                                    setDeleteError("");
+                                                    setDeleteTarget(listing);
+                                                }}
+                                            >
+                                                <Trash2 aria-hidden="true" />
+                                                Excluir
+                                            </Button>
                                         </>
                                     )}
                                 </div>
@@ -444,6 +484,62 @@ export function HouseRoomListings({
                     </Dialog.Portal>
                 </Dialog.Root>
             )}
+            <Dialog.Root
+                open={deleteTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open && !deleting) {
+                        setDeleteTarget(null);
+                        setDeleteError("");
+                    }
+                }}
+            >
+                <Dialog.Portal>
+                    <Dialog.Backdrop className="fixed inset-0 z-[60] bg-black/45" />
+                    <Dialog.Popup className="fixed left-1/2 top-1/2 z-[60] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[#e4dce6] bg-white p-5 text-[#29252d] shadow-xl sm:p-6">
+                        <div className="mb-4 flex items-start gap-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-700">
+                                <Trash2 size={19} aria-hidden="true" />
+                            </span>
+                            <div>
+                                <Dialog.Title className="font-semibold">
+                                    Excluir anúncio?
+                                </Dialog.Title>
+                                <Dialog.Description className="mt-1 text-sm leading-relaxed text-[#625c66]">
+                                    {deleteTarget
+                                        ? `“${deleteTarget.titulo}” será removido permanentemente, junto com o histórico de interesses e conversas. Convites pendentes desta vaga serão cancelados.`
+                                        : "O anúncio será removido permanentemente."}
+                                </Dialog.Description>
+                            </div>
+                        </div>
+                        {deleteError && (
+                            <p
+                                role="alert"
+                                className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800"
+                            >
+                                {deleteError}
+                            </p>
+                        )}
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={deleting}
+                                onClick={() => setDeleteTarget(null)}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                disabled={deleting}
+                                onClick={() => void confirmDelete()}
+                            >
+                                {deleting ? "Excluindo…" : "Excluir anúncio"}
+                            </Button>
+                        </div>
+                    </Dialog.Popup>
+                </Dialog.Portal>
+            </Dialog.Root>
         </section>
     );
 }

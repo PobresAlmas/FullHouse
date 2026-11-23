@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Delete,
     Get,
     Param,
     ParseUUIDPipe,
@@ -63,5 +64,14 @@ export class MeetingsController {
         @CurrentUser() user: { id: string }
     ) {
         return this.meetings.cancel(residenceId, meetingId, user.id);
+    }
+
+    @Delete(":meetingId")
+    removeCancelled(
+        @Param("residenceId", new ParseUUIDPipe({ version: "4" })) residenceId: string,
+        @Param("meetingId", new ParseUUIDPipe({ version: "4" })) meetingId: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.meetings.removeCancelled(residenceId, meetingId, user.id);
     }
 }

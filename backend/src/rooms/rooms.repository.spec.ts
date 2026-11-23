@@ -11,6 +11,7 @@ describe("RoomsRepository room-interest decisions", () => {
         },
         negociacao_anuncio: { upsert: vi.fn() },
         notificacao: { create: vi.fn() },
+        anuncio_quarto: { update: vi.fn() },
         usuario: { update: vi.fn() },
         convite_casa: {
             findFirst: vi.fn(),
@@ -140,7 +141,10 @@ describe("RoomsRepository room-interest decisions", () => {
     });
 
     it("accepts a pending invite and creates an active member in one transaction", async () => {
-        transaction.$queryRaw.mockResolvedValue([{ id: "invitation-1" }]);
+        transaction.$queryRaw
+            .mockResolvedValueOnce([{ id: "listing-1", status: "ABERTO" }])
+            .mockResolvedValueOnce([{ id: "invitation-1" }])
+            .mockResolvedValueOnce([]);
 
         await expect(
             repository.respondToNegotiationInvitation("invitation-1", "seeker-1", "ACEITO")
@@ -167,6 +171,10 @@ describe("RoomsRepository room-interest decisions", () => {
             where: { id: "seeker-1" },
             data: { status_moradia: "MORANDO" },
         });
+        expect(transaction.anuncio_quarto.update).toHaveBeenCalledWith({
+            where: { id: "listing-1" },
+            data: { status: "FECHADO" },
+        });
     });
 
     it("rejects accepting a pending invite when the house is no longer active", async () => {
@@ -186,7 +194,9 @@ describe("RoomsRepository room-interest decisions", () => {
     });
 
     it("rejects accepting an invite to a second residence without changing the invite", async () => {
-        transaction.$queryRaw.mockResolvedValue([{ id: "invitation-1" }]);
+        transaction.$queryRaw
+            .mockResolvedValueOnce([{ id: "listing-1", status: "ABERTO" }])
+            .mockResolvedValueOnce([{ id: "invitation-1" }]);
         transaction.participacao.findFirst.mockResolvedValueOnce({
             id: "membership-existing",
             casa_id: "another-house",
@@ -241,13 +251,15 @@ describe("RoomsRepository room-interest decisions", () => {
 
     it("allows only one of two concurrent responses to activate membership", async () => {
         transaction.$queryRaw
+            .mockResolvedValueOnce([{ id: "listing-1", status: "ABERTO" }])
             .mockResolvedValueOnce([{ id: "invitation-1" }])
-            .mockResolvedValueOnce([]);
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce([{ id: "listing-1", status: "FECHADO" }]);
 
         await repository.respondToNegotiationInvitation("invitation-1", "seeker-1", "ACEITO");
         await expect(
             repository.respondToNegotiationInvitation("invitation-1", "seeker-1", "ACEITO")
-        ).rejects.toThrow("Este convite já foi respondido.");
+        ).rejects.toThrow("Esta vaga já foi preenchida ou fechada.");
 
         expect(transaction.participacao.create).toHaveBeenCalledOnce();
     });

@@ -38,6 +38,7 @@ describe("MeetingsService", () => {
             respond: vi.fn().mockResolvedValue(true),
             reschedule: vi.fn().mockResolvedValue({ ...meeting, reagendada_de_id: meetingId }),
             cancel: vi.fn().mockResolvedValue({ count: 1 }),
+            deleteCancelled: vi.fn().mockResolvedValue({ count: 1 }),
         };
         access = { requireMembership: vi.fn().mockResolvedValue({ memberId }) };
         service = new MeetingsService(
@@ -104,5 +105,19 @@ describe("MeetingsService", () => {
             criada_por_participacao_id: "other-member",
         });
         await expect(service.cancel(homeId, meetingId, userId)).rejects.toThrow(ForbiddenException);
+    });
+
+    it("deletes a canceled meeting and rejects active meetings", async () => {
+        await expect(service.removeCancelled(homeId, meetingId, userId)).resolves.toEqual({
+            id: meetingId,
+            deleted: true,
+        });
+        expect(repository.deleteCancelled).toHaveBeenCalledWith(homeId, meetingId, memberId);
+
+        repository.deleteCancelled.mockResolvedValue({ count: 0 });
+        repository.findOne.mockResolvedValue(meeting);
+        await expect(service.removeCancelled(homeId, meetingId, userId)).rejects.toThrow(
+            BadRequestException
+        );
     });
 });

@@ -93,6 +93,16 @@ export class RoomsController {
         return this.service.update(id, data, user.id);
     }
 
+    @Delete(":id/permanent")
+    @UseGuards(JwtAuthGuard)
+    @HttpCode(204)
+    async deletePermanently(
+        @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+        @CurrentUser() user: { id: string }
+    ) {
+        await this.service.deletePermanently(id, user.id);
+    }
+
     @Delete(":id")
     @UseGuards(JwtAuthGuard)
     @HttpCode(204)
