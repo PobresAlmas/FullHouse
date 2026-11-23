@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import {
     getNotifications,
@@ -50,6 +50,7 @@ function SignedInNotificationBell({
     refreshUser: () => Promise<void>;
 }) {
     const router = useRouter();
+    const popoverRef = useRef<HTMLDivElement>(null);
     const [notificationState, setNotificationState] = useState<{
         userId: string;
         items: AppNotification[];
@@ -103,6 +104,24 @@ function SignedInNotificationBell({
             unsubscribe();
         };
     }, [userId]);
+
+    useEffect(() => {
+        if (!open) return;
+        function closeOnOutsidePointer(event: PointerEvent) {
+            if (event.target instanceof Node && !popoverRef.current?.contains(event.target)) {
+                setOpen(false);
+            }
+        }
+        function closeOnEscape(event: KeyboardEvent) {
+            if (event.key === "Escape") setOpen(false);
+        }
+        document.addEventListener("pointerdown", closeOnOutsidePointer);
+        document.addEventListener("keydown", closeOnEscape);
+        return () => {
+            document.removeEventListener("pointerdown", closeOnOutsidePointer);
+            document.removeEventListener("keydown", closeOnEscape);
+        };
+    }, [open]);
 
     async function markRead(notificationId: string) {
         try {
@@ -175,7 +194,7 @@ function SignedInNotificationBell({
     }
 
     return (
-        <div className="relative">
+        <div ref={popoverRef} className="relative">
             <button
                 type="button"
                 aria-label="Notificações"
@@ -244,23 +263,36 @@ function SignedInNotificationBell({
                                 return (
                                     <li
                                         key={notification.id}
-                                        className={`rounded-lg border p-3 ${notification.lida ? "bg-white" : "bg-[#f3f8f2]"}`}
+                                        className={`rounded-lg border border-l-[3px] p-3 transition-colors ${notification.lida ? "border-[#e3dde5] border-l-[#d5ced8] bg-white" : "border-[#d5e4cc] border-l-[#5c8c3a] bg-[#f2f7ee]"}`}
                                     >
-                                        {href ? (
-                                            <Link
-                                                href={href}
-                                                onClick={() => {
-                                                    if (!notification.lida)
-                                                        void markRead(notification.id);
-                                                    setOpen(false);
-                                                }}
-                                                className="font-semibold hover:underline"
-                                            >
-                                                {notification.titulo}
-                                            </Link>
-                                        ) : (
-                                            <p className="font-semibold">{notification.titulo}</p>
-                                        )}
+                                        <div className="flex items-start justify-between gap-2">
+                                            {href ? (
+                                                <Link
+                                                    href={href}
+                                                    onClick={() => {
+                                                        if (!notification.lida)
+                                                            void markRead(notification.id);
+                                                        setOpen(false);
+                                                    }}
+                                                    className={`font-semibold hover:underline ${notification.lida ? "text-[#625c66]" : "text-[#29252d]"}`}
+                                                >
+                                                    {notification.titulo}
+                                                </Link>
+                                            ) : (
+                                                <p
+                                                    className={`font-semibold ${notification.lida ? "text-[#625c66]" : "text-[#29252d]"}`}
+                                                >
+                                                    {notification.titulo}
+                                                </p>
+                                            )}
+                                            {!notification.lida && (
+                                                <span
+                                                    aria-label="Não lida"
+                                                    title="Não lida"
+                                                    className="mt-1.5 size-2 shrink-0 rounded-full bg-[#5c8c3a]"
+                                                />
+                                            )}
+                                        </div>
                                         {notification.mensagem && (
                                             <p className="mt-1 text-sm text-[#625c66]">
                                                 {notification.mensagem}

@@ -5,7 +5,7 @@ import { HomePage } from "../HomePage";
 import { createResidence, getResidences } from "@/features/residences/api/residences.api";
 import { getTasks, getTaskMembers } from "@/features/tasks/api/tasks.api";
 import { getExpenses } from "@/features/expenses/api/expenses.api";
-import { getPersonalHome } from "../../api/home.api";
+import { getHouseNotices, getPersonalHome } from "../../api/home.api";
 import { dayInBusinessTime } from "../../lib/home-metrics";
 import { createResidenceFixture } from "@/test/fixtures/residence";
 import { selectSystemOption } from "@/test/utils/render";
@@ -32,7 +32,13 @@ vi.mock("@/features/tasks/api/tasks.api", () => ({
     getTaskMembers: vi.fn(),
 }));
 vi.mock("@/features/expenses/api/expenses.api", () => ({ getExpenses: vi.fn() }));
-vi.mock("../../api/home.api", () => ({ getPersonalHome: vi.fn() }));
+vi.mock("../../api/home.api", () => ({
+    createHouseNotice: vi.fn(),
+    deleteHouseNotice: vi.fn(),
+    getHouseNotices: vi.fn(),
+    getPersonalHome: vi.fn(),
+    updateHouseNotice: vi.fn(),
+}));
 
 const residence = createResidenceFixture({
     id: "residence-1",
@@ -51,6 +57,7 @@ describe("HomePage", () => {
         vi.mocked(getTasks).mockResolvedValue([]);
         vi.mocked(getTaskMembers).mockResolvedValue([]);
         vi.mocked(getExpenses).mockResolvedValue([]);
+        vi.mocked(getHouseNotices).mockResolvedValue([]);
         vi.mocked(getPersonalHome).mockResolvedValue({ tasks: [], expenses: [] });
     });
 

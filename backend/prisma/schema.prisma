@@ -59,6 +59,7 @@ model casa {
   criada_em               DateTime                 @default(dbgenerated("CURRENT_DATE")) @db.Date
   excluido_em             DateTime?                @db.Timestamptz(6)
   anuncio_quarto          anuncio_quarto[]
+  aviso_casa              aviso_casa[]
   usuario                 usuario                  @relation(fields: [criada_por_usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   configuracao_casa       configuracao_casa?
   conversa                conversa[]
@@ -81,6 +82,18 @@ model casa {
   reuniao                 reuniao[]
   subgrupo                subgrupo[]
   preferencia_residencia  preferencia_residencia[]
+}
+
+model aviso_casa {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  casa_id         String       @db.Uuid
+  participacao_id String       @db.Uuid
+  conteudo        String       @db.VarChar(280)
+  criado_em       DateTime     @default(now()) @db.Timestamptz(6)
+  casa            casa         @relation(fields: [casa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  participacao    participacao @relation(fields: [participacao_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([casa_id, criado_em, id], map: "idx_aviso_casa_casa_criado")
 }
 
 model comprovante_pagamento {
@@ -558,6 +571,7 @@ model participacao {
   data_saida                                                                                   DateTime?                  @db.Date
   convite_id                                                                                   String?                    @db.Uuid
   anuncio_quarto                                                                               anuncio_quarto[]
+  aviso_casa                                                                                   aviso_casa[]
   comprovante_pagamento                                                                        comprovante_pagamento[]
   convite_casa_convite_casa_convidado_por_participacao_idToparticipacao                        convite_casa[]             @relation("convite_casa_convidado_por_participacao_idToparticipacao")
   cuidado_pet_cuidado_pet_pago_por_participacao_idToparticipacao                               cuidado_pet[]              @relation("cuidado_pet_pago_por_participacao_idToparticipacao")
