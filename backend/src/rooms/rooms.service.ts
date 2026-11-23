@@ -108,6 +108,11 @@ export class RoomsService {
         await this.repository.close(listing.id);
     }
 
+    async deletePermanently(id: string, userId: string) {
+        await this.requireOwner(id, userId);
+        await this.repository.deletePermanently(id);
+    }
+
     async uploadPhoto(casaId: string, file: Express.Multer.File | undefined, userId: string) {
         if (!file) throw new ConflictException("Selecione uma imagem.");
         await this.residenceAccess.requireManager(casaId, userId);
@@ -238,6 +243,7 @@ export class RoomsService {
         let canInvite = false;
         if (
             advertiserId === userId &&
+            listing.status === status_anuncio_enum.ABERTO &&
             negotiation.interesse_anuncio.status === status_interesse_anuncio_enum.ACEITO &&
             displayedInvitationStatus !== "PENDENTE" &&
             (displayedInvitationStatus !== "ACEITO" || endedAfterRemoval)

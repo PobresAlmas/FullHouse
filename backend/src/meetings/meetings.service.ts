@@ -106,6 +106,24 @@ export class MeetingsService {
         return meeting ? this.mapMeeting(meeting) : null;
     }
 
+    async removeCancelled(residenceId: string, meetingId: string, userId: string) {
+        const member = await this.residenceAccess.requireMembership(residenceId, userId);
+        const result = await this.repository.deleteCancelled(
+            residenceId,
+            meetingId,
+            member.memberId
+        );
+        if (!result.count) {
+            const existing = await this.repository.findOne(residenceId, meetingId);
+            if (!existing) throw new NotFoundException("A reunião não está disponível.");
+            if (existing.criada_por_participacao_id !== member.memberId) {
+                throw new ForbiddenException("Somente quem organizou pode excluir esta reunião.");
+            }
+            throw new BadRequestException("Somente reuniões canceladas podem ser excluídas.");
+        }
+        return { id: meetingId, deleted: true };
+    }
+
     private futureDate(value: string) {
         const date = new Date(value);
         if (!Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) {

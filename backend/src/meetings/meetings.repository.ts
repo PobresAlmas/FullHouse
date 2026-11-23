@@ -158,4 +158,15 @@ export class MeetingsRepository {
             data: { status: "CANCELADA" },
         });
     }
+
+    deleteCancelled(residenceId: string, meetingId: string, memberId: string) {
+        return this.prisma.reuniao.deleteMany({
+            where: {
+                id: meetingId,
+                casa_id: residenceId,
+                criada_por_participacao_id: memberId,
+                status: "CANCELADA",
+            },
+        });
+    }
 }

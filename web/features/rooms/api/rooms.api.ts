@@ -162,6 +162,10 @@ export async function deleteRoomListing(id: string) {
     await api.delete(`/rooms/listings/${id}`);
 }
 
+export async function permanentlyDeleteRoomListing(id: string) {
+    await api.delete(`/rooms/listings/${id}/permanent`);
+}
+
 export async function uploadRoomPhoto(casaId: string, file: File) {
     const form = new FormData();
     form.append("file", file);

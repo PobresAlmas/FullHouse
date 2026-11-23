@@ -59,3 +59,7 @@ export async function cancelMeeting(residenceId: string, meetingId: string) {
     );
     return response.data;
 }
+
+export async function deleteCancelledMeeting(residenceId: string, meetingId: string) {
+    await api.delete(`/residences/${residenceId}/meetings/${meetingId}`);
+}

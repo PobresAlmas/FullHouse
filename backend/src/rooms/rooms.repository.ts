@@ -141,6 +141,63 @@ export class RoomsRepository {
         return this.prisma.anuncio_quarto.update({ where: { id }, data: { status: "FECHADO" } });
     }
 
+    async deletePermanently(id: string) {
+        await this.prisma.$transaction(async (transaction) => {
+            const listing = await transaction.$queryRaw<{ id: string; casa_id: string }[]>`
+                SELECT "id", "casa_id"
+                FROM "anuncio_quarto"
+                WHERE "id" = ${id}::uuid
+                FOR UPDATE
+            `;
+            if (!listing.length) throw new NotFoundException("Anúncio não encontrado.");
+
+            const pendingInvitations = await transaction.$queryRaw<
+                { id: string; usuario_convidado_id: string | null }[]
+            >`
+                UPDATE "convite_casa" c
+                SET "status" = 'CANCELADO'
+                WHERE c."status" = 'PENDENTE'
+                  AND c."negociacao_anuncio_id" IN (
+                      SELECT n."id"
+                      FROM "negociacao_anuncio" n
+                      JOIN "interesse_anuncio" i ON i."id" = n."interesse_id"
+                      WHERE i."anuncio_id" = ${id}::uuid
+                  )
+                RETURNING c."id", c."usuario_convidado_id"
+            `;
+            for (const invitation of pendingInvitations) {
+                if (!invitation.usuario_convidado_id) continue;
+                await transaction.notificacao.create({
+                    data: {
+                        usuario_id: invitation.usuario_convidado_id,
+                        casa_id: listing[0].casa_id,
+                        tipo: "SISTEMA",
+                        titulo: "Anúncio removido",
+                        mensagem:
+                            "O anúncio foi excluído pelo anunciante. O convite pendente foi cancelado.",
+                        entidade_tipo: "CONVITE_CASA",
+                        entidade_id: invitation.id,
+                    },
+                });
+            }
+            await transaction.$executeRaw`
+                DELETE FROM "notificacao"
+                WHERE "entidade_tipo" IN ('INTERESSE_QUARTO', 'NEGOCIACAO_QUARTO')
+                  AND "entidade_id" IN (
+                      SELECT i."id"
+                      FROM "interesse_anuncio" i
+                      WHERE i."anuncio_id" = ${id}::uuid
+                      UNION
+                      SELECT n."id"
+                      FROM "negociacao_anuncio" n
+                      JOIN "interesse_anuncio" i ON i."id" = n."interesse_id"
+                      WHERE i."anuncio_id" = ${id}::uuid
+                  )
+            `;
+            await transaction.anuncio_quarto.delete({ where: { id } });
+        });
+    }
+
     findInterest(anuncioId: string, userId: string) {
         return this.prisma.interesse_anuncio.findFirst({
             where: {
@@ -397,6 +454,7 @@ export class RoomsRepository {
                 FROM "negociacao_anuncio" n
                 JOIN "interesse_anuncio" i ON i."id" = n."interesse_id"
                 JOIN "anuncio_quarto" a ON a."id" = i."anuncio_id"
+                    AND a."status" = 'ABERTO'
                 JOIN "participacao" p ON p."id" = ${managerParticipationId}::uuid
                     AND p."casa_id" = a."casa_id"
                     AND p."data_saida" IS NULL
@@ -404,7 +462,7 @@ export class RoomsRepository {
                 WHERE n."id" = ${negotiationId}::uuid
                   AND i."usuario_id" = ${invitedUserId}::uuid
                   AND i."status" = 'ACEITO'
-                FOR UPDATE OF n, p
+                FOR UPDATE OF a, n, p
             `;
             if (!negotiation.length) {
                 throw new NotFoundException(
@@ -483,11 +541,37 @@ export class RoomsRepository {
                     throw new ConflictException("Este convite já foi respondido.");
                 }
 
+                let listing: { id: string; status: string }[] = [];
+                if (decision === "ACEITO" && invitation.expira_em > new Date()) {
+                    if (
+                        invitation.casa.status !== "ATIVA" ||
+                        invitation.casa.excluido_em !== null
+                    ) {
+                        throw new ConflictException("A casa deste convite não está mais ativa.");
+                    }
+                    listing = invitation.negociacao_anuncio_id
+                        ? await transaction.$queryRaw<{ id: string; status: string }[]>`
+                              SELECT a."id", a."status"
+                              FROM "negociacao_anuncio" n
+                              JOIN "interesse_anuncio" i ON i."id" = n."interesse_id"
+                              JOIN "anuncio_quarto" a ON a."id" = i."anuncio_id"
+                              WHERE n."id" = ${invitation.negociacao_anuncio_id}::uuid
+                              FOR UPDATE OF a
+                          `
+                        : [];
+                    if (!listing.length) {
+                        throw new NotFoundException("Anúncio associado ao convite não encontrado.");
+                    }
+                    if (listing[0].status !== "ABERTO") {
+                        throw new ConflictException("Esta vaga já foi preenchida ou fechada.");
+                    }
+                }
+
                 const pending = await transaction.$queryRaw<{ id: string }[]>`
-                SELECT "id" FROM "convite_casa"
-                WHERE "id" = ${invitationId}::uuid AND "status" = 'PENDENTE'
-                FOR UPDATE
-            `;
+                    SELECT "id" FROM "convite_casa"
+                    WHERE "id" = ${invitationId}::uuid AND "status" = 'PENDENTE'
+                    FOR UPDATE
+                `;
                 if (!pending.length) throw new ConflictException("Este convite já foi respondido.");
                 if (invitation.expira_em <= new Date()) {
                     await transaction.convite_casa.update({
@@ -498,13 +582,12 @@ export class RoomsRepository {
                 }
 
                 let membershipId: string | null = null;
+                let acceptedListingId: string | null = null;
                 if (decision === "ACEITO") {
-                    if (
-                        invitation.casa.status !== "ATIVA" ||
-                        invitation.casa.excluido_em !== null
-                    ) {
-                        throw new ConflictException("A casa deste convite não está mais ativa.");
+                    if (!listing.length) {
+                        throw new NotFoundException("Anúncio associado ao convite não encontrado.");
                     }
+                    acceptedListingId = listing[0].id;
                     const activeMembership = await transaction.participacao.findFirst({
                         where: {
                             usuario_id: userId,
@@ -531,6 +614,10 @@ export class RoomsRepository {
                         where: { id: userId },
                         data: { status_moradia: "MORANDO" },
                     });
+                    await transaction.anuncio_quarto.update({
+                        where: { id: listing[0].id },
+                        data: { status: "FECHADO" },
+                    });
                 }
 
                 await transaction.convite_casa.update({
@@ -556,6 +643,37 @@ export class RoomsRepository {
                         entidade_id: invitationId,
                     },
                 });
+                if (decision === "ACEITO" && invitation.negociacao_anuncio_id) {
+                    const cancelledInvitations = await transaction.$queryRaw<
+                        { id: string; usuario_convidado_id: string }[]
+                    >`
+                        UPDATE "convite_casa" c
+                        SET "status" = 'CANCELADO'
+                        WHERE c."status" = 'PENDENTE'
+                          AND c."id" <> ${invitationId}::uuid
+                          AND c."negociacao_anuncio_id" IN (
+                              SELECT n."id"
+                              FROM "negociacao_anuncio" n
+                              JOIN "interesse_anuncio" i ON i."id" = n."interesse_id"
+                              WHERE i."anuncio_id" = ${acceptedListingId}::uuid
+                          )
+                        RETURNING c."id", c."usuario_convidado_id"
+                    `;
+                    for (const cancelled of cancelledInvitations) {
+                        await transaction.notificacao.create({
+                            data: {
+                                usuario_id: cancelled.usuario_convidado_id,
+                                casa_id: invitation.casa_id,
+                                tipo: "SISTEMA",
+                                titulo: "Vaga preenchida",
+                                mensagem:
+                                    "Outra pessoa aceitou o convite para esta vaga. Este convite foi cancelado.",
+                                entidade_tipo: "CONVITE_CASA",
+                                entidade_id: cancelled.id,
+                            },
+                        });
+                    }
+                }
                 return { id: invitationId, status: decision, membershipId };
             });
         } catch (error) {

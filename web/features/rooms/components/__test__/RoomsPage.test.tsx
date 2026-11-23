@@ -74,10 +74,9 @@ describe("RoomsPage", () => {
         render(<RoomsPage />);
         expect(await screen.findByText("Quarto perto do campus")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Ver Detalhes do Anúncio" }));
-        expect(screen.getByText("Contato: Oculto pelo anunciante")).toBeInTheDocument();
-        expect(
-            screen.getByText("Endereço: Compartilhado após autorização do anunciante")
-        ).toBeInTheDocument();
+        expect(screen.getByText("Contato")).toBeInTheDocument();
+        expect(screen.getByText("Oculto pelo anunciante")).toBeInTheDocument();
+        expect(screen.getByText("Endereço compartilhado após autorização")).toBeInTheDocument();
     });
 
     it("submits location search and does not present a failed request as empty results", async () => {

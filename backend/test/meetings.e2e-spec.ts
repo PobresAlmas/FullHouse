@@ -24,6 +24,7 @@ describe("Residence meetings HTTP API (e2e)", () => {
         respond: vi.fn(),
         reschedule: vi.fn(),
         cancel: vi.fn(),
+        removeCancelled: vi.fn(),
     };
 
     beforeEach(async () => {
@@ -36,6 +37,7 @@ describe("Residence meetings HTTP API (e2e)", () => {
             rescheduledFromId: MEETING_ID,
         });
         service.cancel.mockResolvedValue({ id: MEETING_ID, status: "CANCELADA" });
+        service.removeCancelled.mockResolvedValue({ id: MEETING_ID, deleted: true });
         const testApp = await createAuthenticatedTestApp({
             controllers: [MeetingsController],
             providers: [{ provide: MeetingsService, useValue: service }],
@@ -95,6 +97,11 @@ describe("Residence meetings HTTP API (e2e)", () => {
             .patch(`/residences/${HOME_ID}/meetings/${MEETING_ID}/cancel`)
             .set("Cookie", cookie)
             .expect(200);
+        await request(app.getHttpServer())
+            .delete(`/residences/${HOME_ID}/meetings/${MEETING_ID}`)
+            .set("Cookie", cookie)
+            .expect(200);
+        expect(service.removeCancelled).toHaveBeenCalledWith(HOME_ID, MEETING_ID, USER_ID);
         service.respond.mockRejectedValueOnce(new ForbiddenException());
         await request(app.getHttpServer())
             .patch(`/residences/${HOME_ID}/meetings/${MEETING_ID}/respond`)

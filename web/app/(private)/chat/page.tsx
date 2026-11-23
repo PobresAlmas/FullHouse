@@ -175,6 +175,8 @@ export default function ChatPage() {
         setResidenceId(id);
     }
 
+    const currentMemberId = residences.find((item) => item.id === residenceId)?.membership?.id;
+
     return (
         <div className="h-[calc(100dvh-72px)] overflow-hidden bg-[#f6f3f7] md:flex">
             <AppSidebar
@@ -213,12 +215,12 @@ export default function ChatPage() {
                 )}
                 <section
                     aria-label="Mensagens"
-                    className="flex min-h-0 flex-1 flex-col rounded-xl border border-[#ded6e1] bg-white p-3 shadow-sm sm:p-4"
+                    className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col rounded-xl border border-[#ded6e1] bg-white p-3 shadow-sm sm:p-4"
                 >
                     <div
                         ref={messagesContainer}
                         onScroll={handleMessagesScroll}
-                        className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1"
+                        className="mx-auto min-h-0 w-full max-w-3xl flex-1 space-y-2 overflow-y-auto pr-1"
                     >
                         {messages.length === 0 && (
                             <p className="text-sm text-slate-500">
@@ -228,6 +230,7 @@ export default function ChatPage() {
                         {messages.map((message, index) => {
                             const messageDate = new Date(message.sentAt);
                             const dateKey = messageDate.toLocaleDateString("pt-BR");
+                            const isOwnMessage = message.author.memberId === currentMemberId;
                             const previousDate = messages[index - 1]
                                 ? new Date(messages[index - 1].sentAt).toLocaleDateString("pt-BR")
                                 : null;
@@ -267,34 +270,38 @@ export default function ChatPage() {
                                             <span className="h-px flex-1 bg-[#5b8d42]" />
                                         </div>
                                     )}
-                                    <article
-                                        ref={
-                                            index === unreadStartIndex
-                                                ? unreadMessageElement
-                                                : undefined
-                                        }
-                                        className={`rounded-xl border p-3 transition-colors ${isUnread ? "border-[#b9d5aa] bg-[#f0f7ec]" : "border-transparent bg-[#f7f5f8]"}`}
+                                    <div
+                                        className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}
                                     >
-                                        <div className="flex items-baseline justify-between gap-3">
-                                            <strong className="text-sm">
-                                                {message.author.name}
-                                            </strong>
-                                            <time className="text-[11px] text-slate-500">
-                                                {messageDate.toLocaleTimeString("pt-BR", {
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                })}
-                                            </time>
-                                        </div>
-                                        <p className="mt-1 whitespace-pre-wrap text-sm text-[#29252d]">
-                                            {message.content}
-                                        </p>
-                                    </article>
+                                        <article
+                                            ref={
+                                                index === unreadStartIndex
+                                                    ? unreadMessageElement
+                                                    : undefined
+                                            }
+                                            className={`w-fit max-w-[88%] rounded-2xl border px-4 py-3 transition-colors sm:max-w-[75%] ${isUnread ? "border-[#b9d5aa] bg-[#f0f7ec]" : isOwnMessage ? "border-[#d4e4cc] bg-[#edf5e9]" : "border-transparent bg-[#f7f5f8]"}`}
+                                        >
+                                            <div className="flex items-baseline justify-between gap-6">
+                                                <strong className="text-sm">
+                                                    {message.author.name}
+                                                </strong>
+                                                <time className="shrink-0 text-[11px] text-slate-500">
+                                                    {messageDate.toLocaleTimeString("pt-BR", {
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                </time>
+                                            </div>
+                                            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-[#29252d]">
+                                                {message.content}
+                                            </p>
+                                        </article>
+                                    </div>
                                 </Fragment>
                             );
                         })}
                     </div>
-                    <form onSubmit={submit} className="mt-4 flex gap-2">
+                    <form onSubmit={submit} className="mx-auto mt-3 flex w-full max-w-3xl gap-2">
                         <input
                             aria-label="Mensagem"
                             className="min-w-0 flex-1 rounded-md border px-3 py-2"

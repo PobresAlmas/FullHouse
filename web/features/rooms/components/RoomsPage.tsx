@@ -5,7 +5,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { BedDouble, ChevronDown, Filter, Plus, Search, X } from "lucide-react";
+import {
+    BedDouble,
+    ChevronDown,
+    Filter,
+    Home,
+    MapPin,
+    PawPrint,
+    Phone,
+    Plus,
+    Search,
+    UsersRound,
+    X,
+} from "lucide-react";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { Button } from "@/components/ui/button";
@@ -1037,7 +1049,7 @@ export function RoomsPage() {
             {selected && (
                 <div
                     role="presentation"
-                    className="fixed inset-0 z-20 grid place-items-center bg-black/40 p-4"
+                    className="fixed inset-0 z-[100] grid place-items-center bg-black/40 p-4"
                     onClick={(event) => {
                         if (event.target === event.currentTarget) setSelected(null);
                     }}
@@ -1046,16 +1058,27 @@ export function RoomsPage() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="room-detail-title"
-                        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+                        className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-x-hidden overflow-y-auto rounded-2xl border border-[#e4dce6] bg-white p-5 shadow-xl sm:p-6"
                     >
-                        <div className="mb-4 flex items-center justify-between">
-                            <h2 id="room-detail-title" className="text-xl font-bold">
-                                {selected.titulo}
-                            </h2>
+                        <div className="mb-5 flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                                <div className="mb-2 flex flex-wrap gap-2">
+                                    <span className="rounded-full bg-[#edf5e9] px-2.5 py-1 text-xs font-semibold text-[#416b30]">
+                                        {typeLabels[selected.tipoMoradia]}
+                                    </span>
+                                    <span className="rounded-full bg-[#f3f1f4] px-2.5 py-1 text-xs font-medium text-[#514b56]">
+                                        {selected.aceitaPets ? "Aceita pets" : "Não aceita pets"}
+                                    </span>
+                                </div>
+                                <h2 id="room-detail-title" className="text-xl font-bold">
+                                    {selected.titulo}
+                                </h2>
+                            </div>
                             <button
                                 ref={closeDialogRef}
                                 aria-label="Fechar detalhes"
                                 onClick={() => setSelected(null)}
+                                className="rounded-full p-2 text-[#625c67] transition hover:bg-[#f3f1f4] hover:text-[#29252d]"
                             >
                                 <X />
                             </button>
@@ -1075,21 +1098,77 @@ export function RoomsPage() {
                                 ))}
                             </div>
                         )}
-                        <p className="text-sm">{selected.descricao}</p>
-                        <p className="mt-3 text-sm text-[#55515a]">{selected.perfilConvivencia}</p>
-                        <p className="mt-3 text-sm">
-                            Endereço:{" "}
-                            {selected.enderecoCompleto ??
-                                "Compartilhado após autorização do anunciante"}
-                        </p>
-                        <p className="mt-1 text-sm">
-                            Contato: {selected.contato ?? "Oculto pelo anunciante"}
-                        </p>
-                        <p className="mt-3 font-bold text-[#315f35]">
-                            R${" "}
-                            {selected.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                            /mês
-                        </p>
+                        <div className="mb-5 rounded-xl bg-[#f5f8f2] p-4">
+                            <p className="text-xs font-medium text-[#687362]">Valor mensal</p>
+                            <p className="mt-1 text-2xl font-bold tracking-tight text-[#315f35]">
+                                R${" "}
+                                {selected.preco.toLocaleString("pt-BR", {
+                                    minimumFractionDigits: 2,
+                                })}
+                                <span className="ml-1 text-sm font-medium text-[#687362]">
+                                    / mês
+                                </span>
+                            </p>
+                        </div>
+                        {selected.descricao && (
+                            <div className="mb-5">
+                                <h3 className="mb-1 text-sm font-semibold text-[#29252d]">
+                                    Sobre o quarto
+                                </h3>
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#514b56]">
+                                    {selected.descricao}
+                                </p>
+                            </div>
+                        )}
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-xl border border-[#ebe6ed] p-3.5">
+                                <p className="flex items-center gap-2 text-xs font-medium text-[#77717c]">
+                                    <MapPin size={15} className="text-[#5b8d42]" /> Localização
+                                </p>
+                                <p className="mt-1.5 text-sm font-medium text-[#29252d]">
+                                    {[selected.bairro, selected.cidade].filter(Boolean).join(", ")}
+                                </p>
+                                <p className="mt-1 text-xs leading-relaxed text-[#625c67]">
+                                    {selected.enderecoCompleto ??
+                                        "Endereço compartilhado após autorização"}
+                                </p>
+                            </div>
+                            <div className="rounded-xl border border-[#ebe6ed] p-3.5">
+                                <p className="flex items-center gap-2 text-xs font-medium text-[#77717c]">
+                                    <Home size={15} className="text-[#5b8d42]" /> Tipo de moradia
+                                </p>
+                                <p className="mt-1.5 text-sm font-medium text-[#29252d]">
+                                    {typeLabels[selected.tipoMoradia]}
+                                </p>
+                            </div>
+                            <div className="rounded-xl border border-[#ebe6ed] p-3.5">
+                                <p className="flex items-center gap-2 text-xs font-medium text-[#77717c]">
+                                    <PawPrint size={15} className="text-[#5b8d42]" /> Pets
+                                </p>
+                                <p className="mt-1.5 text-sm font-medium text-[#29252d]">
+                                    {selected.aceitaPets ? "Aceitos" : "Não aceitos"}
+                                </p>
+                            </div>
+                            <div className="rounded-xl border border-[#ebe6ed] p-3.5">
+                                <p className="flex items-center gap-2 text-xs font-medium text-[#77717c]">
+                                    <Phone size={15} className="text-[#5b8d42]" /> Contato
+                                </p>
+                                <p className="mt-1.5 text-sm font-medium text-[#29252d]">
+                                    {selected.contato ?? "Oculto pelo anunciante"}
+                                </p>
+                            </div>
+                        </div>
+                        {selected.perfilConvivencia && (
+                            <div className="mt-3 rounded-xl border border-[#ebe6ed] p-3.5">
+                                <p className="flex items-center gap-2 text-xs font-medium text-[#77717c]">
+                                    <UsersRound size={15} className="text-[#5b8d42]" /> Perfil de
+                                    convivência
+                                </p>
+                                <p className="mt-1.5 text-sm leading-relaxed text-[#29252d]">
+                                    {selected.perfilConvivencia}
+                                </p>
+                            </div>
+                        )}
                         {tab === "mine" ? (
                             <div className="mt-6">
                                 <h3 className="mb-3 font-semibold">Pessoas interessadas</h3>
@@ -1159,7 +1238,7 @@ export function RoomsPage() {
                             </div>
                         ) : (
                             selected.status === "ABERTO" && (
-                                <div className="mt-5 grid gap-3">
+                                <div className="mt-5 grid gap-3 border-t border-[#eee8ef] pt-5">
                                     {loadingInterestStatus ? (
                                         <p role="status" className="text-sm text-[#77717c]">
                                             Verificando o estado do seu interesse...
@@ -1225,7 +1304,10 @@ export function RoomsPage() {
                                                 </p>
                                             )}
                                             <label className="text-sm">
-                                                Mensagem ao anunciante (opcional)
+                                                Envie uma mensagem{" "}
+                                                <span className="font-normal text-[#77717c]">
+                                                    (opcional)
+                                                </span>
                                                 <textarea
                                                     className={`${inputClass} mt-1 h-24 py-2`}
                                                     value={interestMessage}
