@@ -5,6 +5,15 @@ import { CreateTaskDto, TaskAssignmentType, TaskPeriodicity } from "./dto/create
 import { TaskListQueryDto } from "./dto/task-list-query.dto.js";
 import { UpdateTaskDto } from "./dto/update-task.dto.js";
 import type { TaskCompletionPlan } from "./task-completion.js";
+import { personalTaskList, visibleHouseTask } from "./task-visibility.js";
+
+const assigneeUserSelect = {
+    id: true,
+    nome: true,
+    apelido: true,
+    foto_url: true,
+    cor_avatar: true,
+} as const;
 
 const taskInclude = {
     definicao_tarefa: {
@@ -20,9 +29,9 @@ const taskInclude = {
         },
     },
     participacao_instancia_tarefa_responsavel_participacao_idToparticipacao: {
-        select: { id: true, usuario: { select: { id: true, nome: true, apelido: true } } },
+        select: { id: true, usuario: { select: assigneeUserSelect } },
     },
-    usuario: { select: { id: true, nome: true, apelido: true } },
+    usuario: { select: assigneeUserSelect },
     lembrete: { where: { enviado: false }, orderBy: { lembrar_em: "asc" as const }, take: 1 },
 } as const;
 
@@ -60,43 +69,21 @@ export class TasksRepository {
         const definitionWhere = {
             casa_id: residenceId,
             escopo: "CASA",
-            AND: [
-                {
-                    OR: [
-                        { visibilidade: "PUBLICA" },
-                        {
-                            visibilidade: "PRIVADA",
-                            participacao: { usuario: { id: userId } },
-                        },
-                    ],
-                },
-                ...(query.periodicity ? [{ periodicidade: query.periodicity }] : []),
-                ...(query.search
-                    ? [
-                          {
-                              OR: [
-                                  {
-                                      titulo: {
-                                          contains: query.search,
-                                          mode: "insensitive" as const,
-                                      },
-                                  },
-                                  {
-                                      descricao: {
-                                          contains: query.search,
-                                          mode: "insensitive" as const,
-                                      },
-                                  },
-                                  { tags: { has: query.search } },
-                              ],
-                          },
-                      ]
-                    : []),
-            ],
+            ...(query.periodicity ? { periodicidade: query.periodicity } : {}),
+            ...(query.search
+                ? {
+                      OR: [
+                          { titulo: { contains: query.search, mode: "insensitive" } },
+                          { descricao: { contains: query.search, mode: "insensitive" } },
+                          { tags: { has: query.search } },
+                      ],
+                  }
+                : {}),
         } satisfies Prisma.definicao_tarefaWhereInput;
         return this.prisma.instancia_tarefa.findMany({
             where: {
                 definicao_tarefa: definitionWhere,
+                ...visibleHouseTask(userId, residenceId),
                 ...(query.status ? { status: query.status } : { status: { not: "CANCELADA" } }),
                 ...(query.assigneeId ? { responsavel_participacao_id: query.assigneeId } : {}),
             },
@@ -112,14 +99,8 @@ export class TasksRepository {
                 definicao_tarefa: {
                     casa_id: residenceId,
                     escopo: "CASA",
-                    OR: [
-                        { visibilidade: "PUBLICA" },
-                        {
-                            visibilidade: "PRIVADA",
-                            participacao: { usuario: { id: userId } },
-                        },
-                    ],
                 },
+                ...visibleHouseTask(userId, residenceId),
             },
             include: taskInclude,
         });
@@ -127,10 +108,7 @@ export class TasksRepository {
 
     findPersonalTasks(userId: string) {
         return this.prisma.instancia_tarefa.findMany({
-            where: {
-                definicao_tarefa: { escopo: "INDIVIDUAL", casa_id: null, usuario_id: userId },
-                status: { not: "CANCELADA" },
-            },
+            where: personalTaskList(userId),
             include: taskInclude,
             orderBy: [{ prazo_limite: "asc" }, { data_prevista: "asc" }, { id: "asc" }],
         });

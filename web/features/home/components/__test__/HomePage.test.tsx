@@ -62,7 +62,39 @@ describe("HomePage", () => {
             screen.getByRole("button", { name: "Abrir menu da conta de Pessoa Apelido Sobrenome" })
         ).toHaveTextContent("P");
         expect(screen.queryByText("Casa da Família")).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Ver tarefas pessoais" })).toHaveAttribute(
+            "href",
+            "/tasks?scope=personal"
+        );
         expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
+    });
+
+    it("opens the personal dashboard before the user has joined a residence", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getPersonalHome).mockResolvedValue({
+            tasks: [
+                {
+                    id: "personal-1",
+                    title: "Organizar documentos pessoais",
+                    dueAt: "2000-01-01T12:00:00Z",
+                    status: "ATRASADA",
+                    completedAt: null,
+                },
+            ],
+            expenses: [],
+        });
+        render(<HomePage />);
+
+        await user.click(await screen.findByRole("button", { name: "Pessoal" }));
+        expect(await screen.findByText("Organizar documentos pessoais")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /Ver todas as tarefas pessoais/ })).toHaveAttribute(
+            "href",
+            "/tasks?scope=personal"
+        );
+        expect(getTasks).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole("button", { name: "Início" }));
+        expect(screen.getByRole("heading", { name: "Crie sua casa" })).toBeInTheDocument();
     });
 
     it("loads the residence dashboard after an accepted invitation", async () => {
@@ -168,6 +200,13 @@ describe("HomePage", () => {
         await user.click(await screen.findByRole("button", { name: "Pessoal" }));
         expect(await screen.findByText("Ler capítulo")).toBeInTheDocument();
         expect(
+            screen.getByRole("heading", { name: "Você tem 1 tarefa atrasada" })
+        ).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /^Ver$/ })).toHaveAttribute(
+            "href",
+            "/tasks?scope=personal"
+        );
+        expect(
             await screen.findByText("Não foi possível carregar suas despesas pessoais.")
         ).toBeInTheDocument();
     });
@@ -190,7 +229,7 @@ describe("HomePage", () => {
                 assignmentType: "FIXA",
                 rotationMemberIds: [],
                 residenceId: residence.id,
-                assignee: { id: "member-1", name: "Pessoa" },
+                assignee: { id: "member-2", name: "Outro morador" },
                 dueAt: `${yesterday.toISOString().slice(0, 10)}T12:00:00.000Z`,
                 periodicity: "PERSONALIZADA",
                 repeats: false,
@@ -234,6 +273,9 @@ describe("HomePage", () => {
 
         render(<HomePage />);
         expect(await screen.findByText("Tarefa atrasada")).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: "A casa tem 1 tarefa atrasada" })
+        ).toBeInTheDocument();
         expect(await screen.findByText("Tarefa de hoje")).toBeInTheDocument();
         expect(await screen.findByText("Água")).toBeInTheDocument();
     });

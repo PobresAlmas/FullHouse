@@ -170,7 +170,8 @@ export function AppSidebar({
             <nav aria-label="Navegação principal" className="grid grid-cols-4 gap-1 md:grid-cols-1">
                 {(hasNoResidence
                     ? sections.filter(
-                          ({ id }) => id === "home" || id === "rooms" || id === "settings"
+                          ({ id }) =>
+                              id === "home" || id === "tasks" || id === "rooms" || id === "settings"
                       )
                     : sections.filter(({ id }) => id !== "rooms")
                 ).map(({ id, label, href, icon: Icon }) => {

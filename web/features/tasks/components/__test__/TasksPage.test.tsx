@@ -1,21 +1,25 @@
 import type { ReactNode } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     completePersonalTask,
+    completeTask,
     createPersonalTask,
     createTaskExchangeRequest,
+    createTask,
     deletePersonalTask,
     getPersonalTasks,
     getTaskExchangeRequests,
     getTaskMembers,
     getTaskResidences,
     getTasks,
+    reopenTask,
+    respondToTaskExchange,
 } from "../../api/tasks.api";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { createResidenceFixture } from "@/test/fixtures/residence";
-import type { Task } from "../../api/tasks.api";
+import type { Task, TaskExchangeRequest } from "../../api/tasks.api";
 import TasksPage from "../TasksPage";
 
 vi.mock("../../api/tasks.api", () => ({
@@ -31,6 +35,7 @@ vi.mock("../../api/tasks.api", () => ({
     getTaskResidences: vi.fn(),
     getTaskExchangeRequests: vi.fn(),
     getTasks: vi.fn(),
+    reopenTask: vi.fn(),
     respondToTaskExchange: vi.fn(),
     updatePersonalTask: vi.fn(),
     updateTask: vi.fn(),
@@ -94,7 +99,9 @@ const residenceTask: Task = {
 };
 
 describe("TasksPage", () => {
+    let originalLocation: string;
     beforeEach(() => {
+        originalLocation = window.location.href;
         vi.clearAllMocks();
         vi.mocked(useAuth).mockReturnValue({
             user: { id: "user-1", name: "Ana Silva", email: "ana@example.com" },
@@ -113,6 +120,10 @@ describe("TasksPage", () => {
         vi.mocked(deletePersonalTask).mockResolvedValue(undefined);
     });
 
+    afterEach(() => {
+        window.history.replaceState(null, "", originalLocation);
+    });
+
     it("loads personal tasks when the user has no residence and shows the empty state", async () => {
         render(<TasksPage />);
 
@@ -122,6 +133,143 @@ describe("TasksPage", () => {
         expect(getPersonalTasks).toHaveBeenCalledOnce();
         expect(getTaskMembers).not.toHaveBeenCalled();
     });
+
+    it("keeps personal tasks available when the residence lookup fails", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getTaskResidences).mockRejectedValueOnce(new Error("Erro da residência"));
+        vi.mocked(getPersonalTasks).mockResolvedValue([task]);
+        render(<TasksPage initialScope="personal" />);
+
+        expect(await screen.findByRole("heading", { name: task.title })).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toHaveTextContent(
+            "As tarefas pessoais continuam disponíveis."
+        );
+        await user.type(screen.getByRole("textbox", { name: "Buscar tarefas" }), "fora da lista");
+        expect(screen.getByText("Nenhuma tarefa encontrada.")).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Limpar filtros" }));
+        expect(screen.getByRole("heading", { name: task.title })).toBeInTheDocument();
+    });
+
+    it("opens the personal context directly and keeps other residents' tasks in the house list", async () => {
+        const user = userEvent.setup();
+        const otherTask = { ...residenceTask, assignee: { id: bruno.id, name: bruno.name } };
+        window.history.replaceState(null, "", "/tasks?scope=personal");
+        vi.mocked(getTaskResidences).mockResolvedValue([residence]);
+        vi.mocked(getPersonalTasks).mockResolvedValue([task]);
+        vi.mocked(getTasks).mockResolvedValue([otherTask]);
+
+        render(<TasksPage initialScope="personal" />);
+
+        expect(await screen.findByRole("heading", { name: task.title })).toBeInTheDocument();
+        expect(getTasks).not.toHaveBeenCalled();
+        expect(screen.queryByText("Solicitações de troca")).not.toBeInTheDocument();
+        const personalButton = screen.getByRole("button", { name: "Pessoal", pressed: true });
+        const houseButton = screen.getByRole("button", { name: residence.name, pressed: false });
+        expect(personalButton.className).toBe(houseButton.className);
+
+        await user.click(houseButton);
+        expect(
+            await screen.findByRole("heading", { name: residenceTask.title })
+        ).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: task.title })).not.toBeInTheDocument();
+        expect(new URLSearchParams(window.location.search).has("scope")).toBe(false);
+        expect(houseButton).toHaveAttribute("aria-pressed", "true");
+        expect(personalButton).toHaveAttribute("aria-pressed", "false");
+
+        await user.click(screen.getByRole("button", { name: "Pessoal" }));
+        expect(await screen.findByRole("heading", { name: task.title })).toBeInTheDocument();
+        expect(
+            screen.queryByRole("heading", { name: residenceTask.title })
+        ).not.toBeInTheDocument();
+        expect(getPersonalTasks).toHaveBeenCalledTimes(2);
+        expect(new URLSearchParams(window.location.search).get("scope")).toBe("personal");
+    });
+
+    it("lists a private house assignment in Personal with the assignee photo and residence actions", async () => {
+        const user = userEvent.setup();
+        const assignedTask: Task = {
+            ...residenceTask,
+            visibility: "PRIVADA",
+            assignee: { id: ana.id, name: ana.name, photo: "/ana-avatar.png" },
+        };
+        vi.mocked(getPersonalTasks).mockResolvedValue([task, assignedTask]);
+        vi.mocked(completeTask).mockResolvedValue({ ...assignedTask, status: "CONCLUIDA" });
+        vi.mocked(reopenTask).mockResolvedValue(assignedTask);
+        render(<TasksPage initialScope="personal" />);
+
+        expect(await screen.findByRole("heading", { name: task.title })).toBeInTheDocument();
+        const row = (await screen.findByRole("heading", { name: assignedTask.title })).closest(
+            "article"
+        )!;
+        expect(within(row).getByText("Da casa")).toBeInTheDocument();
+        expect(within(row).getByText("Privada")).toBeInTheDocument();
+        expect(within(row).getByAltText(`Foto de ${ana.name}`)).toHaveAttribute(
+            "src",
+            "/ana-avatar.png"
+        );
+        expect(within(row).queryByRole("button", { name: "Editar" })).not.toBeInTheDocument();
+        await user.click(
+            within(row).getByRole("checkbox", { name: `Concluir ${assignedTask.title}` })
+        );
+        expect(completeTask).toHaveBeenCalledWith(residence.id, assignedTask.id);
+        expect(completePersonalTask).not.toHaveBeenCalled();
+        await user.click(
+            await within(row).findByRole("checkbox", { name: `Reabrir ${assignedTask.title}` })
+        );
+        expect(reopenTask).toHaveBeenCalledWith(residence.id, assignedTask.id);
+    });
+
+    it("shows validation in the form and reveals a newly saved private household task", async () => {
+        const user = userEvent.setup();
+        const privateTask: Task = {
+            ...residenceTask,
+            id: "private-task-id",
+            title: "Revisar documentos",
+            visibility: "PRIVADA",
+        };
+        vi.mocked(getTaskResidences).mockResolvedValue([
+            {
+                ...residence,
+                creationEditPolicy: "LIDERES",
+                membership: { id: ana.id, role: "MORADOR", canEditContent: true },
+            },
+        ]);
+        vi.mocked(getTaskMembers).mockResolvedValue([ana, bruno]);
+        vi.mocked(getTasks).mockResolvedValue([residenceTask]);
+        vi.mocked(createTask).mockResolvedValue(privateTask);
+
+        render(<TasksPage />);
+
+        await screen.findByRole("heading", { name: residenceTask.title });
+        const search = screen.getByRole("textbox", { name: "Buscar tarefas" });
+        await user.type(search, "limpar");
+        await user.click(screen.getByRole("button", { name: "Nova tarefa" }));
+        const dialog = within(screen.getByRole("dialog", { name: "Nova tarefa" }));
+        await user.type(dialog.getByLabelText("Título *"), privateTask.title);
+        await user.click(dialog.getByRole("button", { name: "Salvar tarefa" }));
+        const error = await dialog.findByRole("alert");
+        expect(error).toHaveTextContent("Selecione um responsável para a tarefa.");
+        expect(error).toHaveFocus();
+
+        await user.click(dialog.getByRole("button", { name: "Privada" }));
+        expect(dialog.getByRole("button", { name: ana.name, pressed: true })).toBeInTheDocument();
+        expect(dialog.queryByRole("button", { name: bruno.name })).not.toBeInTheDocument();
+        await user.click(dialog.getByRole("button", { name: "Salvar tarefa" }));
+
+        expect(createTask).toHaveBeenCalledWith(
+            residence.id,
+            expect.objectContaining({
+                title: privateTask.title,
+                visibility: "PRIVADA",
+                assignmentType: "FIXA",
+                assigneeId: ana.id,
+            })
+        );
+        expect(await screen.findByRole("heading", { name: privateTask.title })).toBeInTheDocument();
+        expect(screen.getByText("Privada")).toBeInTheDocument();
+        expect(search).toHaveValue("");
+        expect(screen.getByRole("status")).toHaveTextContent("Tarefa criada com sucesso.");
+    }, 15_000);
 
     it("creates a personal task without household assignment fields", async () => {
         const user = userEvent.setup();
@@ -284,5 +432,53 @@ describe("TasksPage", () => {
             bruno.id,
             suggested.id
         );
+    });
+
+    it("shows the final task pair before accepting a different task", async () => {
+        const user = userEvent.setup();
+        const replacement = {
+            ...residenceTask,
+            id: "replacement-task",
+            title: "Organizar a sala",
+        };
+        const incoming: TaskExchangeRequest = {
+            id: "pending-exchange",
+            status: "PENDENTE",
+            type: "PONTUAL",
+            incoming: true,
+            requester: bruno.name,
+            recipient: ana.name,
+            task: { id: "offered-task", title: "Regar plantas", dueAt: task.dueAt },
+            targetTask: residenceTask,
+        };
+        vi.mocked(getTaskResidences).mockResolvedValue([residence]);
+        vi.mocked(getTasks).mockResolvedValue([residenceTask, replacement]);
+        vi.mocked(getTaskExchangeRequests)
+            .mockResolvedValueOnce([incoming])
+            .mockResolvedValueOnce([{ ...incoming, status: "ACEITA", targetTask: replacement }]);
+        vi.mocked(respondToTaskExchange).mockResolvedValue(undefined);
+
+        render(<TasksPage />);
+
+        await user.click(
+            await screen.findByRole("combobox", {
+                name: `Escolher tarefa para trocar com ${bruno.name}`,
+            })
+        );
+        await user.click(screen.getByRole("option", { name: replacement.title }));
+        const preview = screen.getByText(/A tarefa é diferente da sugestão/);
+        expect(preview).toHaveTextContent("Você ficará com Regar plantas");
+        expect(preview).toHaveTextContent("Bruno Lima ficará com Organizar a sala");
+        expect(respondToTaskExchange).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole("button", { name: "Aceitar troca" }));
+        expect(respondToTaskExchange).toHaveBeenCalledWith(
+            residence.id,
+            incoming.id,
+            "ACEITA",
+            replacement.id,
+            false
+        );
+        expect(await screen.findByRole("status")).toHaveTextContent("Troca aceita.");
     });
 });

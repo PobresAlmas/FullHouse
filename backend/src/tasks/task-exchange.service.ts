@@ -210,7 +210,9 @@ export class TaskExchangeService {
             },
             include: {
                 instancia_tarefa: { include: { definicao_tarefa: true } },
-                instancia_tarefa_alvo: { include: { definicao_tarefa: true } },
+                participacao_solicitacao_troca_tarefa_solicitante_participacao_idToparticipacao: {
+                    select: { usuario_id: true, data_saida: true },
+                },
             },
         });
         if (!request) throw new NotFoundException("A solicitação não está disponível.");
@@ -226,6 +228,7 @@ export class TaskExchangeService {
                           status: { in: [...OPEN_STATUSES] },
                           definicao_tarefa: { casa_id: residenceId, escopo: "CASA" },
                       },
+                      include: { definicao_tarefa: { select: { titulo: true } } },
                   })
                 : null;
         if (status === "ACEITA" && !targetTask && !acceptWithoutTarget) {
@@ -309,6 +312,24 @@ export class TaskExchangeService {
                 });
                 if (updatedRequest.count !== 1) {
                     throw new BadRequestException("A solicitação já foi respondida.");
+                }
+                const requester =
+                    request.participacao_solicitacao_troca_tarefa_solicitante_participacao_idToparticipacao;
+                if (status === "ACEITA" && requester.data_saida === null) {
+                    const offeredTitle = request.instancia_tarefa.definicao_tarefa.titulo;
+                    await transaction.notificacao.create({
+                        data: {
+                            usuario_id: requester.usuario_id,
+                            casa_id: residenceId,
+                            tipo: "TAREFA",
+                            titulo: targetTask ? "Troca de tarefa aceita" : "Tarefa transferida",
+                            mensagem: targetTask
+                                ? `Você ficou com “${targetTask.definicao_tarefa.titulo}”. A tarefa “${offeredTitle}” ficou com o outro morador.`
+                                : `A tarefa “${offeredTitle}” foi assumida pelo outro morador.`,
+                            entidade_tipo: "TROCA_TAREFA",
+                            entidade_id: request.id,
+                        },
+                    });
                 }
                 return { id: request.id, status };
             },

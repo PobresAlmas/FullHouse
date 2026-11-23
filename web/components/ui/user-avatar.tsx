@@ -1,17 +1,24 @@
+"use client";
+
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import Image from "next/image";
 
 export const avatarGradients: Record<string, string> = {
-    "#e8f3e8": "linear-gradient(135deg, #7dcc45 0%, #347b2b 100%)",
-    "#e8e4f4": "linear-gradient(135deg, #aa82df 0%, #563395 100%)",
-    "#e2eff7": "linear-gradient(135deg, #54b9e8 0%, #294c92 100%)",
-    "#f8eadb": "linear-gradient(135deg, #f4b75c 0%, #b76225 100%)",
-    "#f5e1e7": "linear-gradient(135deg, #ec8eaf 0%, #a63868 100%)",
-    "#ece9e2": "linear-gradient(135deg, #aaa49a 0%, #625e58 100%)",
+    "#e8f3e8": "linear-gradient(135deg, #3d7628 0%, #285a27 100%)",
+    "#e8e4f4": "linear-gradient(135deg, #7850ab 0%, #52318d 100%)",
+    "#e2eff7": "linear-gradient(135deg, #256fa3 0%, #294c92 100%)",
+    "#f8eadb": "linear-gradient(135deg, #a45618 0%, #793c17 100%)",
+    "#f5e1e7": "linear-gradient(135deg, #a83e72 0%, #80274e 100%)",
+    "#ece9e2": "linear-gradient(135deg, #716756 0%, #514a40 100%)",
 };
 
 export function getAvatarGradient(backgroundColor: string) {
-    return avatarGradients[backgroundColor.toLowerCase()] ?? avatarGradients["#e8f3e8"];
+    const color = backgroundColor.toLowerCase();
+    const preset = avatarGradients[color];
+    if (preset) return preset;
+    if (!/^#[0-9a-f]{6}$/.test(color)) return avatarGradients["#e8f3e8"];
+    return `linear-gradient(135deg, color-mix(in srgb, ${color} 40%, #17121e), color-mix(in srgb, ${color} 30%, #17121e))`;
 }
 
 export function UserAvatar({
@@ -31,6 +38,7 @@ export function UserAvatar({
     showInitial?: boolean;
     className?: string;
 }) {
+    const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
     const initial = name?.trim().charAt(0).toLocaleUpperCase("pt-BR") || "?";
     const sizeClass =
         size === "lg"
@@ -44,7 +52,7 @@ export function UserAvatar({
         shape === "circle" || (!shape && size === "lg") ? "rounded-full" : "rounded-xl";
     const pixelSize = size === "lg" ? 96 : size === "md" ? 48 : size === "xs" ? 32 : 40;
 
-    if (photo) {
+    if (photo && photo !== failedPhoto) {
         return (
             <Image
                 src={photo}
@@ -52,12 +60,13 @@ export function UserAvatar({
                 width={pixelSize}
                 height={pixelSize}
                 unoptimized
+                onError={() => setFailedPhoto(photo)}
                 className={`${sizeClass} ${shapeClass} shrink-0 object-cover ${className}`}
             />
         );
     }
 
-    const style = { background: getAvatarGradient(backgroundColor) } as CSSProperties;
+    const style: CSSProperties = { background: getAvatarGradient(backgroundColor) };
     return (
         <span
             aria-hidden="true"
