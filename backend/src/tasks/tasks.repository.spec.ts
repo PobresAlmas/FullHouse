@@ -70,6 +70,18 @@ describe("TasksRepository", () => {
         });
     });
 
+    const houseVisibility = [
+        { definicao_tarefa: { visibilidade: "PUBLICA" } },
+        {
+            definicao_tarefa: { visibilidade: "PRIVADA" },
+            participacao_instancia_tarefa_responsavel_participacao_idToparticipacao: {
+                usuario_id: "user-1",
+                data_saida: null,
+                casa_id: "home-1",
+            },
+        },
+    ];
+
     it("builds task list visibility, status, assignee, search, and recurrence filters", async () => {
         const query = {
             search: "kitchen",
@@ -84,26 +96,14 @@ describe("TasksRepository", () => {
             definicao_tarefa: {
                 casa_id: "home-1",
                 escopo: "CASA",
-                AND: [
-                    {
-                        OR: [
-                            { visibilidade: "PUBLICA" },
-                            {
-                                visibilidade: "PRIVADA",
-                                participacao: { usuario: { id: "user-1" } },
-                            },
-                        ],
-                    },
-                    { periodicidade: TaskPeriodicity.SEMANAL },
-                    {
-                        OR: [
-                            { titulo: { contains: "kitchen", mode: "insensitive" } },
-                            { descricao: { contains: "kitchen", mode: "insensitive" } },
-                            { tags: { has: "kitchen" } },
-                        ],
-                    },
+                periodicidade: TaskPeriodicity.SEMANAL,
+                OR: [
+                    { titulo: { contains: "kitchen", mode: "insensitive" } },
+                    { descricao: { contains: "kitchen", mode: "insensitive" } },
+                    { tags: { has: "kitchen" } },
                 ],
             },
+            OR: houseVisibility,
             status: "PENDENTE",
             responsavel_participacao_id: "member-1",
         });
@@ -126,18 +126,8 @@ describe("TasksRepository", () => {
             definicao_tarefa: {
                 casa_id: "home-1",
                 escopo: "CASA",
-                AND: [
-                    {
-                        OR: [
-                            { visibilidade: "PUBLICA" },
-                            {
-                                visibilidade: "PRIVADA",
-                                participacao: { usuario: { id: "user-1" } },
-                            },
-                        ],
-                    },
-                ],
             },
+            OR: houseVisibility,
             status: { not: "CANCELADA" },
         });
     });
@@ -153,18 +143,37 @@ describe("TasksRepository", () => {
                 definicao_tarefa: {
                     casa_id: "home-1",
                     escopo: "CASA",
-                    OR: [
-                        { visibilidade: "PUBLICA" },
-                        { visibilidade: "PRIVADA", participacao: { usuario: { id: "user-1" } } },
-                    ],
                 },
+                OR: houseVisibility,
             },
             include: expect.any(Object),
         });
         expect(prisma.instancia_tarefa.findMany).toHaveBeenCalledWith({
             where: {
-                definicao_tarefa: { escopo: "INDIVIDUAL", casa_id: null, usuario_id: "user-1" },
                 status: { not: "CANCELADA" },
+                OR: [
+                    {
+                        definicao_tarefa: {
+                            escopo: "INDIVIDUAL",
+                            casa_id: null,
+                            usuario_id: "user-1",
+                        },
+                    },
+                    {
+                        definicao_tarefa: {
+                            escopo: "CASA",
+                            casa: {
+                                status: "ATIVA",
+                                excluido_em: null,
+                                participacao: { some: { usuario_id: "user-1", data_saida: null } },
+                            },
+                        },
+                        participacao_instancia_tarefa_responsavel_participacao_idToparticipacao: {
+                            usuario_id: "user-1",
+                            data_saida: null,
+                        },
+                    },
+                ],
             },
             include: expect.any(Object),
             orderBy: [{ prazo_limite: "asc" }, { data_prevista: "asc" }, { id: "asc" }],

@@ -30,7 +30,7 @@ export interface Task {
     assignmentType: TaskAssignmentType;
     rotationMemberIds: string[];
     residenceId: string | null;
-    assignee: { id: string; name: string } | null;
+    assignee: Pick<TaskMember, "id" | "name" | "photo" | "avatarBackgroundColor"> | null;
     dueAt: string;
     periodicity: TaskPeriodicity;
     repeats: boolean;

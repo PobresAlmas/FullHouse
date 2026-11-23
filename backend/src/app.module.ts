@@ -34,7 +34,10 @@ import { NotificationsModule } from "./notifications/notifications.module.js";
                 DATABASE_URL: Joi.string().required(),
                 JWT_SECRET: Joi.string().required(),
                 JWT_EXPIRES_IN: Joi.string().required(),
-                MINIO_ENDPOINT: Joi.string().required(),
+                MINIO_ENDPOINT: Joi.string()
+                    .uri({ scheme: ["http", "https"] })
+                    .required(),
+                MINIO_PUBLIC_ENDPOINT: Joi.string().uri({ scheme: ["http", "https"] }),
                 MINIO_ACCESS_KEY: Joi.string().required(),
                 MINIO_SECRET_KEY: Joi.string().required(),
                 MINIO_BUCKET: Joi.string().required(),

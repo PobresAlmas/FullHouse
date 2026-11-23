@@ -177,7 +177,7 @@ export function HomePage() {
 
     useEffect(() => {
         const currentRequest = ++requestId.current;
-        if (loadingResidences || residenceError || residences.length === 0) return;
+        if (loadingResidences || residenceError) return;
 
         if (context === "personal") {
             void getPersonalHome()
@@ -277,16 +277,16 @@ export function HomePage() {
     const currentHomeErrors = hasCurrentContextData ? homeErrors : {};
     const currentPersonalError = personalError?.key === requestKey ? personalError.message : "";
     const isContextLoading =
-        residences.length > 0 &&
+        !loadingResidences &&
         !residenceError &&
-        Boolean(selectedId) &&
-        residences.some((residence) => residence.id === selectedId) &&
+        (context === "personal" || selectedResidence !== null) &&
         !hasCurrentContextData &&
         !currentPersonalError;
     const tasks =
         context === "personal"
             ? (currentPersonalData?.tasks ?? [])
             : (currentHomeData?.tasks ?? []);
+    const tasksHref = context === "personal" ? "/tasks?scope=personal" : "/tasks";
     const taskMetrics = getHomeTaskMetrics(tasks, today);
     const overdueTasks = taskMetrics.overdue;
     const todayTasks = taskMetrics.today;
@@ -342,7 +342,7 @@ export function HomePage() {
                             : "Você ainda não pertence a nenhuma casa"
                     }
                     residenceControl={
-                        residences.length > 0 ? (
+                        !loadingResidences && !residenceError ? (
                             <div
                                 className="flex rounded-xl bg-[#e8e7eb] p-1"
                                 aria-label="Contexto da Home"
@@ -355,14 +355,14 @@ export function HomePage() {
                                 >
                                     Pessoal
                                 </button>
-                                {residences.length === 1 ? (
+                                {residences.length <= 1 ? (
                                     <button
                                         type="button"
                                         onClick={() => setContext("residence")}
                                         aria-pressed={context === "residence"}
                                         className={`rounded-lg px-5 py-2 text-xs ${context === "residence" ? "bg-[#4e812f] text-white" : "text-[#3e3a41]"}`}
                                     >
-                                        {selectedResidence?.name}
+                                        {selectedResidence?.name ?? "Início"}
                                     </button>
                                 ) : (
                                     <SystemSelect
@@ -392,7 +392,7 @@ export function HomePage() {
                                 aria-label={`Abrir menu da conta de ${userName}`}
                                 aria-haspopup="menu"
                                 aria-expanded={profileMenuOpen}
-                                className="grid size-10 place-items-center rounded-xl transition hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
+                                className="grid size-10 place-items-center rounded-xl transition hover:ring-2 hover:ring-[#4e812f]/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
                             >
                                 <UserAvatar
                                     name={avatarName}
@@ -450,7 +450,7 @@ export function HomePage() {
                             </p>
                             <Button onClick={() => void loadResidences()}>Tentar novamente</Button>
                         </section>
-                    ) : residences.length === 0 ? (
+                    ) : residences.length === 0 && context === "residence" ? (
                         <section className="max-w-[680px] rounded-xl border border-[#d2c8d5] bg-white p-7 md:px-10 md:py-8">
                             <div className="mx-auto mb-3 grid size-16 place-items-center rounded-full bg-[#dce8d8] text-[#4e812f]">
                                 <PlusCircle size={34} />
@@ -496,6 +496,14 @@ export function HomePage() {
                                     {creating ? "Criando casa…" : "Criar casa"}
                                 </Button>
                             </form>
+                            <div className="mt-4 text-center">
+                                <Link
+                                    href="/tasks?scope=personal"
+                                    className="text-sm font-semibold text-[#356a22] underline"
+                                >
+                                    Ver tarefas pessoais
+                                </Link>
+                            </div>
                         </section>
                     ) : (
                         <>
@@ -530,7 +538,8 @@ export function HomePage() {
                                                 <AlertCircle size={17} className="text-red-600" />
                                             }
                                         >
-                                            Você tem {overdueTasks.length} tarefa
+                                            {context === "personal" ? "Você tem" : "A casa tem"}{" "}
+                                            {overdueTasks.length} tarefa
                                             {overdueTasks.length === 1 ? "" : "s"} atrasada
                                             {overdueTasks.length === 1 ? "" : "s"}
                                         </CardHeading>
@@ -554,7 +563,7 @@ export function HomePage() {
                                                         </p>
                                                     </div>
                                                     <Link
-                                                        href="/tasks"
+                                                        href={tasksHref}
                                                         className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-700"
                                                     >
                                                         Ver
@@ -576,10 +585,12 @@ export function HomePage() {
                                             }
                                             action={
                                                 <Link
-                                                    href="/tasks"
+                                                    href={tasksHref}
                                                     className="text-xs font-semibold text-[#4e812f]"
                                                 >
-                                                    Ver tarefas →
+                                                    {context === "personal"
+                                                        ? "Ver todas as tarefas pessoais →"
+                                                        : "Ver tarefas →"}
                                                 </Link>
                                             }
                                         >

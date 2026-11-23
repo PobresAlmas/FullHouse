@@ -61,11 +61,12 @@ describe("AppSidebar", () => {
         expect(screen.getByRole("button", { name: "Sair" })).toHaveClass("text-[#a14d55]");
     });
 
-    it("shows home, room search, and settings navigation when no residence is linked", () => {
+    it("shows personal tasks, home, room search, and settings when no residence is linked", () => {
         render(<AppSidebar activeSection="settings" noResidence />);
 
         expect(screen.getByRole("link", { name: "Home" })).not.toHaveAttribute("aria-current");
         expect(screen.getByRole("link", { name: "Quartos" })).toHaveAttribute("href", "/rooms");
+        expect(screen.getByRole("link", { name: "Tarefas" })).toHaveAttribute("href", "/tasks");
         expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(
             "aria-current",
             "page"

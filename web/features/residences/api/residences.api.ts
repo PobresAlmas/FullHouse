@@ -17,7 +17,7 @@ export interface Residence {
     neighborhood: string | null;
     status: string;
     createdAt?: string;
-    membership: { id: string; role: ResidenceRole } | null;
+    membership: { id: string; role: ResidenceRole; canEditContent?: boolean | null } | null;
     creationEditPolicy: CreationEditPolicy;
 }
 

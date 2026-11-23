@@ -1,7 +1,8 @@
 "use client";
 import { SystemSelect } from "@/components/ui/system-select";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
     Bell,
@@ -68,6 +69,9 @@ type TaskFormState = {
     visibility: "PUBLICA" | "PRIVADA";
 };
 type TaskTab = "all" | "overdue" | "pending" | "completed";
+
+const taskContextButton =
+    "h-9 min-w-0 cursor-pointer truncate rounded-lg px-2 text-xs font-semibold text-foreground transition-colors hover:bg-background/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f] disabled:cursor-wait aria-pressed:bg-[#3e6b25] aria-pressed:text-white";
 
 const initialForm: TaskFormState = {
     title: "",
@@ -186,7 +190,7 @@ function isPersonalTask(task: Task) {
     return task.scope === "INDIVIDUAL";
 }
 
-export default function TasksPage() {
+export default function TasksPage({ initialScope }: { initialScope?: "personal" }) {
     const { user } = useAuth();
     const [residences, setResidences] = useState<TaskResidence[]>([]);
     const [residenceId, setResidenceId] = useState("");
@@ -210,91 +214,100 @@ export default function TasksPage() {
     const [dataError, setDataError] = useState("");
     const [notice, setNotice] = useState("");
     const [exchangeRequests, setExchangeRequests] = useState<TaskExchangeRequest[]>([]);
+    const [respondingRequestId, setRespondingRequestId] = useState("");
+    const contextVersion = useRef(0);
+    const advanceContextVersion = useCallback(() => ++contextVersion.current, []);
 
     const residence = residences.find((item) => item.id === residenceId) ?? null;
     const myMemberId = residence?.membership?.id ?? "";
     const userName = user?.name?.trim() || user?.email?.split("@")[0] || "Minha conta";
-    const canEditHouseTasks = canCreateOrEditResidenceContent(
-        residence?.membership?.role,
-        residence?.creationEditPolicy
-    );
     const canDeleteHouseTasks = isResidenceManager(residence?.membership?.role);
+    const canEditHouseTasks =
+        canDeleteHouseTasks ||
+        Boolean(
+            residence?.membership &&
+            (residence.membership.canEditContent ??
+                canCreateOrEditResidenceContent(
+                    residence.membership.role,
+                    residence.creationEditPolicy
+                ))
+        );
 
     useEffect(() => {
         document.documentElement.classList.add("tasks-hide-page-scrollbar");
         return () => document.documentElement.classList.remove("tasks-hide-page-scrollbar");
     }, []);
 
-    const loadResidenceData = useCallback(async (id: string) => {
-        const [nextMembers, nextTasks] = await Promise.all([getTaskMembers(id), getTasks(id)]);
-        setMembers(nextMembers);
-        setTasks(nextTasks);
-        try {
-            setExchangeRequests(await getTaskExchangeRequests(id));
-        } catch (requestError: unknown) {
+    const loadResidenceData = useCallback(async (id: string, version: number) => {
+        const [nextMembers, nextTasks, nextRequests] = await Promise.allSettled([
+            getTaskMembers(id),
+            getTasks(id),
+            getTaskExchangeRequests(id),
+        ]);
+        if (contextVersion.current !== version) return;
+        if (nextMembers.status === "rejected") throw nextMembers.reason;
+        if (nextTasks.status === "rejected") throw nextTasks.reason;
+        setMembers(nextMembers.value);
+        setTasks(nextTasks.value);
+        if (nextRequests.status === "fulfilled") {
+            setExchangeRequests(nextRequests.value);
+        } else {
             setExchangeRequests([]);
-            setError(getErrorMessage(requestError));
+            setError(getErrorMessage(nextRequests.reason));
         }
     }, []);
 
     useEffect(() => {
-        let active = true;
+        const version = advanceContextVersion();
         async function loadInitialContext() {
             try {
-                const available = await getTaskResidences();
-                if (!active) return;
+                const available = await getTaskResidences().catch(() => {
+                    if (contextVersion.current === version) {
+                        setError(
+                            "Não foi possível consultar a residência. As tarefas pessoais continuam disponíveis."
+                        );
+                    }
+                    return [];
+                });
+                if (contextVersion.current !== version) return;
                 setResidences(available);
                 const id = available[0]?.id ?? "";
+                const nextScope = initialScope ?? (id ? "home" : "personal");
                 setResidenceId(id);
-                setScope(id ? "home" : "personal");
-                if (id) {
-                    const [nextMembers, nextTasks] = await Promise.all([
-                        getTaskMembers(id),
-                        getTasks(id),
-                    ]);
-                    if (!active) return;
-                    setMembers(nextMembers);
-                    setTasks(nextTasks);
-                    setNotice("");
-                    getTaskExchangeRequests(id)
-                        .then((requests) => active && setExchangeRequests(requests))
-                        .catch((requestError: unknown) => {
-                            if (active) {
-                                setExchangeRequests([]);
-                                setError(getErrorMessage(requestError));
-                            }
-                        });
+                setScope(nextScope);
+                if (nextScope === "home") {
+                    await loadResidenceData(id, version);
                 } else {
                     const personalTasks = await getPersonalTasks();
-                    if (!active) return;
-                    setTasks(personalTasks);
-                    setMembers([]);
-                    setExchangeRequests([]);
+                    if (contextVersion.current === version) setTasks(personalTasks);
                 }
             } catch (loadError: unknown) {
-                if (active) {
+                if (contextVersion.current === version) {
                     const message = getErrorMessage(loadError);
                     setError(message);
                     setDataError(message);
                 }
             } finally {
-                if (active) setLoading(false);
+                if (contextVersion.current === version) setLoading(false);
             }
         }
         void loadInitialContext();
         return () => {
-            active = false;
+            advanceContextVersion();
         };
-    }, []);
+    }, [advanceContextVersion, initialScope, loadResidenceData]);
 
     useEffect(() => {
         if (!showForm) return;
         function closeOnEscape(event: KeyboardEvent) {
-            if (event.key === "Escape") setShowForm(false);
+            if (event.key === "Escape" && !saving) {
+                setShowForm(false);
+                setError("");
+            }
         }
         window.addEventListener("keydown", closeOnEscape);
         return () => window.removeEventListener("keydown", closeOnEscape);
-    }, [showForm]);
+    }, [showForm, saving]);
 
     const contextualTasks = tasks;
     const categories = useMemo(
@@ -317,9 +330,10 @@ export default function TasksPage() {
     const todayCompleted = contextualTasks.filter(
         (task) => task.status === "CONCLUIDA" && task.completedAt?.slice(0, 10) === todayKey
     );
-    const myPending = activeTasks.filter(
-        (task) => isPersonalTask(task) || task.assignee?.id === myMemberId
-    );
+    const myPending =
+        scope === "personal"
+            ? activeTasks
+            : activeTasks.filter((task) => task.assignee?.id === myMemberId);
 
     const visibleTasks = useMemo(() => {
         const normalized = search.trim().toLocaleLowerCase("pt-BR");
@@ -355,53 +369,45 @@ export default function TasksPage() {
             .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
     }, [activeTab, activeTag, search, selectedDate, contextualTasks, todayKey]);
 
-    const visibleExchangeRequests = exchangeRequests;
+    function resetTaskFilters() {
+        setActiveTab("all");
+        setSelectedDate("");
+        setActiveTag("");
+        setSearch("");
+    }
 
-    async function changeResidence(id: string) {
-        setResidenceId(id);
-        setScope("home");
+    async function changeScope(nextScope: "personal" | "home", nextResidenceId = residenceId) {
+        if (nextScope === "home" && !nextResidenceId) return;
+        const version = advanceContextVersion();
+        const url = new URL(window.location.href);
+        if (nextScope === "personal") url.searchParams.set("scope", "personal");
+        else url.searchParams.delete("scope");
+        window.history.replaceState(null, "", url);
+        setScope(nextScope);
+        setResidenceId(nextResidenceId);
+        resetTaskFilters();
         setTasks([]);
         setMembers([]);
         setExchangeRequests([]);
+        setConfirmDeleteId("");
         setError("");
         setDataError("");
         setNotice("");
         setLoading(true);
         try {
-            await loadResidenceData(id);
-        } catch (loadError: unknown) {
-            const message = getErrorMessage(loadError);
-            setError(message);
-            setDataError(message);
-        } finally {
-            setLoading(false);
-        }
-    }
-    async function changeScope(nextScope: "personal" | "home") {
-        if (nextScope === "home" && !residenceId) return;
-        setScope(nextScope);
-        setActiveTab("all");
-        setSelectedDate("");
-        setActiveTag("");
-        setTasks([]);
-        setMembers([]);
-        setExchangeRequests([]);
-        setError("");
-        setDataError("");
-        setLoading(true);
-        try {
             if (nextScope === "personal") {
                 const personalTasks = await getPersonalTasks();
-                setTasks(personalTasks);
+                if (contextVersion.current === version) setTasks(personalTasks);
             } else {
-                await loadResidenceData(residenceId);
+                await loadResidenceData(nextResidenceId, version);
             }
         } catch (loadError: unknown) {
+            if (contextVersion.current !== version) return;
             const message = getErrorMessage(loadError);
             setError(message);
             setDataError(message);
         } finally {
-            setLoading(false);
+            if (contextVersion.current === version) setLoading(false);
         }
     }
     function openCreateForm() {
@@ -414,17 +420,29 @@ export default function TasksPage() {
             visibility: scope === "personal" ? "PRIVADA" : "PUBLICA",
         });
         setError("");
+        setNotice("");
         setShowForm(true);
     }
     function openEditForm(task: Task) {
-        if (!isPersonalTask(task) && !canEditHouseTasks) return;
+        if (!isPersonalTask(task) && (scope !== "home" || !canEditHouseTasks)) return;
         setEditingTask(task);
         setForm(taskToForm(task));
         setError("");
+        setNotice("");
         setShowForm(true);
     }
     function updateForm<K extends keyof TaskFormState>(key: K, value: TaskFormState[K]) {
-        setForm((current) => ({ ...current, [key]: value }));
+        setForm((current) =>
+            key === "visibility" && value === "PRIVADA" && scope === "home"
+                ? {
+                      ...current,
+                      visibility: "PRIVADA",
+                      assignmentType: "FIXA",
+                      assigneeId: myMemberId,
+                      assigneeIds: [],
+                  }
+                : { ...current, [key]: value }
+        );
     }
 
     async function submitTask(event: FormEvent<HTMLFormElement>) {
@@ -447,7 +465,7 @@ export default function TasksPage() {
         try {
             const data = toTaskInput(form);
             if (!isHomeTask) {
-                const personalData = { ...data };
+                const personalData = { ...data, visibility: "PRIVADA" as const };
                 delete personalData.assigneeId;
                 delete personalData.assigneeIds;
                 delete personalData.assignmentType;
@@ -459,6 +477,7 @@ export default function TasksPage() {
                         ? items.map((task) => (task.id === savedTask.id ? savedTask : task))
                         : [...items, savedTask]
                 );
+                resetTaskFilters();
                 setNotice(editingTask ? "Tarefa pessoal atualizada." : "Tarefa pessoal criada.");
                 setShowForm(false);
                 setEditingTask(null);
@@ -482,6 +501,7 @@ export default function TasksPage() {
                 setTasks((items) => [...items, created]);
                 setNotice("Tarefa criada com sucesso.");
             }
+            resetTaskFilters();
             setShowForm(false);
             setEditingTask(null);
             setForm(initialForm);
@@ -492,15 +512,18 @@ export default function TasksPage() {
         }
     }
     async function markComplete(task: Task) {
+        const version = contextVersion.current;
+        const taskResidenceId = task.residenceId ?? residenceId;
         setError("");
+        setNotice("");
         try {
             if (task.status === "CONCLUIDA") {
                 const reopened = isPersonalTask(task)
                     ? await reopenPersonalTask(task.id)
-                    : residenceId
-                      ? await reopenTask(residenceId, task.id)
+                    : taskResidenceId
+                      ? await reopenTask(taskResidenceId, task.id)
                       : null;
-                if (!reopened) return;
+                if (!reopened || contextVersion.current !== version) return;
                 setTasks((items) =>
                     items.map((item) => (item.id === reopened.id ? reopened : item))
                 );
@@ -509,51 +532,60 @@ export default function TasksPage() {
             }
             if (isPersonalTask(task)) {
                 const completed = await completePersonalTask(task.id);
+                if (contextVersion.current !== version) return;
                 setTasks((items) =>
                     items.map((item) => (item.id === completed.id ? completed : item))
                 );
                 setNotice("Tarefa concluída.");
                 return;
             }
-            if (!residenceId) return;
-            const completed = await completeTask(residenceId, task.id);
+            if (!taskResidenceId) return;
+            const completed = await completeTask(taskResidenceId, task.id);
+            if (contextVersion.current !== version) return;
             setTasks((items) => items.map((item) => (item.id === completed.id ? completed : item)));
             setNotice("Tarefa concluída.");
         } catch (completeError: unknown) {
-            setError(getErrorMessage(completeError));
+            if (contextVersion.current === version) setError(getErrorMessage(completeError));
         }
     }
     async function removeTask(taskId: string) {
         const taskToRemove = tasks.find((task) => task.id === taskId);
-        if (!taskToRemove || (!isPersonalTask(taskToRemove) && !canDeleteHouseTasks)) return;
+        if (
+            !taskToRemove ||
+            (!isPersonalTask(taskToRemove) && (scope !== "home" || !canDeleteHouseTasks))
+        )
+            return;
+        const version = contextVersion.current;
         setError("");
+        setNotice("");
         try {
-            const task = tasks.find((item) => item.id === taskId);
-            if (task && isPersonalTask(task)) {
+            if (isPersonalTask(taskToRemove)) {
                 await deletePersonalTask(taskId);
-                setTasks((items) => items.filter((item) => item.id !== taskId));
-                setConfirmDeleteId("");
-                setNotice("Tarefa removida.");
-                return;
+            } else {
+                if (!residenceId) return;
+                await deleteTask(residenceId, taskId);
             }
-            if (!residenceId) return;
-            await deleteTask(residenceId, taskId);
+            if (contextVersion.current !== version) return;
             setTasks((items) => items.filter((task) => task.id !== taskId));
             setConfirmDeleteId("");
             setNotice("Tarefa removida.");
         } catch (deleteError: unknown) {
-            setError(getErrorMessage(deleteError));
+            if (contextVersion.current === version) setError(getErrorMessage(deleteError));
         }
     }
     async function requestExchange(task: Task, recipientMemberId: string, targetTaskId?: string) {
         if (!residenceId || !recipientMemberId) return;
+        const version = contextVersion.current;
         setError("");
+        setNotice("");
         try {
             await createTaskExchangeRequest(residenceId, task.id, recipientMemberId, targetTaskId);
-            setExchangeRequests(await getTaskExchangeRequests(residenceId));
+            if (contextVersion.current !== version) return;
             setNotice("Pedido de troca enviado.");
+            const requests = await getTaskExchangeRequests(residenceId);
+            if (contextVersion.current === version) setExchangeRequests(requests);
         } catch (requestError: unknown) {
-            setError(getErrorMessage(requestError));
+            if (contextVersion.current === version) setError(getErrorMessage(requestError));
         }
     }
     async function respondToExchange(
@@ -562,8 +594,11 @@ export default function TasksPage() {
         targetTaskId?: string,
         acceptWithoutTarget = false
     ) {
-        if (!residenceId) return;
+        if (!residenceId || respondingRequestId) return;
+        const version = contextVersion.current;
+        setRespondingRequestId(request.id);
         setError("");
+        setNotice("");
         try {
             await respondToTaskExchange(
                 residenceId,
@@ -572,7 +607,7 @@ export default function TasksPage() {
                 targetTaskId,
                 acceptWithoutTarget
             );
-            await loadResidenceData(residenceId);
+            if (contextVersion.current !== version) return;
             setNotice(
                 status === "ACEITA"
                     ? acceptWithoutTarget
@@ -580,8 +615,11 @@ export default function TasksPage() {
                         : "Troca aceita."
                     : "Solicitação recusada."
             );
+            await loadResidenceData(residenceId, version);
         } catch (requestError: unknown) {
-            setError(getErrorMessage(requestError));
+            if (contextVersion.current === version) setError(getErrorMessage(requestError));
+        } finally {
+            setRespondingRequestId("");
         }
     }
 
@@ -597,25 +635,27 @@ export default function TasksPage() {
                     residenceControl={
                         residences.length > 0 ? (
                             <div
-                                className="flex rounded-xl bg-[#e8e7eb] p-1"
-                                aria-label="Contexto da Home"
+                                className="grid w-[min(70vw,18rem)] grid-cols-2 gap-1 rounded-xl bg-muted p-1 md:w-[min(28vw,18rem)]"
+                                role="group"
+                                aria-label="Contexto de tarefas"
                             >
                                 <button
                                     type="button"
-                                    disabled={loading}
+                                    disabled={loading || saving}
                                     aria-pressed={scope === "personal"}
                                     onClick={() => void changeScope("personal")}
-                                    className={`min-w-28 rounded-lg px-5 py-2 text-xs ${scope === "personal" ? "bg-[#4e812f] text-white" : "text-[#3e3a41]"}`}
+                                    className={taskContextButton}
                                 >
                                     Pessoal
                                 </button>
                                 {residences.length === 1 ? (
                                     <button
                                         type="button"
-                                        disabled={loading}
+                                        disabled={loading || saving}
                                         onClick={() => void changeScope("home")}
                                         aria-pressed={scope === "home"}
-                                        className={`rounded-lg px-5 py-2 text-xs ${scope === "home" ? "bg-[#4e812f] text-white" : "text-[#3e3a41]"}`}
+                                        className={taskContextButton}
+                                        title={residence?.name}
                                     >
                                         {residence?.name}
                                     </button>
@@ -623,11 +663,11 @@ export default function TasksPage() {
                                     <SystemSelect
                                         aria-label="Residência"
                                         value={residenceId}
-                                        disabled={loading}
+                                        disabled={loading || saving}
                                         onChange={(event) =>
-                                            void changeResidence(event.target.value)
+                                            void changeScope("home", event.target.value)
                                         }
-                                        className="max-w-48 rounded-lg bg-[#4e812f] px-3 py-2 text-xs text-white outline-none focus-visible:ring-2 focus-visible:ring-[#4e812f]"
+                                        className={`h-9 min-h-0! border-0! text-xs! font-semibold ${scope === "home" ? "bg-[#3e6b25]! text-white! [&_svg]:text-white!" : "bg-transparent! text-foreground!"}`}
                                     >
                                         {residences.map((item) => (
                                             <option key={item.id} value={item.id}>
@@ -643,22 +683,6 @@ export default function TasksPage() {
                 />
 
                 <main className="mx-auto max-w-[1600px] p-5 md:p-6">
-                    {error && !showForm && (
-                        <div
-                            role="alert"
-                            className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
-                        >
-                            {error}
-                        </div>
-                    )}
-                    {notice && (
-                        <div
-                            role="status"
-                            className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800"
-                        >
-                            {notice}
-                        </div>
-                    )}
                     <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_310px]">
                         <section className="min-w-0 rounded-xl border border-[#d6cdd9] bg-[#fffaff] p-4 md:p-5">
                             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -670,15 +694,17 @@ export default function TasksPage() {
                                         {new Intl.DateTimeFormat("pt-BR", {
                                             dateStyle: "full",
                                         }).format(new Date())}{" "}
-                                        · {members.length}{" "}
-                                        {members.length === 1 ? "morador" : "moradores"}
+                                        {scope === "personal"
+                                            ? "· Suas tarefas individuais e as atribuídas a você na casa"
+                                            : `· ${members.length} ${members.length === 1 ? "morador" : "moradores"}`}
                                     </p>
                                 </div>
                                 {(scope === "personal" || canEditHouseTasks) && (
                                     <button
                                         type="button"
                                         onClick={openCreateForm}
-                                        className="inline-flex items-center gap-1.5 rounded-full bg-[#4e812f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#3e6b25]"
+                                        disabled={loading || Boolean(dataError)}
+                                        className="inline-flex items-center gap-1.5 rounded-full bg-[#4e812f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#3e6b25] disabled:opacity-60"
                                     >
                                         <Plus size={15} /> Nova tarefa
                                     </button>
@@ -772,16 +798,22 @@ export default function TasksPage() {
                             </div>
                             <TaskList
                                 tasks={visibleTasks}
+                                hasFilters={Boolean(
+                                    search.trim() ||
+                                    activeTag ||
+                                    selectedDate ||
+                                    activeTab !== "all"
+                                )}
                                 loading={loading}
                                 dataError={dataError}
                                 onRetry={() => void changeScope(scope)}
-                                hasResidence={residences.length > 0}
+                                personalContext={scope === "personal"}
                                 selectedDate={selectedDate}
-                                onSelectDate={setSelectedDate}
+                                onClearFilters={resetTaskFilters}
                                 onComplete={markComplete}
                                 onEdit={openEditForm}
-                                canEdit={scope === "personal" || canEditHouseTasks}
-                                canDelete={scope === "personal" || canDeleteHouseTasks}
+                                canEditHouseTasks={canEditHouseTasks}
+                                canDeleteHouseTasks={canDeleteHouseTasks}
                                 confirmDeleteId={confirmDeleteId}
                                 onConfirmDelete={removeTask}
                                 onAskDelete={setConfirmDeleteId}
@@ -795,27 +827,52 @@ export default function TasksPage() {
                         <aside className="grid content-start gap-3">
                             <CalendarWidget
                                 month={month}
-                                tasks={tasks.filter((task) =>
-                                    scope === "personal"
-                                        ? isPersonalTask(task)
-                                        : !isPersonalTask(task)
-                                )}
+                                tasks={contextualTasks}
                                 selectedDate={selectedDate}
                                 onMonthChange={setMonth}
                                 onDateChange={setSelectedDate}
                                 myMemberId={myMemberId}
+                                personalContext={scope === "personal"}
                             />
-                            <ExchangeRequests
-                                requests={scope === "home" ? visibleExchangeRequests : []}
-                                loading={loading}
-                                tasks={scope === "home" ? contextualTasks : []}
-                                myMemberId={myMemberId}
-                                onRespond={respondToExchange}
-                            />
+                            {scope === "home" && (
+                                <ExchangeRequests
+                                    requests={exchangeRequests}
+                                    loading={loading}
+                                    tasks={contextualTasks}
+                                    myMemberId={myMemberId}
+                                    respondingRequestId={respondingRequestId}
+                                    onRespond={respondToExchange}
+                                />
+                            )}
                         </aside>
                     </div>
                 </main>
             </div>
+
+            {!showForm && (error || notice) && (
+                <div
+                    className={`fixed inset-x-3 bottom-3 z-50 flex items-start gap-2 rounded-lg border p-3 text-sm shadow-lg sm:left-auto sm:right-6 sm:w-96 ${
+                        error
+                            ? "border-red-200 bg-red-50 text-red-800 dark:border-red-700 dark:bg-red-950 dark:text-red-100"
+                            : "border-green-200 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-950 dark:text-green-100"
+                    }`}
+                >
+                    <p role={error ? "alert" : "status"} className="min-w-0 flex-1 break-words">
+                        {error || notice}
+                    </p>
+                    <button
+                        type="button"
+                        aria-label="Fechar mensagem de tarefas"
+                        onClick={() => {
+                            setError("");
+                            setNotice("");
+                        }}
+                        className="grid size-8 shrink-0 place-items-center rounded-md focus-visible:outline-2"
+                    >
+                        <X size={16} aria-hidden="true" />
+                    </button>
+                </div>
+            )}
 
             {showForm && (
                 <TaskModal
@@ -829,7 +886,11 @@ export default function TasksPage() {
                     error={error}
                     hasResidence={Boolean(residenceId) && scope === "home"}
                     onChange={updateForm}
-                    onClose={() => setShowForm(false)}
+                    onClose={() => {
+                        if (saving) return;
+                        setShowForm(false);
+                        setError("");
+                    }}
                     onSubmit={submitTask}
                 />
             )}
@@ -898,16 +959,17 @@ function TagFilter({
 
 function TaskList({
     tasks,
+    hasFilters,
     loading,
     dataError,
     onRetry,
-    hasResidence,
+    personalContext,
     selectedDate,
-    onSelectDate,
+    onClearFilters,
     onComplete,
     onEdit,
-    canEdit,
-    canDelete,
+    canEditHouseTasks,
+    canDeleteHouseTasks,
     confirmDeleteId,
     onConfirmDelete,
     onAskDelete,
@@ -917,16 +979,17 @@ function TaskList({
     onRequestExchange,
 }: {
     tasks: Task[];
+    hasFilters: boolean;
     loading: boolean;
     dataError: string;
     onRetry: () => void;
-    hasResidence: boolean;
+    personalContext: boolean;
     selectedDate: string;
-    onSelectDate: (date: string) => void;
+    onClearFilters: () => void;
     onComplete: (task: Task) => void;
     onEdit: (task: Task) => void;
-    canEdit: boolean;
-    canDelete: boolean;
+    canEditHouseTasks: boolean;
+    canDeleteHouseTasks: boolean;
     confirmDeleteId: string;
     onConfirmDelete: (id: string) => void;
     onAskDelete: (id: string) => void;
@@ -959,11 +1022,11 @@ function TaskList({
                 title={
                     selectedDate
                         ? "Nenhuma tarefa para esta data."
-                        : hasResidence
-                          ? "Nenhuma tarefa encontrada."
-                          : "Nenhuma tarefa pessoal ainda."
+                        : personalContext && !hasFilters
+                          ? "Nenhuma tarefa pessoal ainda."
+                          : "Nenhuma tarefa encontrada."
                 }
-                onClear={selectedDate ? () => onSelectDate("") : undefined}
+                onClear={hasFilters ? onClearFilters : undefined}
             />
         );
     return (
@@ -985,8 +1048,11 @@ function TaskList({
                                 task={task}
                                 onComplete={() => onComplete(task)}
                                 onEdit={() => onEdit(task)}
-                                canEdit={canEdit}
-                                canDelete={canDelete}
+                                canEdit={personalContext ? isPersonalTask(task) : canEditHouseTasks}
+                                canDelete={
+                                    personalContext ? isPersonalTask(task) : canDeleteHouseTasks
+                                }
+                                showHouseLabel={personalContext && !isPersonalTask(task)}
                                 confirming={confirmDeleteId === task.id}
                                 onConfirmDelete={() => onConfirmDelete(task.id)}
                                 onAskDelete={() => onAskDelete(task.id)}
@@ -1017,7 +1083,7 @@ function EmptyTasks({ title, onClear }: { title: string; onClear?: () => void })
                     onClick={onClear}
                     className="mt-2 text-xs font-semibold text-[#4e812f] underline"
                 >
-                    Ver todas as datas
+                    Limpar filtros
                 </button>
             )}
         </div>
@@ -1030,6 +1096,7 @@ function TaskRow({
     onEdit,
     canEdit,
     canDelete,
+    showHouseLabel,
     confirming,
     onConfirmDelete,
     onAskDelete,
@@ -1044,6 +1111,7 @@ function TaskRow({
     onEdit: () => void;
     canEdit: boolean;
     canDelete: boolean;
+    showHouseLabel: boolean;
     confirming: boolean;
     onConfirmDelete: () => void;
     onAskDelete: () => void;
@@ -1098,6 +1166,10 @@ function TaskRow({
                 >
                     {task.title}
                 </h4>
+                <div className="flex flex-wrap gap-x-2 text-[10px] font-semibold text-muted-foreground">
+                    {showHouseLabel && <span>Da casa</span>}
+                    {!isPersonalTask(task) && task.visibility === "PRIVADA" && <span>Privada</span>}
+                </div>
                 <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-[#77717c]">
                     <span className="inline-flex items-center gap-1">
                         <Clock3 size={11} />
@@ -1135,15 +1207,21 @@ function TaskRow({
                 </div>
             )}
             <span
-                style={
-                    assigneeMember?.avatarBackgroundColor
-                        ? { backgroundColor: assigneeMember.avatarBackgroundColor }
-                        : undefined
-                }
-                className="grid size-7 shrink-0 place-items-center rounded-full bg-[#4f7f63] text-[10px] font-semibold text-white"
+                role="img"
+                aria-label={task.assignee?.name ?? "Sem responsável"}
                 title={task.assignee?.name ?? "Sem responsável"}
             >
-                {task.assignee?.name?.slice(0, 1).toUpperCase() ?? "–"}
+                <UserAvatar
+                    name={task.assignee?.name}
+                    photo={task.assignee?.photo ?? assigneeMember?.photo}
+                    backgroundColor={
+                        task.assignee?.avatarBackgroundColor ??
+                        assigneeMember?.avatarBackgroundColor
+                    }
+                    size="xs"
+                    shape="circle"
+                    className="ring-1 ring-black/10 dark:ring-white/20"
+                />
             </span>
             {confirming && canDelete ? (
                 <div className="flex items-center gap-1">
@@ -1312,6 +1390,7 @@ function CalendarWidget({
     onMonthChange,
     onDateChange,
     myMemberId,
+    personalContext,
 }: {
     month: Date;
     tasks: Task[];
@@ -1319,6 +1398,7 @@ function CalendarWidget({
     onMonthChange: (month: Date) => void;
     onDateChange: (date: string) => void;
     myMemberId: string;
+    personalContext: boolean;
 }) {
     const [view, setView] = useState<"day" | "week" | "month">("month");
     const anchor = selectedDate ? new Date(`${selectedDate}T12:00:00`) : new Date(month);
@@ -1422,7 +1502,9 @@ function CalendarWidget({
                             (taskDateKey(task) < localDateKey(new Date()) &&
                                 task.status !== "CONCLUIDA")
                     );
-                    const mine = dayTaskList.some((task) => task.assignee?.id === myMemberId);
+                    const mine = dayTaskList.some(
+                        (task) => personalContext || task.assignee?.id === myMemberId
+                    );
                     return (
                         <button
                             key={key}
@@ -1496,12 +1578,14 @@ function ExchangeRequests({
     loading,
     tasks,
     myMemberId,
+    respondingRequestId,
     onRespond,
 }: {
     requests: TaskExchangeRequest[];
     loading: boolean;
     tasks: Task[];
     myMemberId: string;
+    respondingRequestId: string;
     onRespond: (
         request: TaskExchangeRequest,
         status: "ACEITA" | "RECUSADA",
@@ -1540,7 +1624,7 @@ function ExchangeRequests({
                     );
                     const selectedTargetTaskId =
                         selectedTasks[request.id] ?? request.targetTask?.id ?? "";
-                    const selectedTargetIsAvailable = recipientTaskChoices.some(
+                    const selectedTarget = recipientTaskChoices.find(
                         (candidate) => candidate.id === selectedTargetTaskId
                     );
                     return (
@@ -1621,12 +1705,26 @@ function ExchangeRequests({
                                     </div>
                                 )}
                             </div>
+                            {request.incoming &&
+                                request.status === "PENDENTE" &&
+                                selectedTarget && (
+                                    <p aria-live="polite" className="mt-2 text-xs text-[#514c56]">
+                                        Você ficará com <strong>{request.task.title}</strong>.{" "}
+                                        {request.requester} ficará com{" "}
+                                        <strong>{selectedTarget.title}</strong>.
+                                        {request.targetTask &&
+                                        request.targetTask.id !== selectedTarget.id
+                                            ? " A tarefa é diferente da sugestão. O solicitante será avisado após o aceite."
+                                            : ""}
+                                    </p>
+                                )}
                             {request.incoming && request.status === "PENDENTE" ? (
                                 <div className="mt-2 flex justify-end gap-2">
                                     <button
                                         type="button"
                                         onClick={() => onRespond(request, "RECUSADA")}
-                                        className="rounded-md border border-[#4e812f] px-3 py-1.5 text-xs font-medium text-[#356a22] hover:bg-[#eff7eb]"
+                                        disabled={Boolean(respondingRequestId)}
+                                        className="rounded-md border border-[#4e812f] px-3 py-1.5 text-xs font-medium text-[#356a22] hover:bg-[#eff7eb] disabled:opacity-50"
                                     >
                                         Recusar
                                     </button>
@@ -1643,8 +1741,8 @@ function ExchangeRequests({
                                             )
                                         }
                                         disabled={
-                                            recipientTaskChoices.length > 0 &&
-                                            !selectedTargetIsAvailable
+                                            Boolean(respondingRequestId) ||
+                                            (recipientTaskChoices.length > 0 && !selectedTarget)
                                         }
                                         className="rounded-md bg-[#4e812f] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50"
                                     >
@@ -1655,15 +1753,15 @@ function ExchangeRequests({
                                 </div>
                             ) : (
                                 <p className="mt-2 text-right text-xs text-[#514c56]">
-                                    {!request.targetTask && request.status !== "PENDENTE"
-                                        ? "Solicitação encerrada"
-                                        : request.status === "PENDENTE"
-                                          ? "Aguardando resposta"
-                                          : request.status === "ACEITA"
-                                            ? "Aceita"
-                                            : request.status === "RECUSADA"
-                                              ? "Recusada"
-                                              : "Encerrada"}
+                                    {request.status === "PENDENTE"
+                                        ? "Aguardando resposta"
+                                        : request.status === "ACEITA"
+                                          ? request.targetTask
+                                              ? "Troca aceita"
+                                              : "Tarefa aceita sem troca"
+                                          : request.status === "RECUSADA"
+                                            ? "Recusada"
+                                            : "Encerrada"}
                                 </p>
                             )}
                         </article>
@@ -1702,6 +1800,13 @@ function TaskModal({
     onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
     const [tagDraft, setTagDraft] = useState("");
+    const formErrorRef = useRef<HTMLParagraphElement>(null);
+    const isPrivateResidenceTask = hasResidence && form.visibility === "PRIVADA";
+    const canChooseAssignee = canAssignOthers && !isPrivateResidenceTask;
+
+    useEffect(() => {
+        if (error) formErrorRef.current?.focus();
+    }, [error]);
     function addTag(value: string) {
         const normalized = value.trim();
         if (!normalized) return;
@@ -1743,7 +1848,9 @@ function TaskModal({
                             {editing ? "Editar tarefa" : "Nova tarefa"}
                         </h2>
                         <p className="mt-1 text-[11px] text-[#625c66]">
-                            Cadastre uma tarefa para a casa e defina quem é o responsável
+                            {hasResidence
+                                ? "Cadastre uma tarefa para a casa e defina quem é o responsável"
+                                : "Organize sua rotina com uma tarefa pessoal."}
                         </p>
                     </div>
                     <button
@@ -1843,27 +1950,29 @@ function TaskModal({
                                 ))}
                         </div>
                     </div>
-                    <fieldset className="grid gap-2 text-[11px] font-medium">
-                        <legend>Visibilidade</legend>
-                        <div className="flex flex-wrap gap-2">
-                            {(
-                                [
-                                    ["PUBLICA", "Comunitária"],
-                                    ["PRIVADA", "Privada"],
-                                ] as const
-                            ).map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    aria-pressed={form.visibility === value}
-                                    onClick={() => onChange("visibility", value)}
-                                    className={`rounded-full border px-3 py-1.5 text-xs ${form.visibility === value ? "border-[#4e812f] bg-[#e7f1e1] text-[#264d18]" : "border-[#d7ceda] bg-white text-[#514c56]"}`}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                    </fieldset>
+                    {hasResidence && (
+                        <fieldset className="grid gap-2 text-[11px] font-medium">
+                            <legend>Visibilidade</legend>
+                            <div className="flex flex-wrap gap-2">
+                                {(
+                                    [
+                                        ["PUBLICA", "Comunitária"],
+                                        ["PRIVADA", "Privada"],
+                                    ] as const
+                                ).map(([value, label]) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        aria-pressed={form.visibility === value}
+                                        onClick={() => onChange("visibility", value)}
+                                        className={`rounded-full border px-3 py-1.5 text-xs ${form.visibility === value ? "border-[#4e812f] bg-[#e7f1e1] text-[#264d18]" : "border-[#d7ceda] bg-white text-[#514c56]"}`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </fieldset>
+                    )}
                     {hasResidence && (
                         <div className="grid gap-3 sm:grid-cols-2">
                             <label className="grid gap-1.5 text-[11px] font-medium">
@@ -1879,7 +1988,7 @@ function TaskModal({
                                     className={inputClass}
                                 >
                                     <option value="FIXA">Responsável fixo</option>
-                                    {canAssignOthers && (
+                                    {canChooseAssignee && (
                                         <option value="RODIZIO">Rodízio entre moradores</option>
                                     )}
                                 </SystemSelect>
@@ -1904,8 +2013,10 @@ function TaskModal({
                             </legend>
                             <div className="flex flex-wrap gap-2">
                                 {members
-                                    .filter((member) => canAssignOthers || member.id === myMemberId)
-                                    .map((member, index) => {
+                                    .filter(
+                                        (member) => canChooseAssignee || member.id === myMemberId
+                                    )
+                                    .map((member) => {
                                         const selected =
                                             form.assignmentType === "RODIZIO"
                                                 ? form.assigneeIds.includes(member.id)
@@ -1918,19 +2029,27 @@ function TaskModal({
                                                 onClick={() => toggleMember(member.id)}
                                                 className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${selected ? "border-[#4e812f] bg-[#b9dda8] text-[#203c17]" : "border-[#d7ceda] bg-white text-[#302a32]"}`}
                                             >
-                                                <span
-                                                    className={`grid size-5 place-items-center rounded-full text-[10px] font-bold text-white ${["bg-[#4f7f63]", "bg-violet-700", "bg-blue-700", "bg-orange-700"][index % 4]}`}
-                                                >
-                                                    {member.name.slice(0, 1).toUpperCase()}
+                                                <span aria-hidden="true">
+                                                    <UserAvatar
+                                                        name={member.name}
+                                                        photo={member.photo}
+                                                        backgroundColor={
+                                                            member.avatarBackgroundColor
+                                                        }
+                                                        size="xs"
+                                                        shape="circle"
+                                                    />
                                                 </span>
                                                 {member.name}
                                             </button>
                                         );
                                     })}
                             </div>
-                            {!canAssignOthers && (
+                            {!canChooseAssignee && (
                                 <p className="text-[10px] text-[#514c56]">
-                                    Você pode atribuir esta tarefa somente a si mesmo.
+                                    {isPrivateResidenceTask
+                                        ? "A tarefa privada da casa fica atribuída a você."
+                                        : "Você pode atribuir esta tarefa somente a si mesmo."}
                                 </p>
                             )}
                         </fieldset>
@@ -2008,7 +2127,12 @@ function TaskModal({
                         </label>
                     )}
                     {error && (
-                        <p role="alert" className="rounded-lg bg-red-50 p-2.5 text-xs text-red-700">
+                        <p
+                            ref={formErrorRef}
+                            role="alert"
+                            tabIndex={-1}
+                            className="rounded-lg bg-red-50 p-2.5 text-xs text-red-700"
+                        >
                             {error}
                         </p>
                     )}
