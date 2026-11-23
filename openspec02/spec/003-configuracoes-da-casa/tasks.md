@@ -108,3 +108,13 @@ Na verificação posterior da branch `fixs`, o [pre-commit](../../../.husky/pre-
 partiu do Node 20.20.0 e ativou o Node 26.8.1 de `.nvmrc` para carregar o
 jsdom. Lint e Prettier passaram nos dois projetos, assim como 335 testes web
 e 513 testes do backend.
+
+## G07 — Sino e central de notificações
+
+- [x] **T54 — Unificar os cartões, links e ações.** Conferir teclado, clique fora, estado de leitura e acesso à central sem casa. **Refs:** RF13, CA14.
+- [x] **T55 — Marcar todas como lidas.** Atualizar a conta inteira na API e sincronizar sino e central, cobrindo paginação, isolamento e convites pendentes. **Refs:** RF14, CA15, RNF03.
+
+- Na raiz, `sh .husky/_/pre-commit` passou em lint, Prettier, 339 testes web e 514 testes do backend.
+- Em `backend`, `./node_modules/.bin/vitest run --config ./vitest.config.e2e.ts test/notifications.e2e-spec.ts test/rooms.e2e-spec.ts` passou nos 17 testes HTTP. `./node_modules/.bin/nest build` concluiu.
+- Em `web`, `./node_modules/.bin/tsc --noEmit --incremental false` passou.
+- API com PostgreSQL isolado e testes em Chrome confirmaram o fluxo com duas contas. Os resultados por cenário estão na [triagem de G07](../../../docs/triagem-testes-manuais.md#verificação-de-g07--23112026).

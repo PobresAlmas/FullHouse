@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
     Bell,
@@ -66,17 +66,8 @@ import { ProfileSettingsContent } from "@/features/profile/components/ProfilePag
 import { SettingsMembersTable } from "@/features/settings/components/SettingsMembersTable";
 import { RoomListingDialog } from "@/features/rooms/components/RoomListingDialog";
 import { HouseRoomListings } from "@/features/rooms/components/HouseRoomListings";
-import { roomInterestHref } from "@/features/notifications/room-interest-link";
+import { NotificationCenter } from "@/features/notifications/components/NotificationCenter";
 import { PantryCategoryModal } from "@/features/pantry/components/PantryCategoryModal";
-import {
-    getNotifications,
-    markNotificationRead,
-    subscribeNotifications,
-} from "@/features/notifications/api/notifications.api";
-import type {
-    AppNotification,
-    NotificationsResponse,
-} from "@/features/notifications/api/notifications.api";
 
 type Section = "account" | "house" | "members" | "permissions" | "notifications" | "preferences";
 type PreferenceTab = "general" | "categories" | "pantry" | "finance" | "pets";
@@ -163,7 +154,7 @@ export function SettingsPage({
     tab: PreferenceTab;
     requestedListingId?: string;
 }) {
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, refreshUser } = useAuth();
     const userId = user?.id;
     const [residenceState, setResidenceState] = useState<{
         userId: string;
@@ -191,15 +182,6 @@ export function SettingsPage({
     const [categoryDraft, setCategoryDraft] = useState("");
     const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
     const [categoryError, setCategoryError] = useState("");
-    const [notifications, setNotifications] = useState<NotificationsResponse>({
-        items: [],
-        unreadCount: 0,
-        nextCursor: null,
-    });
-    const [notificationFilter, setNotificationFilter] = useState<"all" | "unread">("all");
-    const [notificationsLoading, setNotificationsLoading] = useState(false);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [notificationError, setNotificationError] = useState("");
     const [preferences, setPreferences] = useState<ResidencePreferences>(defaultPreferences);
     const [preferencesLoading, setPreferencesLoading] = useState(false);
 
@@ -208,7 +190,9 @@ export function SettingsPage({
     const visibleSubnav =
         residence || loadingResidence || authLoading || residenceErrorText
             ? subnav
-            : subnav.filter(({ id }) => id === "account" || id === "house");
+            : subnav.filter(
+                  ({ id }) => id === "account" || id === "house" || id === "notifications"
+              );
     const manager =
         residence?.membership?.role === "LIDER" || residence?.membership?.role === "ADMINISTRADOR";
     const canListRoom =
@@ -316,61 +300,6 @@ export function SettingsPage({
             active = false;
         };
     }, [residence, section, tab]);
-
-    const refreshNotifications = useCallback(
-        async (quiet = false) => {
-            if (!userId) return;
-            if (!quiet) setNotificationsLoading(true);
-            setNotificationError("");
-            try {
-                setNotifications(
-                    await getNotifications(20, undefined, notificationFilter === "unread")
-                );
-            } catch (error: unknown) {
-                setNotificationError(errorText(error));
-            } finally {
-                if (!quiet) setNotificationsLoading(false);
-            }
-        },
-        [notificationFilter, userId]
-    );
-
-    useEffect(() => {
-        if (section !== "notifications" || authLoading || !userId) return;
-        let active = true;
-        const load = async () => {
-            if (!active || document.visibilityState !== "visible") return;
-            await refreshNotifications(true);
-        };
-        queueMicrotask(() => {
-            if (active) void refreshNotifications();
-        });
-        const unsubscribe = subscribeNotifications(
-            (update) => {
-                if (!active) return;
-                setNotifications(update);
-                setNotificationError("");
-            },
-            () => {
-                if (active) {
-                    setNotificationError(
-                        "A atualização em tempo real está temporariamente indisponível. A atualização periódica continuará."
-                    );
-                }
-            }
-        );
-        const timer = window.setInterval(() => void load(), 30_000);
-        const onVisibilityChange = () => {
-            if (document.visibilityState === "visible") void load();
-        };
-        document.addEventListener("visibilitychange", onVisibilityChange);
-        return () => {
-            active = false;
-            window.clearInterval(timer);
-            unsubscribe();
-            document.removeEventListener("visibilitychange", onVisibilityChange);
-        };
-    }, [authLoading, refreshNotifications, section, userId]);
 
     const selectedSectionTitle = subnav.find((item) => item.id === section)?.label ?? "Casa";
 
@@ -531,45 +460,6 @@ export function SettingsPage({
         }
     }
 
-    async function loadMoreNotifications() {
-        const cursor = notifications.nextCursor;
-        if (!cursor || loadingMore) return;
-        setLoadingMore(true);
-        try {
-            const page = await getNotifications(20, cursor, notificationFilter === "unread");
-            setNotifications((current) => ({
-                unreadCount: page.unreadCount,
-                nextCursor: page.nextCursor ?? null,
-                items: [...current.items, ...page.items],
-            }));
-        } catch (error: unknown) {
-            setNotificationError(errorText(error));
-        } finally {
-            setLoadingMore(false);
-        }
-    }
-
-    async function markRead(notification: AppNotification) {
-        if (notification.lida) return;
-        try {
-            await markNotificationRead(notification.id);
-            setNotifications((current) => ({
-                ...current,
-                unreadCount: Math.max(0, current.unreadCount - 1),
-                items: current.items.map((item) =>
-                    item.id === notification.id ? { ...item, lida: true } : item
-                ),
-            }));
-        } catch (error: unknown) {
-            setNotificationError(errorText(error));
-        }
-    }
-
-    const visibleNotifications = useMemo(
-        () => notifications.items.filter((item) => notificationFilter === "all" || !item.lida),
-        [notificationFilter, notifications.items]
-    );
-
     function sectionHref(id: Section) {
         return id === "preferences"
             ? "/settings?section=preferences&tab=general"
@@ -653,6 +543,12 @@ export function SettingsPage({
 
                             {section === "account" ? (
                                 <ProfileSettingsContent />
+                            ) : section === "notifications" && !authLoading && userId ? (
+                                <NotificationCenter
+                                    key={userId}
+                                    userId={userId}
+                                    refreshUser={refreshUser}
+                                />
                             ) : authLoading || loadingResidence ? (
                                 <p role="status" className={`${cardClass} text-sm text-[#6f6873]`}>
                                     Carregando residência...
@@ -883,159 +779,6 @@ export function SettingsPage({
                                                 onRemove={setMemberToRemove}
                                             />
                                         </div>
-                                    )}
-
-                                    {section === "notifications" && (
-                                        <section className={cardClass}>
-                                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                                <div>
-                                                    <h2 className="font-semibold">
-                                                        Suas notificações
-                                                    </h2>
-                                                    <p className="mt-1 text-sm text-[#77717c]">
-                                                        {notifications.unreadCount} não lida(s)
-                                                    </p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => void refreshNotifications()}
-                                                    disabled={notificationsLoading}
-                                                    className="min-h-9 rounded-lg border border-[#d9d0dc] bg-white px-3 text-sm font-medium"
-                                                >
-                                                    {notificationsLoading
-                                                        ? "Atualizando…"
-                                                        : "Atualizar"}
-                                                </button>
-                                            </div>
-                                            <div
-                                                role="tablist"
-                                                aria-label="Filtro de notificações"
-                                                className="mt-4 flex gap-5 border-b border-[#ded6e2]"
-                                            >
-                                                {(
-                                                    [
-                                                        { id: "all", label: "Visão Geral" },
-                                                        { id: "unread", label: "Não Lidas" },
-                                                    ] as const
-                                                ).map((item) => (
-                                                    <button
-                                                        key={item.id}
-                                                        type="button"
-                                                        role="tab"
-                                                        aria-selected={
-                                                            notificationFilter === item.id
-                                                        }
-                                                        onClick={() =>
-                                                            setNotificationFilter(item.id)
-                                                        }
-                                                        className={`border-b-2 px-0.5 pb-2 text-sm font-semibold ${notificationFilter === item.id ? "border-[#4e812f] text-[#514c56]" : "border-transparent text-[#77717c]"}`}
-                                                    >
-                                                        {item.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            {notificationError && (
-                                                <p
-                                                    role="alert"
-                                                    className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800"
-                                                >
-                                                    {notificationError}
-                                                </p>
-                                            )}
-                                            {notificationsLoading ? (
-                                                <p
-                                                    role="status"
-                                                    className="py-8 text-center text-sm text-[#77717c]"
-                                                >
-                                                    Carregando notificações…
-                                                </p>
-                                            ) : visibleNotifications.length === 0 ? (
-                                                <p className="py-8 text-center text-sm text-[#77717c]">
-                                                    {notificationFilter === "unread"
-                                                        ? "Não há notificações não lidas."
-                                                        : "Você ainda não tem notificações."}
-                                                </p>
-                                            ) : (
-                                                <ul className="mt-2 divide-y divide-[#e5dfe8]">
-                                                    {visibleNotifications.map((item) => {
-                                                        const href =
-                                                            roomInterestHref(item) ??
-                                                            (item.convite && item.negotiationId
-                                                                ? `/rooms/negotiations/${item.negotiationId}`
-                                                                : undefined);
-                                                        return (
-                                                            <li
-                                                                key={item.id}
-                                                                className={`relative py-4 pl-5 ${item.lida ? "" : "before:absolute before:left-0 before:top-6 before:size-1.5 before:rounded-full before:bg-[#4e812f]"}`}
-                                                            >
-                                                                <div className="flex flex-wrap items-start justify-between gap-2">
-                                                                    <h3
-                                                                        className={`text-sm ${item.lida ? "font-medium" : "font-bold"}`}
-                                                                    >
-                                                                        {href ? (
-                                                                            <Link
-                                                                                href={href}
-                                                                                onClick={() => {
-                                                                                    if (!item.lida)
-                                                                                        void markRead(
-                                                                                            item
-                                                                                        );
-                                                                                }}
-                                                                                className="text-[#315f35] underline underline-offset-2"
-                                                                            >
-                                                                                {item.titulo}
-                                                                            </Link>
-                                                                        ) : (
-                                                                            item.titulo
-                                                                        )}
-                                                                    </h3>
-                                                                    <time
-                                                                        className="shrink-0 text-xs text-[#77717c]"
-                                                                        dateTime={item.criadoEm}
-                                                                    >
-                                                                        {new Date(
-                                                                            item.criadoEm
-                                                                        ).toLocaleString("pt-BR", {
-                                                                            dateStyle: "short",
-                                                                            timeStyle: "short",
-                                                                        })}
-                                                                    </time>
-                                                                </div>
-                                                                {item.mensagem && (
-                                                                    <p className="mt-1 text-sm text-[#625c66]">
-                                                                        {item.mensagem}
-                                                                    </p>
-                                                                )}
-                                                                {!item.lida && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() =>
-                                                                            void markRead(item)
-                                                                        }
-                                                                        className="mt-2 text-xs font-medium text-[#315f35] underline underline-offset-2"
-                                                                    >
-                                                                        Marcar como lida
-                                                                    </button>
-                                                                )}
-                                                            </li>
-                                                        );
-                                                    })}
-                                                </ul>
-                                            )}
-                                            {notificationFilter === "all" &&
-                                                notifications.nextCursor && (
-                                                    <button
-                                                        type="button"
-                                                        disabled={loadingMore}
-                                                        onClick={() => void loadMoreNotifications()}
-                                                        className="mt-4 min-h-10 w-full rounded-lg border border-[#d9d0dc] bg-white text-sm font-semibold disabled:opacity-50"
-                                                    >
-                                                        {loadingMore
-                                                            ? "Carregando…"
-                                                            : "Carregar mais"}
-                                                    </button>
-                                                )}
-                                        </section>
                                     )}
 
                                     {section === "preferences" && (

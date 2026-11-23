@@ -1,8 +1,14 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthContext } from "@/providers/AuthProvider";
 import { NotificationBell } from "../NotificationBell";
-import { getNotifications, markNotificationRead } from "../../api/notifications.api";
+import { NotificationCenter } from "../NotificationCenter";
+import {
+    getNotifications,
+    markAllNotificationsRead,
+    markNotificationRead,
+} from "../../api/notifications.api";
 import { respondToRoomInvitation } from "@/features/rooms/api/rooms.api";
 import { RESIDENCE_MEMBERSHIP_CHANGED_EVENT } from "@/features/residences/api/residences.api";
 
@@ -12,6 +18,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => router }));
 vi.mock("../../api/notifications.api", () => ({
     getNotifications: vi.fn(),
     markNotificationRead: vi.fn(),
+    markAllNotificationsRead: vi.fn(),
     subscribeNotifications: vi.fn(() => () => undefined),
 }));
 vi.mock("@/features/rooms/api/rooms.api", () => ({
@@ -33,6 +40,13 @@ const pendingInvite = {
         expiraEm: "2026-11-16T12:00:00.000Z",
         podeResponder: true,
     },
+};
+
+const auth = {
+    user: { id: "seeker-1", email: "seeker@example.com" },
+    loading: false,
+    logout: async () => undefined,
+    refreshUser: async () => undefined,
 };
 
 describe("NotificationBell", () => {
@@ -183,5 +197,111 @@ describe("NotificationBell", () => {
         );
 
         expect(await screen.findByLabelText("12 notificações não lidas")).toBeInTheDocument();
+    });
+
+    it("treats the message as a link target and keeps read actions independent", async () => {
+        const user = userEvent.setup();
+        render(
+            <AuthContext.Provider value={auth}>
+                <NotificationBell />
+            </AuthContext.Provider>
+        );
+        await user.click(screen.getByRole("button", { name: "Notificações" }));
+        const dialog = screen.getByRole("dialog", { name: "Notificações" });
+        const link = await within(dialog).findByRole("link", { name: pendingInvite.titulo });
+        const message = within(dialog).getByText(pendingInvite.mensagem);
+        expect(link).toContainElement(message);
+        expect(link).toHaveAttribute("href", "/rooms/negotiations/negotiation-1");
+        link.addEventListener("click", (event) => event.preventDefault(), { once: true });
+        await user.click(within(dialog).getByRole("button", { name: "Marcar como lida" }));
+        expect(dialog).toBeInTheDocument();
+        expect(respondToRoomInvitation).not.toHaveBeenCalled();
+
+        await user.click(message);
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(markNotificationRead).toHaveBeenCalledWith(pendingInvite.id);
+    });
+
+    it("supports keyboard navigation and closes on Escape or outside pointer input", async () => {
+        const user = userEvent.setup();
+        render(
+            <AuthContext.Provider value={auth}>
+                <NotificationBell />
+                <button type="button">Fora do painel</button>
+            </AuthContext.Provider>
+        );
+        const bell = screen.getByRole("button", { name: "Notificações" });
+        await user.click(bell);
+        const dialog = screen.getByRole("dialog", { name: "Notificações" });
+        const link = await within(dialog).findByRole("link", { name: pendingInvite.titulo });
+        expect(dialog).toHaveFocus();
+        await user.keyboard("{Escape}");
+        expect(bell).toHaveFocus();
+        expect(bell).toHaveAttribute("aria-expanded", "false");
+
+        await user.click(bell);
+        await user.click(screen.getByRole("button", { name: "Fora do painel" }));
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+        await user.click(bell);
+        const reopened = await screen.findByRole("link", { name: pendingInvite.titulo });
+        expect(reopened).toHaveAttribute("href", link.getAttribute("href"));
+        for (let tab = 0; tab < 4; tab++) await user.tab();
+        expect(reopened).toHaveFocus();
+        reopened.addEventListener("click", (event) => event.preventDefault(), { once: true });
+        await user.keyboard("{Enter}");
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("synchronizes bulk reading with the bell and preserves loaded cards and pending invitations", async () => {
+        const user = userEvent.setup();
+        let allRead = false;
+        const older = {
+            ...pendingInvite,
+            id: "notification-older",
+            titulo: "Notificação da segunda página",
+            entidadeTipo: null,
+            negotiationId: null,
+            mensagem: null,
+            convite: null,
+        };
+        vi.mocked(getNotifications).mockImplementation(async (_limit, cursor, unreadOnly) => ({
+            items:
+                allRead && unreadOnly
+                    ? []
+                    : [{ ...(cursor ? older : pendingInvite), lida: allRead }],
+            nextCursor: cursor || (allRead && unreadOnly) ? null : pendingInvite.id,
+            unreadCount: allRead ? 0 : 25,
+        }));
+        vi.mocked(markAllNotificationsRead).mockImplementation(async () => {
+            allRead = true;
+            return { updatedCount: 25 };
+        });
+        render(
+            <AuthContext.Provider value={auth}>
+                <NotificationBell />
+                <NotificationCenter userId={auth.user.id} refreshUser={auth.refreshUser} />
+            </AuthContext.Provider>
+        );
+        const center = within(screen.getByRole("region", { name: "Central de notificações" }));
+        expect(await screen.findByLabelText("25 notificações não lidas")).toBeInTheDocument();
+        await user.click(await center.findByRole("button", { name: "Carregar mais" }));
+        expect(await center.findByText(older.titulo)).toBeInTheDocument();
+        expect(center.getAllByText("Não lida")).toHaveLength(2);
+
+        await user.click(center.getByRole("button", { name: "Marcar todas como lidas" }));
+        await waitFor(() => {
+            expect(center.getByText("0 não lida(s)")).toBeInTheDocument();
+            expect(screen.queryByLabelText("25 notificações não lidas")).not.toBeInTheDocument();
+        });
+        expect(center.getAllByText("Lida")).toHaveLength(2);
+        expect(center.getByText(older.titulo)).toBeInTheDocument();
+        expect(center.getByRole("button", { name: "Aceitar" })).toBeEnabled();
+        expect(center.getByRole("button", { name: "Recusar" })).toBeEnabled();
+        expect(respondToRoomInvitation).not.toHaveBeenCalled();
+
+        await user.click(center.getByRole("button", { name: "Não lidas" }));
+        expect(await center.findByText("Não há notificações não lidas.")).toBeInTheDocument();
+        expect(getNotifications).toHaveBeenCalledWith(20, undefined, true);
     });
 });

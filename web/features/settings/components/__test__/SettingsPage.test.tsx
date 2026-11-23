@@ -34,7 +34,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replaceRoute }) }));
 
 vi.mock("@/features/auth/hooks/useAuth", () => ({
-    useAuth: () => ({ user: mocks.user, loading: false }),
+    useAuth: () => ({ user: mocks.user, loading: false, refreshUser: async () => undefined }),
 }));
 vi.mock("@/features/residences/api/residences.api", () => ({
     getResidences: mocks.residences,
@@ -527,6 +527,17 @@ describe("SettingsPage", () => {
         expect(await screen.findByText("Tarefa atribuída")).toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Marcar como lida" }));
         await waitFor(() => expect(mocks.markRead).toHaveBeenCalledWith("notification-1"));
+    });
+
+    it("opens the notification center before joining a residence", async () => {
+        mocks.residences.mockResolvedValue([]);
+        render(<SettingsPage section="notifications" tab="general" />);
+
+        expect(await screen.findByText("Você ainda não tem notificações.")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Notificações" })).toHaveAttribute(
+            "href",
+            "/settings?section=notifications"
+        );
     });
 
     it("loads and creates pantry categories through the existing API", async () => {

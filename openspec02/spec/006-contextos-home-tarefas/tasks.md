@@ -25,3 +25,9 @@ Com `TEST_DATABASE_URL` apontando para o PostgreSQL de testes com as migrations 
 ```powershell
 pnpm.cmd --dir backend run test:integration:sprint02-migrations test/integration/task-exchange.integration.test.ts -t 'current assignee'
 ```
+
+## G07 — Avisos na Home
+
+- [x] **T08 — Ocultar os placeholders de avisos coletivos.** Verificar Home de conta com e sem residência e os dois contextos. **Refs:** RF06, CA06.
+
+Os testes de Home cobriram os contextos Casa e Pessoal. No Chrome, a Home abriu com os dados da casa após o aceite de convite na central e sem os placeholders. [Triagem de G07](../../../docs/triagem-testes-manuais.md#verificação-de-g07--23112026)

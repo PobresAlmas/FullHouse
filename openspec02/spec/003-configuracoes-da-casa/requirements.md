@@ -33,6 +33,8 @@ Como morador, quero consultar os dados da minha casa e ajustar minhas preferênc
 - **RF10 — Centro de notificações.** Listar avisos persistidos com paginação e filtro geral/não lidas. Permitir marcar como lida, manter a contagem do sino coerente e atualizar a seção pela API autenticada.
 - **RF11 — Tema.** Aplicar Claro, Escuro e Sistema ao aplicativo, persistir a escolha no dispositivo e acompanhar as mudanças do sistema operacional no modo Sistema. A liberação depende de suporte visual completo.
 - **RF12 — Matriz de permissões de G05.** Aplicar na API e na interface as permissões da tabela abaixo para lista de compras, categorias da despensa, mural e pets.
+- **RF13 — Cartões e painel de notificações.** Permitir que contas autenticadas, inclusive sem residência, consultem a central. Cartões com destino oferecem um link pelo conteúdo inteiro e controles independentes de leitura e resposta ao convite. Exibir o estado de leitura em texto nos temas claro e escuro. Fechar o painel do sino com Escape ou clique fora.
+- **RF14 — Marcar todas como lidas.** Marcar todas as notificações não lidas da conta autenticada, inclusive as que estão fora da página atual. Atualizar a central e o contador do sino. A situação dos convites só muda com uma resposta explícita do destinatário.
 
 ## Matriz de permissões de G05
 
@@ -97,6 +99,8 @@ Categoria com itens associados fica protegida em todos os papéis. Alterações 
 - **CA11 — Tema.** Sistema acompanha o tema do sistema operacional. Escuro persiste após recarregar, com contraste e sem flash indevido. Uma opção sem adaptação visual completa não é declarada concluída.
 - **CA12 — Interface.** Desktop e celular preservam a navegação, a hierarquia e o acesso aos controles. A comparação das nove telas documenta diferenças intencionais.
 - **CA13 — Matriz de G05.** Confirmar os controles da interface e as respostas da API nas operações de RF12 para gestor, autor, outro morador, somente leitura e conta sem vínculo. Alterar entre `TODOS` e `LIDERES` com e sem permissão individual. Conferir o conflito de versão da lista e a proteção da categoria em uso.
+- **CA14 — Cartões e painel.** Abrir um destino pelo conteúdo do cartão ou com Tab e Enter. Acionar Aceitar, Recusar ou Marcar como lida separadamente. Conferir os dois estados de leitura nos dois temas, o fechamento por clique fora e Escape e a volta do foco ao sino ao usar Escape.
+- **CA15 — Leitura em lote.** Com mais de uma página de avisos e um convite pendente, marcar todas como lidas e confirmar que a central e o sino atualizam a contagem. O convite permanece pendente e acionável. Uma segunda execução é idempotente e a conta de outro usuário mantém seu estado.
 
 ## Fora do escopo
 

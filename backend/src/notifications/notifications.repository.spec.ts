@@ -107,4 +107,19 @@ describe("NotificationsRepository", () => {
             data: { lida: true },
         });
     });
+
+    it("marks all unread rows for the account in one update and is idempotent", async () => {
+        prisma.notificacao.updateMany
+            .mockResolvedValueOnce({ count: 26 })
+            .mockResolvedValueOnce({ count: 0 });
+
+        await expect(repository.markAllRead("user-1")).resolves.toEqual({ updatedCount: 26 });
+        await expect(repository.markAllRead("user-1")).resolves.toEqual({ updatedCount: 0 });
+        expect(prisma.notificacao.updateMany).toHaveBeenCalledTimes(2);
+        expect(prisma.notificacao.updateMany).toHaveBeenCalledWith({
+            where: { usuario_id: "user-1", lida: false },
+            data: { lida: true },
+        });
+        expect(prisma.convite_casa.findMany).not.toHaveBeenCalled();
+    });
 });

@@ -245,29 +245,44 @@ por unidade antes de mexer na validação.
 `web/features/home/components/HomePage.tsx` e `backend/src/notifications/`.
 
 **Destino** — [SPEC-003](../openspec02/spec/003-configuracoes-da-casa/requirements.md) para o centro compartilhado. [SPEC-001](../openspec02/spec/001-anunciar-quarto/requirements.md)/[SPEC-004](../openspec02/spec/004-negociacao-e-convites/requirements.md) para links
-do anúncio e ações de convite. O conceito de avisos da Home entra na spec
-da Home após definir a origem dos dados.
+do anúncio e ações de convite. A [SPEC-006](../openspec02/spec/006-contextos-home-tarefas/requirements.md#g07--avisos-na-home) registra a origem e o acesso aos avisos da Home.
 
-- [ ] **G07.1** — Área clicável. Somente o título da notificação abriu o destino.
+- [x] **G07.1** — Área clicável. Somente o título da notificação abriu o destino.
   Permitir que o cartão clicável abra a notificação sem disparar
   navegação ao usar um controle interno de aceitar, recusar ou marcar
   como lida. Conferir com teclado.
-- [ ] **G07.2** — Fechamento. O teste registrou que o aviso só sumia ao clicar no
+- [x] **G07.2** — Fechamento. O teste registrou que o aviso só sumia ao clicar no
   ícone. Identificar se era o painel do sino ou um feedback temporário.
   Para o painel, conferir fechamento por clique fora e Escape. Para o
   feedback temporário, definir duração e controle conforme o padrão do app.
-- [ ] **G07.3** — Tema escuro. Distinguir notificações lidas e não lidas com
+- [x] **G07.3** — Tema escuro. Distinguir notificações lidas e não lidas com
   contraste e indicação de estado que não dependa somente da cor.
-- [ ] **G07.4** — Marcar todas como lidas. Definir que a ação inclui os avisos
+- [x] **G07.4** — Marcar todas como lidas. Definir que a ação inclui os avisos
   ainda não lidos da própria conta, mesmo fora da página atual.
   Atualizar sino, central e contador sem tratar convites pendentes
   como aceitos ou recusados. Registrar como requisito novo da [SPEC-003](../openspec02/spec/003-configuracoes-da-casa/requirements.md).
-- [ ] **G07.5** — Avisos da Home. O teste não identificou de onde vêm os avisos
+- [x] **G07.5** — Avisos da Home. O teste não identificou de onde vêm os avisos
   e a tela atual informa que os avisos da residência não estão
   disponíveis. Definir se o cartão deve mostrar avisos da casa, apontar
   para a central de notificações ou ficar oculto até existir uma fonte.
   Mural de Regras, avisos coletivos e notificações pessoais são fluxos
   distintos. Registrar a escolha e a autorização esperada na spec da Home.
+
+### Verificação de G07 — 23/11/2026
+
+| Item | Resultado |
+| --- | --- |
+| G07.1 | Clique no preenchimento do cartão de interesse abriu o anúncio em Moradores no Chrome. Tab e Enter ativaram o link nos testes de interface. Os botões do convite e de leitura foram exercitados separadamente. |
+| G07.2 | O painel do sino fechou por clique fora e por Escape. Escape devolveu o foco ao sino. Os erros aparecem junto ao controle de nova tentativa. |
+| G07.3 | Os cartões mostraram **Lida** e **Não lida** com fundos distintos nos dois temas. O painel ficou dentro dos limites da janela de 390 px no Chrome. |
+| G07.4 | A API marcou 25 avisos não lidos distribuídos em duas páginas. Repetir retornou zero. Os avisos da outra conta mantiveram seu estado. No Chrome, o sino e a central atualizaram a contagem e mantiveram a página já carregada. A destinatária respondeu ao convite pela central depois de marcar tudo como lido e entrou na casa. |
+| G07.5 | A Home deixou de exibir o cartão vazio e a contagem sem fonte de avisos coletivos. O sino e a central continuam oferecendo os avisos pessoais à conta autenticada. |
+
+Os testes usaram contas de anunciante e interessada em um PostgreSQL isolado.
+Para repetir pela interface, gere um interesse e um convite entre duas
+contas, abra **Ver todas** pelo sino da destinatária e marque as notificações
+como lidas. Confira a contagem, o filtro e as ações do convite pendente. Os
+comandos estão no [registro da SPEC-003](../openspec02/spec/003-configuracoes-da-casa/tasks.md#g07--sino-e-central-de-notificações).
 
 ## G08 — Layout, tema, confirmações e navegação
 

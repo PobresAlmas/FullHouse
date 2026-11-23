@@ -69,6 +69,7 @@ Como pessoa interessada em um quarto, quero acompanhar meu pedido, conversar com
 - **CA07 — Notificação de aceite.** Após confirmar o aceite do interesse, o aviso da pessoa interessada aponta para a conversa privada.
 - **CA08 — Responder pela notificação.** A ação processa a decisão e a interface deixa de oferecer resposta ao convite tratado.
 - **CA09 — Isolamento de avisos.** A lista autenticada mostra apenas notificações da própria conta e suas ações autorizadas.
+- **CA10 — Leitura e decisão de convite.** O destinatário pode abrir a negociação pelo cartão ou responder por um botão independente, no sino ou na central, inclusive antes de entrar em uma casa. Marcar a notificação como lida individualmente ou em lote preserva as ações enquanto o convite estiver pendente e válido. [SPEC-003](../003-configuracoes-da-casa/requirements.md#critérios-de-aceitação)
 
 ## Fora do escopo
 

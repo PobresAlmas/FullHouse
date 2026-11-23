@@ -26,6 +26,8 @@
 
 O servidor continua sendo a fonte de autorização de tarefas privadas e pessoais. O aviso reaproveita a tabela de notificações e o acesso existente a `/tasks` pelo sino. O aceite grava as atribuições, o estado da solicitação, a tarefa final selecionada e a notificação em uma única transação.
 
+Em G07, a Home remove o cartão estático **Aviso da casa** e a métrica **Avisos novos**. O cabeçalho mantém o sino e a [central da conta](../003-configuracoes-da-casa/requirements.md#requisitos-funcionais). O mural continua sendo a fonte de regras de convivência. Um futuro cartão de aviso coletivo depende de um contrato que filtre pelo vínculo ativo na casa.
+
 ## Rastreabilidade
 
 | Triagem | Requisito | Critério |
@@ -35,3 +37,4 @@ O servidor continua sendo a fonte de autorização de tarefas privadas e pessoai
 | G02.3   | RF03      | CA03     |
 | G02.4   | RF04      | CA04     |
 | G02.5   | RF05      | CA05     |
+| G07.5   | RF06      | CA06     |

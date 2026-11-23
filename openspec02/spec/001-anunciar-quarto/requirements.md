@@ -80,6 +80,7 @@ Como líder ou administrador de uma residência ativa, quero anunciar um quarto 
 - **CA11 — Notificação.** A API registra o interesse pendente e o aviso para o anunciante juntos. O sino exibe o aviso pelo fluxo atual de atualização. O link abre o anúncio na área de interessados, e reenvio após recusa gera novo aviso. O destinatário é o anunciante, sem divulgar a mensagem do interessado na notificação.
 - **CA12 — Aceite e atualização da interface.** Após confirmar o convite, a pessoa aparece como `MORADOR` em **Moradores**, sua situação de moradia passa a `MORANDO` e a tela inicial reconhece a casa sem que ela precise sair da conta ou recarregar manualmente. Convite expirado, recusado ou de outra pessoa não cria vínculo nem redireciona para a casa.
 - **CA13 — Paridade dos cards.** Em Moradores, o card usa a mesma capa, estrutura, preço, localização e etiquetas da busca pública. As ações do anunciante ficam disponíveis junto à prévia. Anúncios sem foto usam a mesma ilustração de reserva da busca.
+- **CA14 — Link de interesse em G07.** O cartão de interesse abre os interessados do anúncio em Moradores, pelo sino ou pela central. A ação de leitura do cartão só altera a notificação, e a área de interessados continua sujeita à autorização do anúncio. [SPEC-003](../003-configuracoes-da-casa/requirements.md#critérios-de-aceitação)
 
 ## Fora do escopo
 

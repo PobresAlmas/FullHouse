@@ -27,7 +27,7 @@
 
 - **Meus interesses:** mostra o anúncio, seu estado e o acesso às negociações aceitas.
 - **Conversa:** mostra histórico e envio aos dois participantes. O envio de convite fica disponível ao anunciante com papel de gestão.
-- **Sino de notificações:** exibe avisos da conta, abre a conversa e oferece ações para convites pendentes. A evolução do aceite na própria conversa e navegação após entrada está descrita na [SPEC-001](../001-anunciar-quarto/requirements.md).
+- **Sino e central de notificações:** exibem avisos da conta, abrem a conversa e oferecem ações para convites pendentes em controles independentes do link e do estado de leitura. A entrada confirmada atualiza a casa na interface conforme a [SPEC-001](../001-anunciar-quarto/requirements.md). O cartão compartilhado e a marcação em lote estão na [SPEC-003](../003-configuracoes-da-casa/design.md#g07--sino-e-central).
 
 ## Componentes sugeridos
 

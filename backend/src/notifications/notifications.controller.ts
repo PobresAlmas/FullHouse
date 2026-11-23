@@ -41,4 +41,9 @@ export class NotificationsController {
     ) {
         return this.service.markRead(id, user.id);
     }
+
+    @Patch("read-all")
+    markAllRead(@CurrentUser() user: { id: string }) {
+        return this.service.markAllRead(user.id);
+    }
 }

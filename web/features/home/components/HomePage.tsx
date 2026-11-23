@@ -10,7 +10,6 @@ import {
     ChevronRight,
     CircleUserRound,
     LogOut,
-    MessageSquare,
     PlusCircle,
     UsersRound,
     Wallet,
@@ -691,7 +690,7 @@ export function HomePage() {
                                 </div>
 
                                 <div className="grid gap-5">
-                                    {context === "personal" ? (
+                                    {context === "personal" && (
                                         <section
                                             className={`${cardClass} flex flex-row items-start gap-4 p-4`}
                                         >
@@ -709,22 +708,6 @@ export function HomePage() {
                                                 </p>
                                             </div>
                                         </section>
-                                    ) : (
-                                        <section className={cardClass}>
-                                            <CardHeading
-                                                icon={
-                                                    <MessageSquare
-                                                        size={16}
-                                                        className="text-[#4e812f]"
-                                                    />
-                                                }
-                                            >
-                                                Aviso da casa
-                                            </CardHeading>
-                                            <Empty>
-                                                Avisos da residência não estão disponíveis.
-                                            </Empty>
-                                        </section>
                                     )}
 
                                     <section className={cardClass}>
@@ -733,7 +716,7 @@ export function HomePage() {
                                         >
                                             Resumo da semana
                                         </CardHeading>
-                                        <div className="grid grid-cols-3 gap-3 px-4 pt-4">
+                                        <div className="grid grid-cols-2 gap-3 px-4 pt-4">
                                             <div className="rounded-xl border border-[#e0dce2] bg-[#fafbfc] p-3">
                                                 <strong className="block text-xl">
                                                     {completedWeek}
@@ -748,12 +731,6 @@ export function HomePage() {
                                                 </strong>
                                                 <span className="text-[11px] text-[#98929d]">
                                                     Contas pagas
-                                                </span>
-                                            </div>
-                                            <div className="rounded-xl border border-[#e0dce2] bg-[#fafbfc] p-3">
-                                                <strong className="block text-xl">—</strong>
-                                                <span className="text-[11px] text-[#98929d]">
-                                                    Avisos novos
                                                 </span>
                                             </div>
                                         </div>

@@ -42,3 +42,8 @@ Como usuário, quero distinguir a rotina da casa da minha rotina pessoal. Como m
 - **CA03 — Acesso e recarga.** Conta sem casa alterna entre Início e Pessoal na Home e abre a lista de Tarefas. Uma conta com casa alterna os contextos. Recarregar `/tasks?scope=personal` mantém a lista pessoal. Uma consulta de residência com falha permite carregar as tarefas pessoais.
 - **CA04 — Aceitar outra tarefa.** C vê o par final ao substituir a sugestão de B. Depois do aceite, o pedido e o aviso do sino de B mostram a escolha efetiva. Uma resposta rejeitada pelo servidor não cria o aviso de aceite.
 - **CA05 — Ação abaixo do topo.** Erros e confirmações de ação podem ser lidos e dispensados sem voltar ao topo. A mensagem de erro do formulário fica focada após a validação.
+
+## G07 — Avisos na Home
+
+- **RF06 — Fonte de avisos coletivos.** Enquanto a Home não tiver uma fonte de avisos por residência, ocultar o cartão e a contagem vazia. O sino continua acessível pela conta autenticada para as notificações pessoais.
+- **CA06 — Origem e acesso.** Verificar Home com e sem residência e nos modos Casa e Pessoal. Nenhum cenário mostra um aviso ou uma contagem sem dados. Os avisos existentes do usuário são consultados no sino ou na central. Um futuro aviso coletivo exige participação ativa na residência de origem.

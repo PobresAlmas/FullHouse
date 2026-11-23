@@ -1,38 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useId, useRef, useState } from "react";
 import { Bell } from "lucide-react";
-import {
-    getNotifications,
-    markNotificationRead,
-    subscribeNotifications,
-} from "../api/notifications.api";
-import type { AppNotification } from "../api/notifications.api";
-import { roomInterestHref } from "../room-interest-link";
-import { respondToRoomInvitation } from "@/features/rooms/api/rooms.api";
-import { enterInvitedResidence } from "@/features/rooms/enter-invited-residence";
 import { AuthContext } from "@/providers/AuthProvider";
+import { useNotificationInbox } from "../hooks/useNotificationInbox";
+import { NotificationList } from "./NotificationList";
 
-function errorText(error: unknown) {
-    return typeof error === "object" && error !== null && "message" in error
-        ? String(error.message)
-        : "Não foi possível carregar as notificações.";
-}
+const bellButtonClass =
+    "grid size-10 place-items-center rounded-full border border-border bg-card text-card-foreground";
 
 export function NotificationBell() {
     const auth = useContext(AuthContext);
     if (!auth?.user) {
         return (
-            <span
-                aria-label="Notificações"
-                className="grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
-            >
+            <span aria-label="Notificações" className={bellButtonClass}>
                 <Bell size={19} />
             </span>
         );
     }
+
     return (
         <SignedInNotificationBell
             key={auth.user.id}
@@ -49,260 +36,119 @@ function SignedInNotificationBell({
     userId: string;
     refreshUser: () => Promise<void>;
 }) {
-    const router = useRouter();
-    const [notificationState, setNotificationState] = useState<{
-        userId: string;
-        items: AppNotification[];
-        unreadCount: number;
-    } | null>(null);
+    const inbox = useNotificationInbox(userId, refreshUser);
     const [open, setOpen] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [responding, setResponding] = useState(false);
-    const notifications =
-        notificationState && notificationState.userId === userId ? notificationState.items : [];
-    const unreadCount =
-        notificationState && notificationState.userId === userId
-            ? notificationState.unreadCount
-            : 0;
-
-    const refresh = useCallback(async () => {
-        if (!userId) return;
-        setLoading(true);
-        setError("");
-        try {
-            setNotificationState({ userId, ...(await getNotifications()) });
-        } catch (cause: unknown) {
-            setError(errorText(cause));
-        } finally {
-            setLoading(false);
-        }
-    }, [userId]);
+    const root = useRef<HTMLDivElement>(null);
+    const trigger = useRef<HTMLButtonElement>(null);
+    const panel = useRef<HTMLElement>(null);
+    const panelId = useId();
 
     useEffect(() => {
-        if (!userId) return;
-        let active = true;
-        void getNotifications()
-            .then((result) => {
-                if (active) setNotificationState({ userId, ...result });
-            })
-            .catch((cause: unknown) => {
-                if (active) setError(errorText(cause));
-            });
-        const unsubscribe = subscribeNotifications(
-            (result) => {
-                if (active) setNotificationState({ userId, ...result });
-            },
-            () => {
-                if (active)
-                    setError("A atualização em tempo real está temporariamente indisponível.");
-            }
-        );
-        return () => {
-            active = false;
-            unsubscribe();
+        if (!open) return;
+        panel.current?.focus();
+        const onOutside = (event: PointerEvent) => {
+            if (event.target instanceof Node && !root.current?.contains(event.target))
+                setOpen(false);
         };
-    }, [userId]);
-
-    async function markRead(notificationId: string) {
-        try {
-            await markNotificationRead(notificationId);
-            setNotificationState((current) => {
-                if (!current || current.userId !== userId) return current;
-                const wasUnread = current.items.some(
-                    (item) => item.id === notificationId && !item.lida
-                );
-                return {
-                    ...current,
-                    unreadCount: Math.max(0, current.unreadCount - Number(wasUnread)),
-                    items: current.items.map((item) =>
-                        item.id === notificationId ? { ...item, lida: true } : item
-                    ),
-                };
-            });
-        } catch (cause: unknown) {
-            setError(errorText(cause));
-        }
-    }
-
-    async function respond(notification: AppNotification, status: "ACEITO" | "RECUSADO") {
-        if (!notification.convite?.podeResponder || responding) return;
-        setError("");
-        setResponding(true);
-        try {
-            const decision = await respondToRoomInvitation(notification.convite.id, status);
-            setNotificationState((current) => {
-                if (!current || current.userId !== userId) return current;
-                const wasUnread = current.items.some(
-                    (item) => item.id === notification.id && !item.lida
-                );
-                return {
-                    ...current,
-                    unreadCount: Math.max(0, current.unreadCount - Number(wasUnread)),
-                    items: current.items.map((item) =>
-                        item.id === notification.id
-                            ? {
-                                  ...item,
-                                  lida: true,
-                                  convite: item.convite
-                                      ? {
-                                            ...item.convite,
-                                            status: decision.status,
-                                            podeResponder: false,
-                                        }
-                                      : null,
-                              }
-                            : item
-                    ),
-                };
-            });
-            if (decision.status === "ACEITO") {
-                void markRead(notification.id);
-                if (enterInvitedResidence(decision, refreshUser, () => router.replace("/"))) {
-                    setOpen(false);
-                } else {
-                    setError("O servidor não confirmou sua participação na casa.");
-                }
-                return;
-            }
-            await markNotificationRead(notification.id);
-            await refresh();
-        } catch (cause: unknown) {
-            setError(errorText(cause));
-        } finally {
-            setResponding(false);
-        }
-    }
+        const onEscape = (event: KeyboardEvent) => {
+            if (event.key !== "Escape" || event.defaultPrevented) return;
+            event.preventDefault();
+            setOpen(false);
+            trigger.current?.focus();
+        };
+        document.addEventListener("pointerdown", onOutside);
+        document.addEventListener("keydown", onEscape);
+        return () => {
+            document.removeEventListener("pointerdown", onOutside);
+            document.removeEventListener("keydown", onEscape);
+        };
+    }, [open]);
 
     return (
-        <div className="relative">
+        <div ref={root} className="md:relative">
             <button
+                ref={trigger}
                 type="button"
                 aria-label="Notificações"
                 aria-expanded={open}
+                aria-controls={open ? panelId : undefined}
                 onClick={() => {
-                    const nextOpen = !open;
-                    setOpen(nextOpen);
-                    if (nextOpen) void refresh();
+                    if (!open) void inbox.refresh(true);
+                    setOpen(!open);
                 }}
-                className="relative grid size-10 place-items-center rounded-full border border-[#d8d1da] bg-white"
+                className={`relative ${bellButtonClass} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}
             >
-                <Bell size={19} />
-                {unreadCount > 0 && (
+                <Bell size={19} aria-hidden="true" />
+                {inbox.unreadCount > 0 && (
                     <span
-                        aria-label={`${unreadCount} notificações não lidas`}
+                        aria-label={`${inbox.unreadCount} notificações não lidas`}
                         aria-live="polite"
                         className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-[#a33232] px-1 text-[10px] font-bold text-white"
                     >
-                        {unreadCount}
+                        {inbox.unreadCount}
                     </span>
                 )}
             </button>
             {open && (
                 <section
+                    ref={panel}
+                    id={panelId}
                     role="dialog"
                     aria-label="Notificações"
-                    className="absolute right-0 z-30 mt-2 max-h-[70vh] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-[#d8d1da] bg-white p-3 shadow-xl"
+                    tabIndex={-1}
+                    className="absolute inset-x-4 top-full z-40 mt-2 max-h-[70dvh] overflow-y-auto rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-xl sm:left-auto sm:w-[22rem] md:right-0"
                 >
-                    <div className="mb-2 flex items-center justify-between">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                         <h2 className="font-semibold">Notificações</h2>
+                        <Link
+                            href="/settings?section=notifications"
+                            onClick={() => setOpen(false)}
+                            className="rounded text-xs font-medium underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        >
+                            Ver todas
+                        </Link>
+                    </div>
+                    <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                         <button
                             type="button"
-                            onClick={() => void refresh()}
-                            className="text-xs text-[#315f35] underline"
+                            onClick={() => void inbox.refresh()}
+                            disabled={inbox.loading || inbox.busy}
+                            className="rounded text-xs underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
                         >
                             Atualizar
                         </button>
+                        <button
+                            type="button"
+                            disabled={inbox.unreadCount === 0 || inbox.busy}
+                            onClick={inbox.markAllRead}
+                            className="rounded text-xs font-medium underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50"
+                        >
+                            Marcar todas como lidas
+                        </button>
                     </div>
-                    {error && (
+                    {inbox.error && (
                         <p role="alert" className="mb-2 rounded bg-red-50 p-2 text-xs text-red-800">
-                            {error}
+                            {inbox.error}
                         </p>
                     )}
-                    {loading ? (
-                        <p role="status" className="py-4 text-center text-sm text-[#77717c]">
+                    {inbox.loading ? (
+                        <p role="status" className="py-4 text-center text-sm text-muted-foreground">
                             Carregando...
                         </p>
-                    ) : notifications.length === 0 ? (
-                        <p className="py-4 text-center text-sm text-[#77717c]">
+                    ) : inbox.items.length === 0 ? (
+                        <p className="py-4 text-center text-sm text-muted-foreground">
                             Nenhuma notificação.
                         </p>
                     ) : (
-                        <ul className="grid gap-2">
-                            {notifications.map((notification) => {
-                                const href =
-                                    roomInterestHref(notification) ??
-                                    (notification.entidadeTipo === "REUNIAO"
-                                        ? "/meetings"
-                                        : undefined) ??
-                                    (notification.entidadeTipo === "TROCA_TAREFA"
-                                        ? "/tasks"
-                                        : undefined) ??
-                                    (notification.negotiationId
-                                        ? `/rooms/negotiations/${notification.negotiationId}`
-                                        : undefined);
-                                return (
-                                    <li
-                                        key={notification.id}
-                                        className={`rounded-lg border p-3 ${notification.lida ? "bg-white" : "bg-[#f3f8f2]"}`}
-                                    >
-                                        {href ? (
-                                            <Link
-                                                href={href}
-                                                onClick={() => {
-                                                    if (!notification.lida)
-                                                        void markRead(notification.id);
-                                                    setOpen(false);
-                                                }}
-                                                className="font-semibold hover:underline"
-                                            >
-                                                {notification.titulo}
-                                            </Link>
-                                        ) : (
-                                            <p className="font-semibold">{notification.titulo}</p>
-                                        )}
-                                        {notification.mensagem && (
-                                            <p className="mt-1 text-sm text-[#625c66]">
-                                                {notification.mensagem}
-                                            </p>
-                                        )}
-                                        {notification.convite?.podeResponder && (
-                                            <div className="mt-3 flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    disabled={responding}
-                                                    onClick={() =>
-                                                        void respond(notification, "ACEITO")
-                                                    }
-                                                    className="rounded bg-[#2f6034] px-3 py-1.5 text-xs font-semibold text-white"
-                                                >
-                                                    Aceitar
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    disabled={responding}
-                                                    onClick={() =>
-                                                        void respond(notification, "RECUSADO")
-                                                    }
-                                                    className="rounded border px-3 py-1.5 text-xs"
-                                                >
-                                                    Recusar
-                                                </button>
-                                            </div>
-                                        )}
-                                        {!notification.lida && (
-                                            <button
-                                                type="button"
-                                                onClick={() => void markRead(notification.id)}
-                                                className="mt-2 block text-xs text-[#315f35] underline"
-                                            >
-                                                Marcar como lida
-                                            </button>
-                                        )}
-                                    </li>
-                                );
-                            })}
-                        </ul>
+                        <NotificationList
+                            items={inbox.items}
+                            busy={inbox.busy}
+                            onRead={inbox.markRead}
+                            onRespond={(item, status) =>
+                                inbox.respond(item, status, () => setOpen(false))
+                            }
+                            onOpen={() => setOpen(false)}
+                        />
                     )}
                 </section>
             )}

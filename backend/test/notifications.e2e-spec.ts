@@ -10,15 +10,18 @@ const USER_ID = "821f394d-6215-48b4-89a9-0af953ba8a76";
 describe("Notifications HTTP API (e2e)", () => {
     let app: INestApplication<App>;
     let authenticatedCookie: () => Promise<string>;
-    const service = { list: vi.fn(), markRead: vi.fn() };
+    const service = { list: vi.fn(), markRead: vi.fn(), markAllRead: vi.fn() };
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        service.list.mockResolvedValue([]);
+        const inbox = { items: [], unreadCount: 0, nextCursor: null };
+        service.list.mockResolvedValue(inbox);
         service.markRead.mockResolvedValue({ id: "notification-1", lida: true });
+        service.markAllRead.mockResolvedValue({ updatedCount: 25 });
         const testApp = await createAuthenticatedTestApp({
             controllers: [NotificationsController],
             providers: [{ provide: NotificationsService, useValue: service }],
+            validateRequests: true,
         });
         app = testApp.app;
         authenticatedCookie = () =>
@@ -31,8 +34,8 @@ describe("Notifications HTTP API (e2e)", () => {
             .get("/notifications")
             .set("Cookie", await authenticatedCookie())
             .expect(200)
-            .expect([]);
-        expect(service.list).toHaveBeenCalledWith(USER_ID);
+            .expect({ items: [], unreadCount: 0, nextCursor: null });
+        expect(service.list).toHaveBeenCalledWith(USER_ID, 20, undefined, false);
     });
 
     it("marks a notification read using the authenticated identity", async () => {
@@ -43,5 +46,16 @@ describe("Notifications HTTP API (e2e)", () => {
             .expect(200)
             .expect({ id: "notification-1", lida: true });
         expect(service.markRead).toHaveBeenCalledWith(notificationId, USER_ID);
+    });
+
+    it("marks all notifications read only for the authenticated identity", async () => {
+        await request(app.getHttpServer()).patch("/notifications/read-all").expect(401);
+        await request(app.getHttpServer())
+            .patch("/notifications/read-all")
+            .set("Cookie", await authenticatedCookie())
+            .send({ userId: "other-user" })
+            .expect(200)
+            .expect({ updatedCount: 25 });
+        expect(service.markAllRead).toHaveBeenCalledExactlyOnceWith(USER_ID);
     });
 });

@@ -87,6 +87,7 @@ describe("HomePage", () => {
 
         await user.click(await screen.findByRole("button", { name: "Pessoal" }));
         expect(await screen.findByText("Organizar documentos pessoais")).toBeInTheDocument();
+        expect(screen.queryByText("Avisos novos")).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: /Ver todas as tarefas pessoais/ })).toHaveAttribute(
             "href",
             "/tasks?scope=personal"
@@ -178,6 +179,8 @@ describe("HomePage", () => {
         expect(screen.queryByText("Membros da casa")).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: residence.name }));
         expect(await screen.findByText("Membros da casa")).toBeInTheDocument();
+        expect(screen.queryByText("Aviso da casa")).not.toBeInTheDocument();
+        expect(screen.queryByText("Avisos novos")).not.toBeInTheDocument();
     });
 
     it("shows personal task data when its expense query reports a partial failure", async () => {

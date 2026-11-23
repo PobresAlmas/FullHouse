@@ -91,4 +91,12 @@ export class NotificationsRepository {
         if (!result.count) throw new NotFoundException("Notificação não encontrada.");
         return { id: notificationId, lida: true };
     }
+
+    async markAllRead(userId: string) {
+        const result = await this.prisma.notificacao.updateMany({
+            where: { usuario_id: userId, lida: false },
+            data: { lida: true },
+        });
+        return { updatedCount: result.count };
+    }
 }

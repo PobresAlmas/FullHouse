@@ -46,4 +46,8 @@ export class NotificationsService {
     markRead(notificationId: string, userId: string) {
         return this.repository.markRead(notificationId, userId);
     }
+
+    markAllRead(userId: string) {
+        return this.repository.markAllRead(userId);
+    }
 }

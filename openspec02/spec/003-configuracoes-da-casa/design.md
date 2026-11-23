@@ -19,7 +19,7 @@
 ## Fluxos alternativos
 
 - Minha conta direciona a `/profile`. Parâmetros inválidos retornam à navegação válida.
-- Sem casa, exibir estado vazio. Ao mudar de vínculo ou encerrar a sessão, invalidar os dados anteriores.
+- Sem casa, exibir estado vazio nas seções da residência. A central de notificações usa a sessão da conta. Ao mudar de vínculo ou encerrar a sessão, invalidar os dados anteriores.
 - Falha mostra feedback e opção de repetir a consulta quando possível. Erro de validação impede gravação. A API trata acesso insuficiente, recursos de outra casa e conflitos sem divulgar registros alheios.
 - Uma categoria em uso exige reclassificar seus itens. A exclusão pede confirmação.
 
@@ -84,6 +84,14 @@ Carregando, vazio, erro e sucesso por seção. Escritas aguardam resposta e most
 - O tema previsto usa um `ThemeProvider` compartilhado, chave `fullhouse:theme` no dispositivo e `prefers-color-scheme` para Sistema. Aplicar cedo para evitar mudança visível no carregamento e adaptar cores fixas antes de declarar o tema completo.
 - Sequenciar navegação, vínculo ativo único, contratos existentes e categorias antes da evolução dos endpoints, preferências, permissões individuais e temas. Verificar com testes de UI, DTO, serviço, autorização HTTP, duas contas e as nove imagens de referência.
 
+## G07 — Sino e central
+
+- Sino e central compartilham o cartão e os destinos já autorizados pelos módulos. O link ocupa o cartão, e os botões de ação ficam em elementos irmãos, com foco e ativação próprios. Identificar **Lida** e **Não lida** no texto e usar a paleta de ambos os temas.
+- A central usa a identidade da sessão mesmo antes do ingresso em uma casa. No sino, clique fora dispensa o painel e Escape o fecha devolvendo o foco ao botão. Erros de carregamento e de ação ficam no painel ou na central até nova tentativa.
+- `PATCH /notifications/read-all` retorna `{ updatedCount }` após atualizar somente registros não lidos cujo destinatário é a sessão. A operação de leitura atualiza apenas `notificacao.lida`.
+- Depois de uma mutação, a central e o sino recarregam os dados da conta. O fluxo SSE sinaliza mudanças e a atualização periódica funciona como alternativa. A central preserva as páginas já carregadas no filtro atual. O total sempre se refere à conta, inclusive com filtro.
+- Manter o link do interesse da [SPEC-001](../001-anunciar-quarto/requirements.md#critérios-de-aceitação) e a conversa e as decisões da [SPEC-004](../004-negociacao-e-convites/requirements.md#critérios-de-aceitação).
+
 ## Rastreabilidade
 
 | Requisitos             | Design                                           | Critérios       |
@@ -93,3 +101,4 @@ Carregando, vazio, erro e sucesso por seção. Escritas aguardam resposta e most
 | RF07–RF09              | Categorias existentes, preferências e eventos    | CA07–CA09       |
 | RF10, RNF03            | Centro autenticado, filtro, paginação e marcação | CA10            |
 | RF11, RNF02            | Tema do dispositivo e verificação de contraste   | CA11–CA12       |
+| RF13–RF14, RNF03       | Cartões, fechamento e leitura por conta          | CA14–CA15       |
