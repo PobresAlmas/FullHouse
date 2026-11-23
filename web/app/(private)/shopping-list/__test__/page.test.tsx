@@ -195,25 +195,23 @@ describe("ShoppingListPage", () => {
         expect(await screen.findByText("Leite sem lactose")).toBeInTheDocument();
     });
 
-    it("deletes an item only after browser confirmation", async () => {
+    it("deletes an item only after confirming in the dialog", async () => {
         const user = userEvent.setup();
-        const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
         vi.mocked(deleteShoppingListItem).mockResolvedValueOnce();
         render(<ShoppingListPage />);
         await user.click(await screen.findByRole("button", { name: "Excluir Leite" }));
+        const dialog = screen.getByRole("alertdialog", { name: "Remover item da lista?" });
+        await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
         expect(deleteShoppingListItem).not.toHaveBeenCalled();
         expect(screen.getByText("Leite")).toBeInTheDocument();
-        confirm.mockReturnValue(true);
         await user.click(screen.getByRole("button", { name: "Excluir Leite" }));
-        expect(confirm).toHaveBeenCalledWith(
-            "Remover este item da lista? Esta ação não pode ser desfeita."
-        );
+        const confirmDialog = screen.getByRole("alertdialog", { name: "Remover item da lista?" });
+        await user.click(within(confirmDialog).getByRole("button", { name: "Remover item" }));
         await waitFor(() =>
             expect(deleteShoppingListItem).toHaveBeenCalledWith(residence.id, item, false)
         );
         expect(await screen.findByRole("status")).toHaveTextContent("Item removido da lista.");
         expect(screen.queryByText("Leite")).not.toBeInTheDocument();
-        confirm.mockRestore();
     });
 
     it("reloads the current list after a stale status conflict", async () => {
