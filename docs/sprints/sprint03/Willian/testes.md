@@ -12,6 +12,8 @@
 
 As suítes completas passaram após os ajustes. `app.module.spec.ts` define valores de configuração próprios antes de importar `AppModule`, portanto a suíte backend não depende de um `.env` local válido e os testes unitários não acessam banco ou MinIO. A suíte direcionada do backend foi repetida após a formatação dos arquivos tocados.
 
+Os testes de saudação do cabeçalho aceitam “Bom dia”, “Boa tarde” ou “Boa noite”, pois o texto depende do horário local do runner. Os quatro arquivos afetados também passaram com `TZ=Pacific/Apia`, além da suíte completa.
+
 ## 2. Verificações adicionais
 
 - Prettier: aprovado nos arquivos alterados.

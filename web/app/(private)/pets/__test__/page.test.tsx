@@ -74,7 +74,9 @@ describe("PetsPage", () => {
         render(<PetsPage />);
 
         expect(await screen.findAllByText("Casa do Vale")).not.toHaveLength(0);
-        expect(screen.getByRole("heading", { name: "Bom dia, Emilson" })).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: /^(Bom dia|Boa tarde|Boa noite), Emilson$/ })
+        ).toBeInTheDocument();
         expect(
             screen.queryByRole("combobox", { name: "Trocar residência" })
         ).not.toBeInTheDocument();
