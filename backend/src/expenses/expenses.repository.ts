@@ -112,6 +112,119 @@ export class ExpensesRepository {
         });
     }
 
+    async hasParticipationInHome(homeId: string, participationId: string) {
+        const participation = await this.prisma.participacao.findFirst({
+            where: { id: participationId, casa_id: homeId },
+            select: { id: true },
+        });
+        return participation !== null;
+    }
+
+    async hasVisibleSubgroup(homeId: string, subgroupId: string, userId: string) {
+        const subgroup = await this.prisma.subgrupo.findFirst({
+            where: {
+                id: subgroupId,
+                casa_id: homeId,
+                excluido_em: null,
+                OR: [
+                    {
+                        membro_subgrupo: {
+                            some: {
+                                saiu_em: null,
+                                participacao: { usuario_id: userId, data_saida: null },
+                            },
+                        },
+                    },
+                    { participacao: { usuario_id: userId, data_saida: null } },
+                ],
+            },
+            select: { id: true },
+        });
+        return subgroup !== null;
+    }
+
+    findInsightsExpenses(
+        homeId: string,
+        userId: string,
+        from: string,
+        to: string,
+        subgroupId?: string
+    ) {
+        return this.prisma.despesa.findMany({
+            where: {
+                casa_id: homeId,
+                escopo: "CASA",
+                status: { not: "CANCELADA" },
+                data_vencimento: {
+                    gte: new Date(`${from}T00:00:00.000Z`),
+                    lte: new Date(`${to}T00:00:00.000Z`),
+                },
+                ...(subgroupId ? { subgrupo_id: subgroupId } : {}),
+                OR: [
+                    { subgrupo_id: null },
+                    {
+                        subgrupo: {
+                            is: {
+                                excluido_em: null,
+                                OR: [
+                                    {
+                                        membro_subgrupo: {
+                                            some: {
+                                                saiu_em: null,
+                                                participacao: {
+                                                    usuario_id: userId,
+                                                    data_saida: null,
+                                                },
+                                            },
+                                        },
+                                    },
+                                    {
+                                        participacao: {
+                                            usuario_id: userId,
+                                            data_saida: null,
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                ],
+            },
+            select: {
+                id: true,
+                descricao: true,
+                valor_total: true,
+                data_vencimento: true,
+                status: true,
+                participacao: {
+                    select: {
+                        id: true,
+                        data_saida: true,
+                        usuario: { select: { nome: true, apelido: true } },
+                    },
+                },
+                subgrupo: { select: { id: true, nome: true } },
+                rateio_despesa: {
+                    orderBy: [{ participacao: { usuario: { nome: "asc" } } }, { id: "asc" }],
+                    select: {
+                        id: true,
+                        participacao_id: true,
+                        valor_devido: true,
+                        pago: true,
+                        participacao: {
+                            select: {
+                                id: true,
+                                data_saida: true,
+                                usuario: { select: { nome: true, apelido: true } },
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: [{ data_vencimento: "asc" }, { id: "asc" }],
+        });
+    }
+
     createSubgroup(data: CreateExpenseSubgroupDto, creatorParticipationId: string) {
         return this.prisma.$transaction(async (transaction) => {
             const home = await transaction.casa.findFirst({

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useContext, useEffect, useState } from "react";
 import {
+    BarChart3,
     CheckSquare,
     DollarSign,
     House,
@@ -28,6 +29,7 @@ export type AppSection =
     | "home"
     | "tasks"
     | "finance"
+    | "insights"
     | "pantry"
     | "shopping-list"
     | "pets"
@@ -42,6 +44,7 @@ const sections: { id: AppSection; label: string; href: string; icon: typeof Hous
     { id: "home", label: "Home", href: "/", icon: House },
     { id: "tasks", label: "Tarefas", href: "/tasks", icon: CheckSquare },
     { id: "finance", label: "Financeiro", href: "/finance", icon: DollarSign },
+    { id: "insights", label: "Insights", href: "/finance/insights", icon: BarChart3 },
     { id: "pantry", label: "Despensa", href: "/pantry", icon: Package },
     {
         id: "shopping-list",
@@ -60,6 +63,7 @@ const implementedSections: AppSection[] = [
     "home",
     "tasks",
     "finance",
+    "insights",
     "pantry",
     "shopping-list",
     "pets",

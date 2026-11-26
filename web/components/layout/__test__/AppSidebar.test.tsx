@@ -27,7 +27,7 @@ describe("AppSidebar", () => {
         render(<AppSidebar activeSection="finance" noResidence={false} />);
 
         const navigation = screen.getByRole("navigation", { name: "Navegação principal" });
-        expect(navigation.querySelectorAll("a")).toHaveLength(10);
+        expect(navigation.querySelectorAll("a")).toHaveLength(11);
         expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("href", "/");
         expect(screen.getByRole("link", { name: "Tarefas" })).toHaveAttribute("href", "/tasks");
         expect(screen.getByRole("link", { name: "Configurações" })).toHaveAttribute(

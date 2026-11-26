@@ -2,11 +2,13 @@
 import { SystemSelect } from "@/components/ui/system-select";
 import { SystemSwitch } from "@/components/ui/system-switch";
 
+import Link from "next/link";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import {
     ArrowLeft,
     ArrowRight,
+    BarChart3,
     Bell,
     CalendarDays,
     Check,
@@ -38,6 +40,8 @@ import {
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { getResidencePreferences } from "@/features/settings/api/settings.api";
+import { canCreateOrEditResidenceContent } from "@/features/residences/permissions";
+import { getResidences } from "@/features/residences/api/residences.api";
 import type {
     CreateExpenseInput,
     Expense,
@@ -47,6 +51,7 @@ import type {
     ExpenseScope,
     ExpenseReminder,
 } from "@/features/expenses/api/expenses.api";
+import type { Residence } from "@/features/residences/api/residences.api";
 import { AuthContext } from "@/providers/AuthProvider";
 
 type FormState = CreateExpenseInput;
@@ -146,6 +151,7 @@ export default function FinancePage() {
     const auth = useContext(AuthContext);
     const greetingName = auth?.user?.name?.trim() || auth?.user?.email || "Morador";
     const [homes, setHomes] = useState<ExpenseHome[]>([]);
+    const [residences, setResidences] = useState<Residence[]>([]);
     const [subgroups, setSubgroups] = useState<ExpenseSubgroup[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [showOverdue, setShowOverdue] = useState(true);
@@ -176,15 +182,22 @@ export default function FinancePage() {
     const [deleting, setDeleting] = useState(false);
     const [formError, setFormError] = useState("");
     const [error, setError] = useState("");
+    const [residencePermissionUnavailable, setResidencePermissionUnavailable] = useState(false);
     const [notice, setNotice] = useState("");
 
     useEffect(() => {
         let active = true;
-        getExpenseHomes()
-            .then(async (availableHomes) => {
+        Promise.allSettled([getExpenseHomes(), getResidences()])
+            .then(async ([homesResult, residencesResult]) => {
+                if (homesResult.status === "rejected") throw homesResult.reason;
                 if (!active) return;
 
+                const availableHomes = homesResult.value;
+                const availableResidences =
+                    residencesResult.status === "fulfilled" ? residencesResult.value : [];
                 setHomes(availableHomes);
+                setResidences(availableResidences);
+                setResidencePermissionUnavailable(residencesResult.status === "rejected");
                 if (scope === "HOME" && availableHomes.length === 0) {
                     setSubgroups([]);
                     setExpenses([]);
@@ -303,6 +316,20 @@ export default function FinancePage() {
     }, [expenses]);
 
     const houseName = homes[0]?.name ?? null;
+    const canEditHomeContent = (homeId?: string) => {
+        const residence = residences.find((item) => item.id === homeId);
+        return canCreateOrEditResidenceContent(
+            residence?.membership?.role,
+            residence?.creationEditPolicy,
+            residence?.membership?.canEditContent
+        );
+    };
+    const editableHomes = homes.filter((home) => canEditHomeContent(home.id));
+    const canEditHouseContent = canEditHomeContent(homes[0]?.id);
+    const canEditAnyHouseContent = editableHomes.length > 0;
+    const canEditCurrentScope = scope === "PERSONAL" || canEditAnyHouseContent;
+    const canEditExpenseContent = (expense: Expense) =>
+        expense.homeId ? canEditHomeContent(expense.homeId) : expense.scope === "PERSONAL";
 
     function switchScope(nextScope: ExpenseScope) {
         if (nextScope === scope) return;
@@ -314,10 +341,11 @@ export default function FinancePage() {
     }
 
     function openCreateModal() {
-        if (scope === "HOME" && homes.length === 0) return;
+        const defaultHome = editableHomes[0];
+        if (scope === "HOME" && !defaultHome) return;
         setForm({
             ...initialForm,
-            homeId: scope === "HOME" ? homes[0]?.id : undefined,
+            homeId: scope === "HOME" ? defaultHome.id : undefined,
             scope,
         });
         setFormError("");
@@ -326,19 +354,21 @@ export default function FinancePage() {
     }
 
     function openSubgroupModal() {
-        if (homes.length === 0) return;
+        const defaultHome = editableHomes[0];
+        if (!defaultHome) return;
         setEditingSubgroup(null);
         setSubgroupExpenseDrafts([]);
         setSubgroupName("");
-        setSubgroupHomeId(homes[0].id);
+        setSubgroupHomeId(defaultHome.id);
         setHomeMembers([]);
         setSelectedMemberIds([]);
         setSubgroupError("");
         setSubgroupModalOpen(true);
-        void loadHomeMembers(homes[0].id);
+        void loadHomeMembers(defaultHome.id);
     }
 
     function openEditSubgroup(group: ExpenseSubgroup) {
+        if (!canEditHomeContent(group.homeId) || !group.canEdit) return;
         setSubgroupViewerOpen(false);
         setEditingSubgroup(group);
         setSubgroupExpenseDrafts([]);
@@ -366,6 +396,8 @@ export default function FinancePage() {
     }
 
     function openReminder(expense?: Expense) {
+        if (expense && !canEditExpenseContent(expense) && !expense.reminder) return;
+        if (!expense && !expenses.some(canEditExpenseContent)) return;
         setReminderDialog({
             expenseId: expense?.id ?? null,
             mode: expense?.reminder ? "view" : "create",
@@ -392,6 +424,7 @@ export default function FinancePage() {
     }
 
     async function handleProofUpload(expense: Expense, file: File) {
+        if (!canEditExpenseContent(expense)) return;
         if (file.size > 10 * 1024 * 1024) {
             setError("O comprovante deve ter no máximo 10 MB.");
             return;
@@ -433,6 +466,10 @@ export default function FinancePage() {
     async function handleCreateSubgroup(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setSubgroupError("");
+        if (!canEditHomeContent(subgroupHomeId)) {
+            setSubgroupError("Você não tem permissão para editar o conteúdo desta casa.");
+            return;
+        }
         if (!subgroupName.trim()) {
             setSubgroupError("Informe o nome do subgrupo.");
             return;
@@ -504,7 +541,7 @@ export default function FinancePage() {
     }
 
     function openEditModal(expense: Expense) {
-        if (!expense.canEdit) return;
+        if (!expense.canEdit || !canEditExpenseContent(expense)) return;
         setForm({
             description: expense.description,
             amount: expense.amount,
@@ -531,6 +568,16 @@ export default function FinancePage() {
         event.preventDefault();
         setFormError("");
 
+        const selectedSubgroup = subgroups.find((item) => item.id === form.subgroupId);
+        const targetHomeId =
+            scope === "HOME"
+                ? (selectedSubgroup?.homeId ?? form.homeId ?? homes[0]?.id)
+                : undefined;
+
+        if (scope === "HOME" && !canEditHomeContent(targetHomeId)) {
+            setFormError("Você não tem permissão para editar as despesas desta casa.");
+            return;
+        }
         if (scope === "HOME" && homes.length === 0) {
             setFormError("Associe-se a uma residência antes de cadastrar uma despesa.");
             return;
@@ -550,15 +597,11 @@ export default function FinancePage() {
 
         setSaving(true);
         try {
-            const selectedSubgroup = subgroups.find((item) => item.id === form.subgroupId);
             const data = {
                 ...form,
                 description: form.description.trim(),
                 amount: form.amount.replace(",", "."),
-                homeId:
-                    scope === "HOME"
-                        ? (selectedSubgroup?.homeId ?? form.homeId ?? homes[0]?.id)
-                        : undefined,
+                homeId: targetHomeId,
                 subgroupId: form.subgroupId || null,
                 paymentDate: form.paymentStatus === "PAID" ? form.paymentDate || null : null,
                 scope,
@@ -606,6 +649,7 @@ export default function FinancePage() {
 
     async function confirmDelete() {
         if (!expenseToDelete) return;
+        if (!canEditExpenseContent(expenseToDelete)) return;
         setDeleting(true);
         setError("");
         try {
@@ -666,6 +710,16 @@ export default function FinancePage() {
                             {error}
                         </div>
                     )}
+                    {residencePermissionUnavailable && (
+                        <div
+                            role="alert"
+                            className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+                        >
+                            Não foi possível verificar as permissões da residência. Os dados
+                            continuam disponíveis para consulta, mas as alterações ficam
+                            temporariamente desabilitadas.
+                        </div>
+                    )}
                     {notice && (
                         <div
                             role="status"
@@ -700,9 +754,21 @@ export default function FinancePage() {
                         className="mb-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(250px,286px)]"
                     >
                         <section className="rounded-xl border border-[#d6cdd9] bg-[#fffaff] px-5 pb-5 pt-4 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                            <h2 className="mb-3 border-b border-[#817b84] pb-1 text-[22px] font-bold">
-                                {scope === "PERSONAL" ? "Dashboard Individual" : "Dashboard Casa"}
-                            </h2>
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-[#817b84] pb-1">
+                                <h2 className="text-[22px] font-bold">
+                                    {scope === "PERSONAL"
+                                        ? "Dashboard Individual"
+                                        : "Dashboard Casa"}
+                                </h2>
+                                {scope === "HOME" && (
+                                    <Link
+                                        href="/finance/insights"
+                                        className="inline-flex items-center gap-2 rounded-lg border border-[#4e812f] px-3 py-2 text-sm font-medium text-[#3e6b25] hover:bg-[#f0f7ec]"
+                                    >
+                                        <BarChart3 size={16} /> Insights
+                                    </Link>
+                                )}
+                            </div>
                             <div className="grid gap-3 md:grid-cols-3">
                                 <SummaryCard
                                     icon={<Wallet size={21} />}
@@ -755,6 +821,12 @@ export default function FinancePage() {
                             </p>
                         </section>
                     )}
+                    {scope === "HOME" && !canEditHouseContent && (
+                        <p className="mb-5 rounded-lg border border-[#ded6e2] bg-white p-3 text-sm text-[#716b74]">
+                            Você pode consultar as despesas da casa, mas não tem permissão para
+                            alterá-las.
+                        </p>
+                    )}
 
                     <section
                         style={{
@@ -778,7 +850,7 @@ export default function FinancePage() {
                                 </p>
                                 <button
                                     onClick={openCreateModal}
-                                    disabled={loading}
+                                    disabled={loading || !canEditCurrentScope}
                                     className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#4e812f] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#3e6b25]"
                                 >
                                     <Plus size={17} /> Adicionar despesa
@@ -843,10 +915,15 @@ export default function FinancePage() {
                                             visibleExpenses.map((expense) => (
                                                 <ExpenseRow
                                                     key={expense.id}
-                                                    expense={expense}
+                                                    expense={
+                                                        !canEditExpenseContent(expense)
+                                                            ? { ...expense, canEdit: false }
+                                                            : expense
+                                                    }
                                                     onEdit={openEditModal}
                                                     onDelete={setExpenseToDelete}
                                                     personalMode={scope === "PERSONAL"}
+                                                    canEditReminder={canEditExpenseContent(expense)}
                                                     paymentUpdating={paymentUpdatingIds.includes(
                                                         expense.id
                                                     )}
@@ -882,7 +959,11 @@ export default function FinancePage() {
                             <div className="flex flex-wrap justify-end gap-2">
                                 <button
                                     type="button"
-                                    disabled={loading || expenses.length === 0}
+                                    disabled={
+                                        loading ||
+                                        expenses.length === 0 ||
+                                        !expenses.some(canEditExpenseContent)
+                                    }
                                     onClick={() => openReminder()}
                                     className="inline-flex items-center gap-1.5 rounded-lg bg-[#4e812f] px-3 py-2 text-[11px] font-medium text-white hover:bg-[#3e6b25] disabled:opacity-50"
                                 >
@@ -899,7 +980,7 @@ export default function FinancePage() {
                                 <button
                                     type="button"
                                     onClick={openSubgroupModal}
-                                    disabled={loading || homes.length === 0}
+                                    disabled={loading || !canEditAnyHouseContent}
                                     className="inline-flex items-center gap-1.5 rounded-lg bg-[#4e812f] px-3 py-2 text-[11px] font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <Plus size={14} /> Criar subgrupo
@@ -907,7 +988,9 @@ export default function FinancePage() {
                                 <button
                                     type="button"
                                     onClick={openCreateModal}
-                                    disabled={loading || (scope === "HOME" && homes.length === 0)}
+                                    disabled={
+                                        loading || (scope === "HOME" && !canEditAnyHouseContent)
+                                    }
                                     className="inline-flex items-center gap-1.5 rounded-lg bg-[#4e812f] px-3 py-2 text-[11px] font-medium text-white hover:bg-[#3e6b25] disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <Plus size={14} /> Adicionar Despesa
@@ -936,7 +1019,7 @@ export default function FinancePage() {
                     expense={modal.mode === "edit" ? modal.expense : null}
                     form={form}
                     scope={scope}
-                    homes={homes}
+                    homes={editableHomes}
                     subgroups={subgroups}
                     saving={saving}
                     error={formError}
@@ -963,7 +1046,7 @@ export default function FinancePage() {
                     )}
                     draftExpenses={subgroupExpenseDrafts}
                     proofUploadingIds={proofUploadingIds}
-                    homes={homes}
+                    homes={editableHomes}
                     homeId={subgroupHomeId}
                     name={subgroupName}
                     members={homeMembers}
@@ -1005,7 +1088,7 @@ export default function FinancePage() {
                     groups={allSubgroups}
                     expenses={expenses}
                     loading={allSubgroupsLoading}
-                    canManageExpenses={scope === "HOME"}
+                    canEditGroup={(group) => scope === "HOME" && canEditHomeContent(group.homeId)}
                     onEdit={openEditSubgroup}
                     onEditExpense={(expense) => {
                         setSubgroupViewerOpen(false);
@@ -1023,6 +1106,7 @@ export default function FinancePage() {
                     mode={reminderDialog.mode}
                     expenseId={reminderDialog.expenseId}
                     expenses={expenses}
+                    canEditExpense={canEditExpenseContent}
                     onModeChange={(mode, expenseId) => setReminderDialog({ mode, expenseId })}
                     onClose={() => setReminderDialog(null)}
                     onSaved={(expenseId, reminder) => {
@@ -1052,7 +1136,7 @@ function SubgroupListModal({
     groups,
     expenses,
     loading,
-    canManageExpenses,
+    canEditGroup,
     onEdit,
     onEditExpense,
     onProofUpload,
@@ -1062,7 +1146,7 @@ function SubgroupListModal({
     groups: ExpenseSubgroup[];
     expenses: Expense[];
     loading: boolean;
-    canManageExpenses: boolean;
+    canEditGroup: (group: ExpenseSubgroup) => boolean;
     onEdit: (group: ExpenseSubgroup) => void;
     onEditExpense: (expense: Expense) => void;
     onProofUpload: (expense: Expense, file: File) => void;
@@ -1109,6 +1193,7 @@ function SubgroupListModal({
                 ) : (
                     <ul className="max-h-[55vh] space-y-3 overflow-y-auto">
                         {groups.map((group) => {
+                            const canManageExpenses = canEditGroup(group);
                             const groupExpenses = expenses.filter(
                                 (expense) => expense.subgroup?.id === group.id
                             );
@@ -1166,7 +1251,7 @@ function SubgroupListModal({
                                                     {group.members.join(", ")}
                                                 </span>
                                             </div>
-                                            {group.canEdit && (
+                                            {canManageExpenses && group.canEdit && (
                                                 <button
                                                     type="button"
                                                     aria-label={`Editar subgrupo ${group.name}`}
@@ -1346,6 +1431,7 @@ function ExpenseReminderModal({
     mode,
     expenseId,
     expenses,
+    canEditExpense,
     onModeChange,
     onClose,
     onSaved,
@@ -1354,16 +1440,20 @@ function ExpenseReminderModal({
     mode: "create" | "view" | "edit";
     expenseId: string | null;
     expenses: Expense[];
+    canEditExpense: (expense: Expense) => boolean;
     onModeChange: (mode: "view" | "edit", expenseId: string) => void;
     onClose: () => void;
     onSaved: (expenseId: string, reminder: ExpenseReminder | null) => void;
     onDeleted: (expenseId: string) => void;
 }) {
     const [selectedId, setSelectedId] = useState(
-        expenseId ?? expenses.find((expense) => !expense.reminder)?.id ?? ""
+        expenseId ??
+            expenses.find((expense) => !expense.reminder && canEditExpense(expense))?.id ??
+            ""
     );
     const selectedExpense = expenses.find((expense) => expense.id === selectedId) ?? null;
     const selectedReminder = selectedExpense?.reminder ?? null;
+    const canEditSelectedExpense = selectedExpense ? canEditExpense(selectedExpense) : false;
     const [remindAt, setRemindAt] = useState(() => {
         const current = mode !== "create" ? selectedReminder?.remindAt : undefined;
         if (!current) return "";
@@ -1382,7 +1472,7 @@ function ExpenseReminderModal({
 
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        if (!selectedExpense) {
+        if (!selectedExpense || !canEditSelectedExpense) {
             setError("Selecione uma despesa para vincular o lembrete.");
             return;
         }
@@ -1533,20 +1623,24 @@ function ExpenseReminderModal({
                             </div>
                         </dl>
                         <footer className="mt-6 flex flex-wrap justify-end gap-2">
-                            <button
-                                type="button"
-                                onClick={() => onModeChange("edit", selectedExpense!.id)}
-                                className="rounded-lg border border-[#cfc6d1] px-4 py-2 text-sm"
-                            >
-                                Editar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setConfirmDelete(true)}
-                                className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-700"
-                            >
-                                Excluir
-                            </button>
+                            {canEditSelectedExpense && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => onModeChange("edit", selectedExpense!.id)}
+                                        className="rounded-lg border border-[#cfc6d1] px-4 py-2 text-sm"
+                                    >
+                                        Editar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmDelete(true)}
+                                        className="rounded-lg border border-red-300 px-4 py-2 text-sm text-red-700"
+                                    >
+                                        Excluir
+                                    </button>
+                                </>
+                            )}
                             <button
                                 type="button"
                                 onClick={onClose}
@@ -1580,7 +1674,11 @@ function ExpenseReminderModal({
                             >
                                 <option value="">Selecione uma despesa</option>
                                 {expenses
-                                    .filter((expense) => mode !== "create" || !expense.reminder)
+                                    .filter(
+                                        (expense) =>
+                                            mode !== "create" ||
+                                            (!expense.reminder && canEditExpense(expense))
+                                    )
                                     .map((expense) => (
                                         <option key={expense.id} value={expense.id}>
                                             {expense.description}
@@ -2603,6 +2701,7 @@ function ExpenseRow({
     onEdit,
     onDelete,
     personalMode,
+    canEditReminder,
     paymentUpdating,
     onTogglePaid,
     onReminder,
@@ -2613,6 +2712,7 @@ function ExpenseRow({
     onEdit: (expense: Expense) => void;
     onDelete: (expense: Expense) => void;
     personalMode: boolean;
+    canEditReminder: boolean;
     paymentUpdating: boolean;
     onTogglePaid: () => void;
     onReminder: () => void;
@@ -2736,13 +2836,14 @@ function ExpenseRow({
             <td className="px-3 py-3 text-center text-[#a19aa5]">
                 <button
                     type="button"
+                    disabled={!canEditReminder && !expense.reminder}
                     aria-label={
                         expense.reminder
                             ? `Visualizar lembrete de ${expense.description}`
                             : `Adicionar lembrete para ${expense.description}`
                     }
                     onClick={onReminder}
-                    className={`mx-auto grid size-7 place-items-center rounded-full ${expense.reminder ? "text-[#4e812f] hover:bg-[#edf6e8]" : "text-[#a19aa5] hover:bg-[#f1edf3]"}`}
+                    className={`mx-auto grid size-7 place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-50 ${expense.reminder ? "text-[#4e812f] hover:bg-[#edf6e8]" : "text-[#a19aa5] hover:bg-[#f1edf3]"}`}
                 >
                     <Bell size={15} />
                 </button>
