@@ -16,6 +16,8 @@ O [guia de arquitetura](docs/architecture/README.md) apresenta as figuras de vis
 
 ## Subir localmente
 
+Para inicializar a infraestrutura, aplicar as migrações, inserir os dados de demonstração e iniciar API/interface com um único comando, consulte [scripts/README.md](scripts/README.md). Os comandos disponíveis na raiz são `npm run start`, `npm run stop` e `npm run seed:demo`.
+
 Na raiz do repositório, crie os arquivos de configuração:
 
 ```bash
