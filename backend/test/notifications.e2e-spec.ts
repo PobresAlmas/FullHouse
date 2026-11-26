@@ -6,6 +6,7 @@ import { NotificationsService } from "../src/notifications/notifications.service
 import { createAuthenticatedTestApp } from "./utils/authenticated-test-app.js";
 
 const USER_ID = "821f394d-6215-48b4-89a9-0af953ba8a76";
+const EMPTY_PAGE = { items: [], unreadCount: 0, nextCursor: null };
 
 describe("Notifications HTTP API (e2e)", () => {
     let app: INestApplication<App>;
@@ -14,7 +15,7 @@ describe("Notifications HTTP API (e2e)", () => {
 
     beforeEach(async () => {
         vi.resetAllMocks();
-        service.list.mockResolvedValue([]);
+        service.list.mockResolvedValue(EMPTY_PAGE);
         service.markRead.mockResolvedValue({ id: "notification-1", lida: true });
         const testApp = await createAuthenticatedTestApp({
             controllers: [NotificationsController],
@@ -31,8 +32,19 @@ describe("Notifications HTTP API (e2e)", () => {
             .get("/notifications")
             .set("Cookie", await authenticatedCookie())
             .expect(200)
-            .expect([]);
-        expect(service.list).toHaveBeenCalledWith(USER_ID);
+            .expect(EMPTY_PAGE);
+        expect(service.list).toHaveBeenCalledWith(USER_ID, 20, undefined, false);
+    });
+
+    it("forwards the pagination and unread filter with the authenticated identity", async () => {
+        const cursor = "d8957f13-2e5e-45c1-8c22-194b4f610f43";
+        await request(app.getHttpServer())
+            .get("/notifications")
+            .query({ limit: 10, cursor, unreadOnly: true })
+            .set("Cookie", await authenticatedCookie())
+            .expect(200)
+            .expect(EMPTY_PAGE);
+        expect(service.list).toHaveBeenCalledWith(USER_ID, 10, cursor, true);
     });
 
     it("marks a notification read using the authenticated identity", async () => {

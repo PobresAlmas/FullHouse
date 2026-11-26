@@ -21,3 +21,5 @@ Use este checklist como pedido de implementação. Consulte [requirements.md](re
 ## Verificação registrada
 
 O checklist original registra como concluídos os testes focados, os dois builds e a conferência da integração. O [README de Quartos](../../../backend/src/rooms/README.md) descreve o contrato e as suítes focadas incluem os [testes de paginação do repositório](../../../backend/src/rooms/rooms.repository.pagination.spec.ts) e da [página de negociação](../../../web/features/rooms/components/__test__/RoomNegotiationPage.test.tsx).
+
+Na revisão da Sprint 03, passaram 8 testes web e 10 unitários focados. Os 14 testes do contrato HTTP de Quartos também passaram na execução conjunta da SPEC-004. [Comandos e evidências do Emilson](../../../docs/sprints/sprint03/Emilson/paginacao-da-negociacao/testes.md)
