@@ -3,6 +3,7 @@
 import bcrypt from "bcrypt";
 import { randomBytes, randomUUID } from "node:crypto";
 import pg from "pg";
+import { assertLocalSeedDatabase } from "./seed-safety.mjs";
 
 const {
     DATABASE_URL,
@@ -21,6 +22,7 @@ if (HOME_TEST_SEED !== "1") {
     throw new Error("Defina HOME_TEST_SEED=1 para confirmar a carga de teste.");
 }
 if (!DATABASE_URL) throw new Error("Defina DATABASE_URL antes de executar a carga.");
+assertLocalSeedDatabase(DATABASE_URL);
 if (!HOME_TEST_OWNER_EMAIL || !HOME_TEST_MEMBER_EMAIL) {
     throw new Error("Defina HOME_TEST_OWNER_EMAIL e HOME_TEST_MEMBER_EMAIL.");
 }
@@ -32,7 +34,7 @@ if (HOME_TEST_OWNER_EMAIL.toLowerCase() === HOME_TEST_MEMBER_EMAIL.toLowerCase()
 }
 
 const testMemberName = "Morador de teste FullHouse";
-const testTaskPrefix = "TESTE FULLHOUSE:";
+const testRecordPrefix = "TESTE FULLHOUSE:";
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 const codeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -271,21 +273,21 @@ try {
         {
             scope: "CASA",
             residenceId: residence.id,
-            title: `${testTaskPrefix} Casa atrasada - responsável teste`,
+            title: `${testRecordPrefix} Casa atrasada - responsável teste`,
             dueDate: yesterday,
             assigneeMembershipId: memberMembershipId,
         },
         {
             scope: "CASA",
             residenceId: residence.id,
-            title: `${testTaskPrefix} Casa para hoje - responsável principal`,
+            title: `${testRecordPrefix} Casa para hoje - responsável principal`,
             dueDate: today,
             assigneeMembershipId: owner.membership_id,
         },
         {
             scope: "CASA",
             residenceId: residence.id,
-            title: `${testTaskPrefix} Casa concluída nesta semana`,
+            title: `${testRecordPrefix} Casa concluída nesta semana`,
             dueDate: today,
             assigneeMembershipId: owner.membership_id,
             status: "CONCLUIDA",
@@ -295,14 +297,14 @@ try {
         {
             scope: "INDIVIDUAL",
             userId: owner.user_id,
-            title: `${testTaskPrefix} Pessoal para hoje - principal`,
+            title: `${testRecordPrefix} Pessoal para hoje - principal`,
             dueDate: today,
             assigneeUserId: owner.user_id,
         },
         {
             scope: "INDIVIDUAL",
             userId: member.id,
-            title: `${testTaskPrefix} Pessoal para hoje - teste`,
+            title: `${testRecordPrefix} Pessoal para hoje - teste`,
             dueDate: today,
             assigneeUserId: member.id,
         },
@@ -313,21 +315,21 @@ try {
         {
             scope: "CASA",
             residenceId: residence.id,
-            description: `${testTaskPrefix} Conta compartilhada`,
+            description: `${testRecordPrefix} Conta compartilhada`,
             amount: "89.90",
             dueDate: tomorrow,
         },
         {
             scope: "INDIVIDUAL",
             userId: owner.user_id,
-            description: `${testTaskPrefix} Conta pessoal principal`,
+            description: `${testRecordPrefix} Conta pessoal principal`,
             amount: "29.90",
             dueDate: inThreeDays,
         },
         {
             scope: "INDIVIDUAL",
             userId: member.id,
-            description: `${testTaskPrefix} Conta pessoal teste`,
+            description: `${testRecordPrefix} Conta pessoal teste`,
             amount: "19.90",
             dueDate: inThreeDays,
         },
