@@ -29,6 +29,7 @@ import type {
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppPageHeader } from "@/components/layout/AppPageHeader";
 import { getResidencePreferences } from "@/features/settings/api/settings.api";
+import { canCreateOrEditResidenceContent } from "@/features/residences/permissions";
 import { PantryItemsTable } from "@/features/pantry/components/PantryItemsTable";
 import { SelectFilter, TabButton } from "@/features/pantry/components/PantryControls";
 import { PantryCategoryModal } from "@/features/pantry/components/PantryCategoryModal";
@@ -84,7 +85,12 @@ export default function PantryPage() {
     const currentMemberId = residence?.membership?.id ?? "";
     const canManageHouse =
         residence?.membership?.role === "LIDER" || residence?.membership?.role === "ADMINISTRADOR";
-    const canManageCategories = residence?.creationEditPolicy !== "LIDERES" || canManageHouse;
+    const canEditResidenceContent = canCreateOrEditResidenceContent(
+        residence?.membership?.role,
+        residence?.creationEditPolicy,
+        residence?.membership?.canEditContent
+    );
+    const canManageCategories = canEditResidenceContent;
 
     const loadResidenceData = useCallback(async (id: string) => {
         const [nextMembers, nextItems, nextCategories, preferences] = await Promise.all([
@@ -593,7 +599,7 @@ export default function PantryPage() {
                                     <button
                                         type="button"
                                         onClick={openCategoryModal}
-                                        disabled={!residenceId || busy}
+                                        disabled={!residenceId || busy || !canEditResidenceContent}
                                         className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#d9d1de] bg-white px-4 text-sm font-medium text-[#514c56] hover:bg-[#f6f2f7] disabled:opacity-50"
                                     >
                                         <Tags size={16} />
@@ -602,7 +608,12 @@ export default function PantryPage() {
                                     <button
                                         type="button"
                                         onClick={openCreateModal}
-                                        disabled={!residenceId || busy || categories.length === 0}
+                                        disabled={
+                                            !residenceId ||
+                                            busy ||
+                                            !canEditResidenceContent ||
+                                            categories.length === 0
+                                        }
                                         className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#4e812f] px-5 text-sm font-medium text-white hover:bg-[#3f6c26] disabled:opacity-50"
                                     >
                                         <Plus size={17} /> Adicionar item
@@ -667,6 +678,7 @@ export default function PantryPage() {
                                     loading={loading}
                                     busy={busy}
                                     canManageHouse={canManageHouse}
+                                    canEditResidenceContent={canEditResidenceContent}
                                     currentMemberId={currentMemberId}
                                     onMovement={openMovementModal}
                                     onEdit={openEditModal}

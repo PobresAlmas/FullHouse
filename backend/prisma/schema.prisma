@@ -120,7 +120,7 @@ enum politica_criacao_edicao_enum {
 model configuracao_casa {
   casa_id                     String                       @id @db.Uuid
   penalidade_ativa            Boolean                      @default(true)
-  politica_criacao_edicao     politica_criacao_edicao_enum @default(TODOS)
+  politica_criacao_edicao     politica_criacao_edicao_enum @default(LIDERES)
   tolerancia_padrao_horas     Int                          @default(24) @db.SmallInt
   ocorrencias_para_penalidade Int                          @default(1) @db.SmallInt
   penalidade_valor_padrao     Decimal                      @default(0) @db.Decimal(10, 2)

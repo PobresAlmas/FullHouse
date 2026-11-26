@@ -24,7 +24,10 @@ export class HomeService {
     async createResidenceNotice(residenceId: string, userId: string, content: string) {
         const normalizedContent = content.trim();
         if (!normalizedContent) throw new BadRequestException("Escreva o aviso antes de publicar.");
-        const membership = await this.residenceAccess!.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess!.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const notice = await this.repository.createResidenceNotice(
             residenceId,
             membership.memberId,
@@ -47,7 +50,10 @@ export class HomeService {
     ) {
         const normalizedContent = content.trim();
         if (!normalizedContent) throw new BadRequestException("Escreva o aviso antes de salvar.");
-        const membership = await this.residenceAccess!.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess!.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const notice = await this.repository.updateResidenceNotice(
             residenceId,
             noticeId,
@@ -65,7 +71,10 @@ export class HomeService {
     }
 
     async deleteResidenceNotice(residenceId: string, noticeId: string, userId: string) {
-        const membership = await this.residenceAccess!.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess!.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const result = await this.repository.deleteResidenceNotice(
             residenceId,
             noticeId,

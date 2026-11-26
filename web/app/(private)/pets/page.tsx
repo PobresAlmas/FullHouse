@@ -115,7 +115,8 @@ export default function PetsPage() {
     const currentMember = residence?.membership ?? null;
     const canEditResidenceContent = canCreateOrEditResidenceContent(
         currentMember?.role,
-        residence?.creationEditPolicy
+        residence?.creationEditPolicy,
+        currentMember?.canEditContent
     );
     const canManageResidenceContent = isResidenceManager(currentMember?.role);
 

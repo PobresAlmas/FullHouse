@@ -39,6 +39,7 @@ import {
     RESIDENCE_MEMBERSHIP_CHANGED_EVENT,
 } from "@/features/residences/api/residences.api";
 import type { Residence, ResidenceMember } from "@/features/residences/api/residences.api";
+import { canCreateOrEditResidenceContent } from "@/features/residences/permissions";
 import {
     createPantryCategory,
     deletePantryCategory,
@@ -217,7 +218,11 @@ export function SettingsPage({
         listingDraft.userId === userId &&
         listingDraft.residence.id === residence?.id &&
         listingDraft.residence.membership?.id === residence?.membership?.id;
-    const canEditCategories = residence?.creationEditPolicy === "TODOS" || manager;
+    const canEditCategories = canCreateOrEditResidenceContent(
+        residence?.membership?.role,
+        residence?.creationEditPolicy,
+        residence?.membership?.canEditContent
+    );
     const displayName = user?.nickname || user?.name || "Morador";
 
     useEffect(() => {

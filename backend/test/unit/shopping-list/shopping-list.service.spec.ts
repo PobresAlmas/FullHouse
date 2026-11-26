@@ -50,6 +50,13 @@ describe("ShoppingListService", () => {
                 role: "MORADOR",
                 creationEditPolicy: "TODOS",
             }),
+            requireCreateEditPermission: vi.fn().mockResolvedValue({
+                residenceId,
+                memberId,
+                role: "MORADOR",
+                creationEditPolicy: "TODOS",
+                canEditContent: null,
+            }),
         };
         service = new ShoppingListService(repository as never, residenceAccess as never);
     });
@@ -136,7 +143,10 @@ describe("ShoppingListService", () => {
             unit: "L",
             notes: "Integral",
         });
-        expect(residenceAccess.requireMembership).toHaveBeenCalledWith(residenceId, userId);
+        expect(residenceAccess.requireCreateEditPermission).toHaveBeenCalledWith(
+            residenceId,
+            userId
+        );
     });
 
     it("scopes personal reads to the authenticated user", async () => {

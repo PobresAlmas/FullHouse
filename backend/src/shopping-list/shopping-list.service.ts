@@ -27,6 +27,9 @@ export class ShoppingListService {
 
     async findItems(residenceId: string, userId: string) {
         const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const mayEditContent =
+            isResidenceManager(membership.role) ||
+            (membership.canEditContent ?? membership.creationEditPolicy === "TODOS");
         const items = await this.repository.findItems(residenceId);
         items.sort((left, right) => {
             if (left.status !== right.status) return left.status === "PENDENTE" ? -1 : 1;
@@ -40,8 +43,9 @@ export class ShoppingListService {
         return items.map((item) =>
             this.mapItem(
                 item,
-                isResidenceManager(membership.role) ||
-                    item.participacao_item_lista_compras_criado_por?.usuario_id === userId
+                mayEditContent &&
+                    (isResidenceManager(membership.role) ||
+                        item.participacao_item_lista_compras_criado_por?.usuario_id === userId)
             )
         );
     }
@@ -65,7 +69,10 @@ export class ShoppingListService {
     }
 
     async createItem(residenceId: string, data: CreateShoppingListItemDto, userId: string) {
-        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         this.assertQuantityAndUnit(data.quantity, data.unit);
         const item = await this.repository.createItem({
             residenceId,
@@ -84,7 +91,10 @@ export class ShoppingListService {
         data: UpdateShoppingListItemDto,
         userId: string
     ) {
-        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const existing = await this.repository.findItem(residenceId, itemId);
         if (!existing) throw new NotFoundException("O item não foi encontrado nesta lista.");
         if (
@@ -143,7 +153,10 @@ export class ShoppingListService {
         data: UpdateShoppingListStatusDto,
         userId: string
     ) {
-        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const result = await this.repository.updateStatus({
             residenceId,
             itemId,
@@ -176,7 +189,10 @@ export class ShoppingListService {
     }
 
     async removeItem(residenceId: string, itemId: string, version: number, userId: string) {
-        const membership = await this.residenceAccess.requireMembership(residenceId, userId);
+        const membership = await this.residenceAccess.requireCreateEditPermission(
+            residenceId,
+            userId
+        );
         const existing = await this.repository.findItem(residenceId, itemId);
         if (!existing) throw new NotFoundException("O item não foi encontrado nesta lista.");
         if (
