@@ -23,11 +23,11 @@ function loginDestination() {
 export default function LoginForm() {
     const [errorMessage, setErrorMessage] = useState("");
 
-    const form = useAuthForm(loginSchema);
+    const form = useAuthForm(loginSchema, { mode: "onChange" });
 
     const {
         register,
-        formState: { errors },
+        formState: { errors, isValid, isSubmitting },
     } = form;
 
     const router = useRouter();
@@ -84,7 +84,7 @@ export default function LoginForm() {
 
             {errorMessage && <p className="text-red-500 text-sm text-center">{errorMessage}</p>}
 
-            <SubmitButton text="Entrar" />
+            <SubmitButton text="Entrar" disabled={!isValid || isSubmitting} />
 
             <div className="flex items-center gap-3 w-full">
                 <Separator className="flex-1" />
