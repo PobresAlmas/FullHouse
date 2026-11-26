@@ -35,7 +35,7 @@ describe("residence creation", () => {
             neighborhood: null,
             status: "ATIVA",
             membership: { id: "member-1", role: "LIDER" },
-            creationEditPolicy: "TODOS",
+            creationEditPolicy: "LIDERES",
         });
         expect(prisma.$transaction).toHaveBeenCalledOnce();
         expect(transaction.casa.create).toHaveBeenCalledWith({

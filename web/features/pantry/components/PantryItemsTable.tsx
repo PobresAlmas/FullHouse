@@ -14,6 +14,7 @@ type PantryItemsTableProps = {
     loading: boolean;
     busy: boolean;
     canManageHouse: boolean;
+    canEditResidenceContent: boolean;
     currentMemberId: string;
     onMovement: (item: PantryItem, type: PantryMovementType) => void;
     onEdit: (item: PantryItem) => void;
@@ -26,6 +27,7 @@ export function PantryItemsTable({
     loading,
     busy,
     canManageHouse,
+    canEditResidenceContent,
     currentMemberId,
     onMovement,
     onEdit,
@@ -149,7 +151,8 @@ export function PantryItemsTable({
                                     </td>
                                     <td className="px-2 py-2">
                                         <div className="flex items-center justify-end gap-1">
-                                            {item.property === "COMUNITARIO" || item.isMine ? (
+                                            {canEditResidenceContent &&
+                                            (item.property === "COMUNITARIO" || item.isMine) ? (
                                                 <button
                                                     type="button"
                                                     disabled={busy}
@@ -160,7 +163,8 @@ export function PantryItemsTable({
                                                     <Minus size={15} />
                                                 </button>
                                             ) : null}
-                                            {item.property === "COMUNITARIO" || item.isMine ? (
+                                            {canEditResidenceContent &&
+                                            (item.property === "COMUNITARIO" || item.isMine) ? (
                                                 <button
                                                     type="button"
                                                     disabled={busy}
@@ -171,8 +175,9 @@ export function PantryItemsTable({
                                                     <Plus size={15} />
                                                 </button>
                                             ) : null}
-                                            {item.creatorMemberId === currentMemberId ||
-                                            canManageHouse ? (
+                                            {canEditResidenceContent &&
+                                            (item.creatorMemberId === currentMemberId ||
+                                                canManageHouse) ? (
                                                 <button
                                                     type="button"
                                                     disabled={busy}
@@ -183,8 +188,9 @@ export function PantryItemsTable({
                                                     <Pencil size={15} />
                                                 </button>
                                             ) : null}
-                                            {item.creatorMemberId === currentMemberId ||
-                                            canManageHouse ? (
+                                            {canEditResidenceContent &&
+                                            (item.creatorMemberId === currentMemberId ||
+                                                canManageHouse) ? (
                                                 <button
                                                     type="button"
                                                     disabled={busy}
@@ -195,7 +201,8 @@ export function PantryItemsTable({
                                                     <Trash2 size={15} />
                                                 </button>
                                             ) : null}
-                                            {item.creatorMemberId !== currentMemberId &&
+                                            {canEditResidenceContent &&
+                                                item.creatorMemberId !== currentMemberId &&
                                                 !canManageHouse && (
                                                     <span className="px-1 text-[10px] text-[#77717c]">
                                                         Somente criador ou administrador

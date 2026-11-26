@@ -29,6 +29,7 @@ import {
     RESIDENCE_MEMBERSHIP_CHANGED_EVENT,
     type Residence,
 } from "@/features/residences/api/residences.api";
+import { canCreateOrEditResidenceContent } from "@/features/residences/permissions";
 import {
     getTasks,
     getTaskMembers,
@@ -142,6 +143,11 @@ export function HomePage() {
     const residenceRequestId = useRef(0);
     const profileMenuRef = useRef<HTMLDivElement>(null);
     const selectedResidence = residences.find((residence) => residence.id === selectedId) ?? null;
+    const canEditSelectedResidenceContent = canCreateOrEditResidenceContent(
+        selectedResidence?.membership?.role,
+        selectedResidence?.creationEditPolicy,
+        selectedResidence?.membership?.canEditContent
+    );
     const requestKey = context === "personal" ? "personal" : `residence:${selectedId}`;
     const today = useMemo(() => dayInBusinessTime(), []);
     const userName = user?.name?.trim() || user?.email?.split("@")[0] || "bem-vindo(a)";
@@ -803,20 +809,25 @@ export function HomePage() {
                                                     />
                                                 }
                                                 action={
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setNoticeDraft("");
-                                                            setEditingNoticeId(null);
-                                                            setNoticeError("");
-                                                            setNoticeModalOpen(true);
-                                                        }}
-                                                        aria-label="Adicionar novo aviso da casa"
-                                                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-[#3f7029] transition hover:bg-[#eef5e9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
-                                                    >
-                                                        <PlusCircle size={15} aria-hidden="true" />
-                                                        <span>Adicionar aviso</span>
-                                                    </button>
+                                                    canEditSelectedResidenceContent ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setNoticeDraft("");
+                                                                setEditingNoticeId(null);
+                                                                setNoticeError("");
+                                                                setNoticeModalOpen(true);
+                                                            }}
+                                                            aria-label="Adicionar novo aviso da casa"
+                                                            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-[#3f7029] transition hover:bg-[#eef5e9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4e812f]"
+                                                        >
+                                                            <PlusCircle
+                                                                size={15}
+                                                                aria-hidden="true"
+                                                            />
+                                                            <span>Adicionar aviso</span>
+                                                        </button>
+                                                    ) : undefined
                                                 }
                                             >
                                                 Aviso da casa
@@ -831,50 +842,56 @@ export function HomePage() {
                                                                 <p className="whitespace-pre-wrap break-words text-sm leading-5 text-[#38343c]">
                                                                     {notice.content}
                                                                 </p>
-                                                                {notice.authorId === user?.id && (
-                                                                    <div className="-mr-1 -mt-1 flex shrink-0 items-center gap-0.5">
-                                                                        <button
-                                                                            type="button"
-                                                                            aria-label="Editar meu aviso"
-                                                                            title="Editar aviso"
-                                                                            onClick={() => {
-                                                                                setEditingNoticeId(
-                                                                                    notice.id
-                                                                                );
-                                                                                setNoticeDraft(
-                                                                                    notice.content
-                                                                                );
-                                                                                setNoticeError("");
-                                                                                setNoticeModalOpen(
-                                                                                    true
-                                                                                );
-                                                                            }}
-                                                                            className="grid size-8 place-items-center rounded-lg text-[#625c66] transition hover:bg-[#f1edf3] hover:text-[#3f7029] focus-visible:outline-2 focus-visible:outline-[#4e812f]"
-                                                                        >
-                                                                            <Pencil
-                                                                                size={14}
-                                                                                aria-hidden="true"
-                                                                            />
-                                                                        </button>
-                                                                        <button
-                                                                            type="button"
-                                                                            aria-label="Excluir meu aviso"
-                                                                            title="Excluir aviso"
-                                                                            onClick={() => {
-                                                                                setNoticeError("");
-                                                                                setNoticeToDelete(
-                                                                                    notice
-                                                                                );
-                                                                            }}
-                                                                            className="grid size-8 place-items-center rounded-lg text-[#8c5555] transition hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-red-600"
-                                                                        >
-                                                                            <Trash2
-                                                                                size={14}
-                                                                                aria-hidden="true"
-                                                                            />
-                                                                        </button>
-                                                                    </div>
-                                                                )}
+                                                                {canEditSelectedResidenceContent &&
+                                                                    notice.authorId ===
+                                                                        user?.id && (
+                                                                        <div className="-mr-1 -mt-1 flex shrink-0 items-center gap-0.5">
+                                                                            <button
+                                                                                type="button"
+                                                                                aria-label="Editar meu aviso"
+                                                                                title="Editar aviso"
+                                                                                onClick={() => {
+                                                                                    setEditingNoticeId(
+                                                                                        notice.id
+                                                                                    );
+                                                                                    setNoticeDraft(
+                                                                                        notice.content
+                                                                                    );
+                                                                                    setNoticeError(
+                                                                                        ""
+                                                                                    );
+                                                                                    setNoticeModalOpen(
+                                                                                        true
+                                                                                    );
+                                                                                }}
+                                                                                className="grid size-8 place-items-center rounded-lg text-[#625c66] transition hover:bg-[#f1edf3] hover:text-[#3f7029] focus-visible:outline-2 focus-visible:outline-[#4e812f]"
+                                                                            >
+                                                                                <Pencil
+                                                                                    size={14}
+                                                                                    aria-hidden="true"
+                                                                                />
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                aria-label="Excluir meu aviso"
+                                                                                title="Excluir aviso"
+                                                                                onClick={() => {
+                                                                                    setNoticeError(
+                                                                                        ""
+                                                                                    );
+                                                                                    setNoticeToDelete(
+                                                                                        notice
+                                                                                    );
+                                                                                }}
+                                                                                className="grid size-8 place-items-center rounded-lg text-[#8c5555] transition hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-red-600"
+                                                                            >
+                                                                                <Trash2
+                                                                                    size={14}
+                                                                                    aria-hidden="true"
+                                                                                />
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
                                                             </div>
                                                             <p className="mt-1.5 text-[11px] text-[#89828d]">
                                                                 {notice.authorName} ·{" "}

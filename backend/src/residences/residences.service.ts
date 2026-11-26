@@ -16,7 +16,7 @@ export class ResidencesService {
             neighborhood: residence.bairro,
             status: residence.status,
             membership: { id: membership.id, role: membership.papel },
-            creationEditPolicy: "TODOS" as const,
+            creationEditPolicy: "LIDERES" as const,
         };
     }
 }

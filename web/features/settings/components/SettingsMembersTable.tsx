@@ -211,7 +211,8 @@ export function SettingsMembersTable({
                     <Info size={17} className="mt-0.5 shrink-0 fill-[#4c8060] text-white" />
                     <p>
                         Moradores com acesso somente leitura podem ver as informações da casa, mas
-                        não podem criar ou editar tarefas, despesas e itens da despensa.
+                        não podem criar ou editar tarefas, despesas, itens da despensa, pets, lista
+                        de compras ou avisos da casa.
                     </p>
                 </div>
             )}

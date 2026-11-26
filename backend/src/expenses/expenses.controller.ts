@@ -27,6 +27,7 @@ import { UpdateExpenseDto } from "./dto/update-expense.dto.js";
 import { CreateExpenseSubgroupDto } from "./dto/create-expense-subgroup.dto.js";
 import { SetPersonalPaymentStatusDto } from "./dto/set-personal-payment-status.dto.js";
 import { UpsertExpenseReminderDto } from "./dto/upsert-expense-reminder.dto.js";
+import { ExpenseInsightsQueryDto } from "./dto/expense-insights-query.dto.js";
 import { ExpensesService } from "./expenses.service.js";
 
 @Controller("expenses")
@@ -55,6 +56,16 @@ export class ExpensesController {
         @CurrentUser() user: { id: string }
     ) {
         return this.expensesService.findHomeMembers(homeId, user.id);
+    }
+
+    @Get("homes/:homeId/insights")
+    @UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
+    getHomeInsights(
+        @Param("homeId", new ParseUUIDPipe({ version: "4" })) homeId: string,
+        @Query() query: ExpenseInsightsQueryDto,
+        @CurrentUser() user: { id: string }
+    ) {
+        return this.expensesService.getHomeInsights(homeId, user.id, query);
     }
 
     @Post("subgroups")

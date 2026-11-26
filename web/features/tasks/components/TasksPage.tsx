@@ -222,16 +222,11 @@ export default function TasksPage({ initialScope }: { initialScope?: "personal" 
     const myMemberId = residence?.membership?.id ?? "";
     const userName = user?.name?.trim() || user?.email?.split("@")[0] || "Minha conta";
     const canDeleteHouseTasks = isResidenceManager(residence?.membership?.role);
-    const canEditHouseTasks =
-        canDeleteHouseTasks ||
-        Boolean(
-            residence?.membership &&
-            (residence.membership.canEditContent ??
-                canCreateOrEditResidenceContent(
-                    residence.membership.role,
-                    residence.creationEditPolicy
-                ))
-        );
+    const canEditHouseTasks = canCreateOrEditResidenceContent(
+        residence?.membership?.role,
+        residence?.creationEditPolicy,
+        residence?.membership?.canEditContent
+    );
 
     useEffect(() => {
         document.documentElement.classList.add("tasks-hide-page-scrollbar");

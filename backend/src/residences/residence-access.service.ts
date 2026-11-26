@@ -158,7 +158,7 @@ export class ResidenceAccessService {
                       canEditContent: residence.participacao[0].edicao_conteudo_override,
                   }
                 : null,
-            creationEditPolicy: residence.configuracao_casa?.politica_criacao_edicao ?? "TODOS",
+            creationEditPolicy: residence.configuracao_casa?.politica_criacao_edicao ?? "LIDERES",
         }));
     }
 
@@ -190,7 +190,7 @@ export class ResidenceAccessService {
             residenceId: residence.id,
             memberId: membership.id,
             role: membership.papel,
-            creationEditPolicy: residence.configuracao_casa?.politica_criacao_edicao ?? "TODOS",
+            creationEditPolicy: residence.configuracao_casa?.politica_criacao_edicao ?? "LIDERES",
             canEditContent: membership.edicao_conteudo_override,
         };
     }
@@ -202,7 +202,7 @@ export class ResidenceAccessService {
             : (membership.canEditContent ?? membership.creationEditPolicy === "TODOS");
         if (!canEdit) {
             throw new ForbiddenException(
-                "Somente líderes e administradores podem criar ou editar este conteúdo."
+                "Você não tem permissão para criar ou editar este conteúdo."
             );
         }
         return membership;
@@ -250,7 +250,7 @@ export class ResidenceAccessService {
                 select: { politica_criacao_edicao: true },
             }),
         ]);
-        const creationEditPolicy = policy?.politica_criacao_edicao ?? "TODOS";
+        const creationEditPolicy = policy?.politica_criacao_edicao ?? "LIDERES";
         return members.map((member) => ({
             id: member.id,
             userId: member.usuario.id,

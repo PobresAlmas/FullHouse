@@ -14,6 +14,7 @@ import {
 import type { Expense } from "@/features/expenses/api/expenses.api";
 import FinancePage from "../page";
 import { getResidencePreferences } from "@/features/settings/api/settings.api";
+import { getResidences } from "@/features/residences/api/residences.api";
 import { selectSystemOption } from "@/test/utils/render";
 
 vi.mock("@/features/expenses/api/expenses.api", () => ({
@@ -33,6 +34,9 @@ vi.mock("@/features/auth/hooks/useAuth", () => ({
 vi.mock("@/features/settings/api/settings.api", () => ({
     getResidencePreferences: vi.fn(),
 }));
+vi.mock("@/features/residences/api/residences.api", () => ({
+    getResidences: vi.fn(),
+}));
 
 const subgroup = {
     id: "subgroup-id",
@@ -47,9 +51,12 @@ const expense: Expense = {
     description: "Internet",
     amount: "120.00",
     date: "2026-10-12",
+    homeId: "home-id",
+    homeName: "Grifinória",
     subgroup: { id: subgroup.id, nome: subgroup.name },
     canEdit: true,
     paymentStatus: "PENDING",
+    scope: "HOME",
     paidBy: null,
     paidAt: null,
 };
@@ -59,6 +66,17 @@ describe("FinancePage expense CRUD", () => {
         vi.clearAllMocks();
         vi.mocked(getExpenseSubgroups).mockResolvedValue([subgroup]);
         vi.mocked(getExpenseHomes).mockResolvedValue([{ id: "home-id", name: "Grifinória" }]);
+        vi.mocked(getResidences).mockResolvedValue([
+            {
+                id: "home-id",
+                name: "Grifinória",
+                city: null,
+                neighborhood: null,
+                status: "ATIVA",
+                membership: { id: "member-id", role: "LIDER", canEditContent: null },
+                creationEditPolicy: "LIDERES",
+            },
+        ]);
         vi.mocked(getExpenseHomeMembers).mockResolvedValue([
             { id: "member-1", name: "Ana" },
             { id: "member-2", name: "Bia" },
@@ -169,6 +187,26 @@ describe("FinancePage expense CRUD", () => {
             { id: "home-id", name: "Grifinória" },
             { id: "other-home-id", name: "Corvinal" },
         ]);
+        vi.mocked(getResidences).mockResolvedValue([
+            {
+                id: "home-id",
+                name: "Grifinória",
+                city: null,
+                neighborhood: null,
+                status: "ATIVA",
+                membership: { id: "member-id", role: "LIDER", canEditContent: null },
+                creationEditPolicy: "LIDERES",
+            },
+            {
+                id: "other-home-id",
+                name: "Corvinal",
+                city: null,
+                neighborhood: null,
+                status: "ATIVA",
+                membership: { id: "other-member-id", role: "LIDER", canEditContent: null },
+                creationEditPolicy: "LIDERES",
+            },
+        ]);
         vi.mocked(createExpense).mockResolvedValue(expense);
         render(<FinancePage />);
 
@@ -211,6 +249,7 @@ describe("FinancePage expense CRUD", () => {
 
     it("does not present a fake home or offer expense creation without a residence", async () => {
         vi.mocked(getExpenseHomes).mockResolvedValue([]);
+        vi.mocked(getResidences).mockResolvedValue([]);
         vi.mocked(getExpenseSubgroups).mockResolvedValue([]);
         render(<FinancePage />);
 
@@ -223,6 +262,53 @@ describe("FinancePage expense CRUD", () => {
             screen.queryByRole("button", { name: /adicionar despesa/i })
         ).not.toBeInTheDocument();
         expect(createExpense).not.toHaveBeenCalled();
+    }, 15000);
+
+    it("keeps expenses from a read-only residence non-editable when another home is editable", async () => {
+        vi.mocked(getExpenseHomes).mockResolvedValue([
+            { id: "home-id", name: "Grifinória" },
+            { id: "other-home-id", name: "Corvinal" },
+        ]);
+        vi.mocked(getResidences).mockResolvedValue([
+            {
+                id: "home-id",
+                name: "Grifinória",
+                city: null,
+                neighborhood: null,
+                status: "ATIVA",
+                membership: { id: "member-id", role: "LIDER", canEditContent: null },
+                creationEditPolicy: "LIDERES",
+            },
+            {
+                id: "other-home-id",
+                name: "Corvinal",
+                city: null,
+                neighborhood: null,
+                status: "ATIVA",
+                membership: { id: "other-member-id", role: "MORADOR", canEditContent: false },
+                creationEditPolicy: "TODOS",
+            },
+        ]);
+        vi.mocked(getExpenses).mockResolvedValue([
+            { ...expense, homeId: "other-home-id", homeName: "Corvinal" },
+        ]);
+        render(<FinancePage />);
+
+        expect(await screen.findByRole("row", { name: /Internet/ })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Editar Internet" })).not.toBeInTheDocument();
+    }, 15000);
+
+    it("keeps house data readable and disables changes if residence permissions fail to load", async () => {
+        vi.mocked(getResidences).mockRejectedValueOnce(new Error("Falha de conexão"));
+        vi.mocked(getExpenses).mockResolvedValue([{ ...expense, homeId: "home-id" }]);
+        render(<FinancePage />);
+
+        expect(await screen.findByRole("row", { name: /Internet/ })).toBeInTheDocument();
+        expect(
+            screen.getByText(/Não foi possível verificar as permissões da residência/)
+        ).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Editar Internet" })).not.toBeInTheDocument();
+        expect(screen.getAllByRole("button", { name: /adicionar despesa/i })[0]).toBeDisabled();
     }, 15000);
 
     it("edits an expense and shows the updated values", async () => {

@@ -48,9 +48,11 @@ Configure `DATABASE_URL`, `DEMO_USER_PASSWORD` e `HOME_TEST_MEMBER_PASSWORD` no 
 pnpm run db:seed:test
 ```
 
-A carga cria ou preserva as contas de demonstração, uma residência com itens de despensa, e um segundo morador com tarefas e despesas de teste. Ela não apaga registros nem troca senhas de contas existentes e recusa execução com `NODE_ENV=production`.
+A carga cria ou preserva as contas de demonstração, uma residência com itens de despensa e dados financeiros para visualizar Insights: despesas nos últimos seis meses, cotas pagas, pendentes e atrasadas, contas inteiras quitadas por moradores diferentes, um subgrupo e uma despesa sem rateio. Também cria um segundo morador com tarefas e despesas de teste. As despesas de Insights usam o prefixo `DEMO INSIGHTS`. A carga não apaga registros nem troca senhas de contas existentes e recusa execução com `NODE_ENV=production`.
 
 Contas novas usam os e-mails `demo@example.com`, `ana@example.com`, `bruno@example.com` e `morador.teste@example.com`. As três contas de demonstração usam `DEMO_USER_PASSWORD`; a conta do segundo morador usa `HOME_TEST_MEMBER_PASSWORD`.
+
+Para conferir os Insights, entre em `demo@example.com` usando `DEMO_USER_PASSWORD`, abra **Financeiro → Insights** e selecione **Últimos 6 meses**. O filtro de subgrupo inclui `DEMO INSIGHTS — Mercado compartilhado`. Reexecutar a carga preserva os registros de demonstração que já existem.
 
 ## Testar a Home com dois moradores
 

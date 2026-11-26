@@ -78,6 +78,66 @@ export interface ExpenseProof {
     type: "IMAGEM" | "PDF";
 }
 
+export type ExpenseInsightsStatus = "ALL" | "PAID" | "PENDING" | "OVERDUE";
+
+export interface ExpenseInsightsQuery {
+    from: string;
+    to: string;
+    participationId?: string;
+    subgroupId?: string;
+    status?: ExpenseInsightsStatus;
+}
+
+export interface ExpenseInsights {
+    period: { from: string; to: string; timeZone: string; today: string };
+    summary: {
+        dueAmount: string;
+        paidAmount: string;
+        pendingAmount: string;
+        overdueAmount: string;
+        paidPercentage: number | null;
+        unallocatedExpenseCount: number;
+        unallocatedExpenseAmount: string;
+    };
+    members: {
+        participationId: string;
+        name: string;
+        active: boolean;
+        dueAmount: string;
+        paidAmount: string;
+        pendingAmount: string;
+        overdueAmount: string;
+        paidPercentage: number | null;
+        paidCount: number;
+        pendingCount: number;
+        overdueCount: number;
+    }[];
+    wholeBillsPaidByMember: {
+        participationId: string | null;
+        name: string;
+        amount: string;
+        count: number;
+    }[];
+    monthly: {
+        month: string;
+        dueAmount: string;
+        paidAmount: string;
+        pendingAmount: string;
+        overdueAmount: string;
+    }[];
+    overdueAllocations: {
+        id: string;
+        expenseId: string;
+        description: string;
+        participationId: string;
+        memberName: string;
+        subgroupName: string | null;
+        dueDate: string;
+        overdueDays: number;
+        amount: string;
+    }[];
+}
+
 export type ExpenseScope = "HOME" | "PERSONAL";
 
 export interface CreateExpenseInput {
@@ -109,6 +169,16 @@ export async function getExpenseHomes(): Promise<ExpenseHome[]> {
 
 export async function getExpenseHomeMembers(homeId: string): Promise<ExpenseHomeMember[]> {
     const response = await api.get<ExpenseHomeMember[]>(`/expenses/homes/${homeId}/members`);
+    return response.data;
+}
+
+export async function getExpenseInsights(
+    homeId: string,
+    query: ExpenseInsightsQuery
+): Promise<ExpenseInsights> {
+    const response = await api.get<ExpenseInsights>(`/expenses/homes/${homeId}/insights`, {
+        params: query,
+    });
     return response.data;
 }
 

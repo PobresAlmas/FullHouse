@@ -37,6 +37,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 *.pid
 *.pid.lock
 *.seed
+.fullhouse/
 .temp/
 .tmp/
 

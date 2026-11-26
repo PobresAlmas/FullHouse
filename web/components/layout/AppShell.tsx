@@ -13,6 +13,7 @@ import { getResidences, type Residence } from "@/features/residences/api/residen
 
 const routes: [string, AppSection, string][] = [
     ["/tasks", "tasks", "Tarefas da casa"],
+    ["/finance/insights", "insights", "Compare cotas, pagamentos e atrasos da casa."],
     ["/finance", "finance", "Organize as finanças da casa e pessoais."],
     ["/pantry", "pantry", "Organize os itens, categorias e validades da casa."],
     ["/shopping-list", "shopping-list", "Listas de compras pessoais e da casa"],

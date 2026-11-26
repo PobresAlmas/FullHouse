@@ -1,7 +1,10 @@
 {
   "private": true,
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "start": "bash scripts/start.sh",
+    "stop": "bash scripts/stop.sh",
+    "seed:demo": "bash scripts/seed-demo.sh"
   },
   "devDependencies": {
     "husky": "^9.1.7"
