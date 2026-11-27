@@ -1,0 +1,60 @@
+import { Module } from "@nestjs/common";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { APP_THROTTLER_GUARD_PROVIDER, APP_THROTTLER_OPTIONS } from "./common/app-throttling.js";
+import { AppController } from "./app.controller.js";
+import { AppService } from "./app.service.js";
+import { UsersModule } from "./users/users.module.js";
+import { PrismaService } from "./prisma/prisma.service.js";
+import { PrismaModule } from "./prisma/prisma.module.js";
+import { ConfigModule } from "@nestjs/config";
+import { AuthModule } from "./auth/auth.module.js";
+import { CryptoModule } from "./crypto/crypto.module.js";
+import { StorageModule } from "./storage/storage.module.js";
+import { EmailModule } from "./email/email.module.js";
+import { PasswordResetModule } from "./password-reset/password-reset.module.js";
+import Joi from "joi";
+import { ExpensesModule } from "./expenses/expenses.module.js";
+import { PetsModule } from "./pets/pets.module.js";
+import { PantryModule } from "./pantry/pantry.module.js";
+import { TasksModule } from "./tasks/tasks.module.js";
+import { ResidencesModule } from "./residences/residences.module.js";
+import { HomeModule } from "./home/home.module.js";
+import { ShoppingListModule } from "./shopping-list/shopping-list.module.js";
+import { RoomsModule } from "./rooms/rooms.module.js";
+
+@Module({
+    imports: [
+        ConfigModule.forRoot({
+            isGlobal: true,
+            validationSchema: Joi.object({
+                DATABASE_URL: Joi.string().required(),
+                JWT_SECRET: Joi.string().required(),
+                JWT_EXPIRES_IN: Joi.string().required(),
+                MINIO_ENDPOINT: Joi.string().required(),
+                MINIO_ACCESS_KEY: Joi.string().required(),
+                MINIO_SECRET_KEY: Joi.string().required(),
+                MINIO_BUCKET: Joi.string().required(),
+                MINIO_REGION: Joi.string().required(),
+            }),
+        }),
+        ThrottlerModule.forRoot(APP_THROTTLER_OPTIONS),
+        UsersModule,
+        PrismaModule,
+        AuthModule,
+        CryptoModule,
+        StorageModule,
+        EmailModule,
+        PasswordResetModule,
+        ExpensesModule,
+        PetsModule,
+        PantryModule,
+        TasksModule,
+        ResidencesModule,
+        HomeModule,
+        ShoppingListModule,
+        RoomsModule,
+    ],
+    controllers: [AppController],
+    providers: [AppService, PrismaService, APP_THROTTLER_GUARD_PROVIDER],
+})
+export class AppModule {}
