@@ -60,7 +60,8 @@ import { ProfileSettingsContent } from "@/features/profile/components/ProfilePag
 import { SettingsMembersTable } from "@/features/settings/components/SettingsMembersTable";
 import { RoomListingDialog } from "@/features/rooms/components/RoomListingDialog";
 import { HouseRoomListings } from "@/features/rooms/components/HouseRoomListings";
-import { roomInterestHref } from "@/features/notifications/room-interest-link";
+import { NotificationCardContent } from "@/features/notifications/components/NotificationCardContent";
+import { notificationHref } from "@/features/notifications/room-interest-link";
 import { PantryCategoryModal } from "@/features/pantry/components/PantryCategoryModal";
 import {
     getNotifications,
@@ -887,61 +888,61 @@ export function SettingsPage({
                                             ) : (
                                                 <ul className="mt-2 divide-y divide-[#e5dfe8]">
                                                     {visibleNotifications.map((item) => {
-                                                        const href =
-                                                            roomInterestHref(item) ??
-                                                            (item.convite && item.negotiationId
-                                                                ? `/rooms/negotiations/${item.negotiationId}`
-                                                                : undefined);
+                                                        const href = notificationHref(item);
                                                         return (
                                                             <li
                                                                 key={item.id}
-                                                                className={`relative py-4 pl-5 ${item.lida ? "" : "before:absolute before:left-0 before:top-6 before:size-1.5 before:rounded-full before:bg-[#4e812f]"}`}
+                                                                className={`relative ${item.lida ? "" : "before:absolute before:left-0 before:top-6 before:size-1.5 before:rounded-full before:bg-[#4e812f]"}`}
                                                             >
-                                                                <div className="flex flex-wrap items-start justify-between gap-2">
-                                                                    <h3
-                                                                        className={`text-sm ${item.lida ? "font-medium" : "font-bold"}`}
-                                                                    >
-                                                                        {href ? (
-                                                                            <Link
-                                                                                href={href}
-                                                                                onClick={() => {
-                                                                                    if (!item.lida)
-                                                                                        void markRead(
-                                                                                            item
-                                                                                        );
-                                                                                }}
-                                                                                className="text-[#315f35] underline underline-offset-2"
-                                                                            >
-                                                                                {item.titulo}
-                                                                            </Link>
-                                                                        ) : (
-                                                                            item.titulo
-                                                                        )}
-                                                                    </h3>
-                                                                    <time
-                                                                        className="shrink-0 text-xs text-[#77717c]"
-                                                                        dateTime={item.criadoEm}
-                                                                    >
-                                                                        {new Date(
-                                                                            item.criadoEm
-                                                                        ).toLocaleString("pt-BR", {
-                                                                            dateStyle: "short",
-                                                                            timeStyle: "short",
-                                                                        })}
-                                                                    </time>
-                                                                </div>
-                                                                {item.mensagem && (
-                                                                    <p className="mt-1 text-sm text-[#625c66]">
-                                                                        {item.mensagem}
-                                                                    </p>
-                                                                )}
+                                                                <NotificationCardContent
+                                                                    href={href}
+                                                                    title={item.titulo}
+                                                                    onOpen={() => {
+                                                                        if (!item.lida)
+                                                                            void markRead(item);
+                                                                    }}
+                                                                    className={
+                                                                        item.lida
+                                                                            ? "py-4 pl-5 pr-2"
+                                                                            : "pt-4 pl-5 pr-2"
+                                                                    }
+                                                                >
+                                                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                                                        <h3
+                                                                            className={`text-sm ${item.lida ? "font-medium" : "font-bold"} ${href ? "text-[#315f35]" : ""}`}
+                                                                        >
+                                                                            {item.titulo}
+                                                                        </h3>
+                                                                        <time
+                                                                            className="shrink-0 text-xs text-[#77717c]"
+                                                                            dateTime={item.criadoEm}
+                                                                        >
+                                                                            {new Date(
+                                                                                item.criadoEm
+                                                                            ).toLocaleString(
+                                                                                "pt-BR",
+                                                                                {
+                                                                                    dateStyle:
+                                                                                        "short",
+                                                                                    timeStyle:
+                                                                                        "short",
+                                                                                }
+                                                                            )}
+                                                                        </time>
+                                                                    </div>
+                                                                    {item.mensagem && (
+                                                                        <p className="mt-1 text-sm text-[#625c66]">
+                                                                            {item.mensagem}
+                                                                        </p>
+                                                                    )}
+                                                                </NotificationCardContent>
                                                                 {!item.lida && (
                                                                     <button
                                                                         type="button"
                                                                         onClick={() =>
                                                                             void markRead(item)
                                                                         }
-                                                                        className="mt-2 text-xs font-medium text-[#315f35] underline underline-offset-2"
+                                                                        className="relative z-10 mb-4 ml-5 mt-2 text-xs font-medium text-[#315f35] underline underline-offset-2"
                                                                     >
                                                                         Marcar como lida
                                                                     </button>

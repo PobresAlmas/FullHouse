@@ -124,10 +124,10 @@ O `status` filtra as cotas antes de calcular cartões, moradores, meses e lista.
 - O gráfico **Valor em atraso por morador** usa valor e contagem de cotas vencidas devolvidos no agregado que respeita todos os filtros, ordenado do maior atraso em reais para o menor. O valor é uma parte do aberto; não deve ser somado outra vez ao resumo.
 - Ambos usam barras horizontais em CSS, legenda/descrição textual e rótulos acessíveis. Sem cotas correspondentes, mostrar mensagem de vazio em vez de dados artificiais. Os gráficos entram no grid responsivo já usado pelos comparativos.
 
-| Requisitos | Decisões | Critérios |
-| --- | --- | --- |
+| Requisitos        | Decisões                                                        | Critérios  |
+| ----------------- | --------------------------------------------------------------- | ---------- |
 | RF12, RNF02–RNF04 | Gráficos por taxa quitada e atraso usando agregados autorizados | CA09, CA13 |
-| RF13, RNF04 | Item próprio no AppSidebar e rota específica antes de /finance | CA12 |
+| RF13, RNF04       | Item próprio no AppSidebar e rota específica antes de /finance  | CA12       |
 
 ## Incremento: personalização do painel (IHC)
 
@@ -138,6 +138,6 @@ O `status` filtra as cotas antes de calcular cartões, moradores, meses e lista.
 - Persistir as opções em `localStorage` com uma chave versionada e particionada pelo ID autenticado (`fullhouse:insights:view-preferences:v1:<userId>`). Guardar somente booleanos de visibilidade, sem métricas ou dados pessoais. Na troca de usuário, carregar as opções daquele ID antes de gravar; erro de leitura/escrita não bloqueia a página e as opções seguem na memória até sair dela.
 - Usar `<details>/<summary>` para a divulgação progressiva e controles nativos de formulário, com foco visível e instruções textuais. O resumo da quantidade e o aviso de todos ocultos deixam o estado do painel claro para teclado e leitor de tela.
 
-| Requisitos | Decisões | Critérios |
-| --- | --- | --- |
-| RF14, RNF04, RNF07 | Sete blocos selecionáveis, todos ativos inicialmente, preferências locais por usuário e restauração em um passo | CA14 |
+| Requisitos         | Decisões                                                                                                        | Critérios |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- | --------- |
+| RF14, RNF04, RNF07 | Sete blocos selecionáveis, todos ativos inicialmente, preferências locais por usuário e restauração em um passo | CA14      |

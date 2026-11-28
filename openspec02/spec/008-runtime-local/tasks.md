@@ -16,3 +16,7 @@
 ## Aceitação
 
 - [ ] **T08 — Conferir comandos e dados locais.** Executar o seed, conferir login/dados nas telas principais, iniciar e parar o stack sem remover o banco.
+
+- [x] **T09 — Usar Node compatível no pre-commit.** Reproduzir a falha de inicialização do Vitest no Node 20, selecionar a versão do projeto via NVM quando necessário e rodar o hook com o PATH original. **Refs** RF06, CA06.
+
+`.husky/_/pre-commit` passou com Node 20.20.0 no PATH inicial. O hook selecionou o Node 26.8.1 e executou ESLint, Prettier e Vitest nos dois pacotes. Passaram 334 testes no frontend e 524 no backend. O teste de erro da Lista de compras usa uma resposta simulada para a consulta da barra lateral. Sem o NVM sob o Node 20, `sh -e .husky/pre-commit` mostrou a orientação de configuração antes das verificações.

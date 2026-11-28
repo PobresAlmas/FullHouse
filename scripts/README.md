@@ -4,7 +4,7 @@ Os scripts ficam em **scripts/** na raiz do repositório. Execute os comandos a 
 
 ## Preparação
 
-Requisitos: Node.js 20 ou superior, pnpm 12 via Corepack, Docker Compose e os arquivos locais de configuração. O README principal descreve a instalação das dependências. Crie os arquivos **.env**, **backend/.env** e **web/.env.local** a partir dos respectivos **.env.example**.
+Use a versão de Node.js indicada no [README principal](../README.md), pnpm 12, Docker Compose e os arquivos locais de configuração. Crie os arquivos **.env**, **backend/.env** e **web/.env.local** a partir dos respectivos **.env.example**.
 
 O valor de **POSTGRES_DB** do .env da raiz precisa ser igual ao nome no final de **DATABASE_URL** em backend/.env. O backend deve apontar para localhost:5433; os scripts recusam outros hosts e NODE_ENV=production. Não copie senhas reais para arquivos versionados.
 
@@ -38,11 +38,11 @@ O conjunto cobre casa e moradores; tarefas pendentes, atrasadas e concluídas; d
 
 ## Contas de teste
 
-| Email | Variável da senha local |
-| --- | --- |
-| demo@example.com | `DEMO_USER_PASSWORD` |
-| ana@example.com | `DEMO_USER_PASSWORD` |
-| bruno@example.com | `DEMO_USER_PASSWORD` |
+| Email                     | Variável da senha local     |
+| ------------------------- | --------------------------- |
+| demo@example.com          | `DEMO_USER_PASSWORD`        |
+| ana@example.com           | `DEMO_USER_PASSWORD`        |
+| bruno@example.com         | `DEMO_USER_PASSWORD`        |
 | morador.teste@example.com | `HOME_TEST_MEMBER_PASSWORD` |
 
 Use os valores locais definidos em `backend/.env` para essas variáveis. Não imprima nem copie as senhas em arquivos versionados. A carga cria hashes; se uma variável mudar depois da primeira carga, a senha já armazenada para as contas existentes não é alterada automaticamente.

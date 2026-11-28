@@ -5,8 +5,8 @@ import { PantryRepository } from "./pantry.repository.js";
 import { PantryService } from "./pantry.service.js";
 
 @Module({
-    imports: [PrismaModule],
-    controllers: [PantryController],
-    providers: [PantryRepository, PantryService],
+  imports: [PrismaModule],
+  controllers: [PantryController],
+  providers: [PantryRepository, PantryService],
 })
 export class PantryModule {}

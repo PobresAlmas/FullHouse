@@ -171,7 +171,10 @@ export function AppSidebar({
                 </span>
             </Link>
 
-            <nav aria-label="Navegação principal" className="grid grid-cols-4 gap-1 md:grid-cols-1">
+            <nav
+                aria-label="Navegação principal"
+                className="app-nav grid grid-cols-4 gap-1 md:grid-cols-1"
+            >
                 {(hasNoResidence
                     ? sections.filter(
                           ({ id }) =>
@@ -184,7 +187,7 @@ export function AppSidebar({
                     const className = `flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-center text-[10px] leading-tight md:h-12 md:min-h-0 md:flex-row md:justify-start md:gap-3 md:px-3 md:text-left md:text-sm ${
                         implemented
                             ? active
-                                ? "bg-white font-semibold text-[#4e812f]"
+                                ? "app-nav-active bg-white font-semibold text-[#4e812f]"
                                 : "text-[#514c56] transition hover:bg-white/70"
                             : "cursor-not-allowed text-[#9a949e]"
                     }`;

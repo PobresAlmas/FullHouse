@@ -1,3 +1,28 @@
+has_supported_node() {
+    # jsdom's Node.js requirement in web/pnpm-lock.yaml.
+    node -e '
+        const [major, minor, patch] = process.versions.node.split(".").map(Number);
+        const supported = major >= 26
+            || (major === 24 && minor >= 15)
+            || (major === 22 && (minor > 22 || (minor === 22 && patch >= 2)));
+        process.exit(supported ? 0 : 1);
+    ' 2>/dev/null
+}
+
+if ! has_supported_node; then
+    nvm_script="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+    if [ -s "$nvm_script" ]; then
+        . "$nvm_script" --no-use
+        nvm use --silent || true
+    fi
+fi
+
+if ! has_supported_node; then
+    printf 'O pre-commit precisa de Node.js compatível com o jsdom. Versão atual: %s.\n' "$(node -v 2>/dev/null || printf 'indisponível')" >&2
+    printf 'Na raiz do projeto, execute nvm install e nvm use para ativar o Node.js %s definido em .nvmrc.\n' "$(cat .nvmrc)" >&2
+    exit 1
+fi
+
 pnpm --dir web lint
 pnpm --dir web format:check
 pnpm --dir web test --run

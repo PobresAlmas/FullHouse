@@ -6,11 +6,11 @@ Usar três scripts Bash na raiz e expô-los por scripts npm, preservando a stack
 
 ## Comandos
 
-| Comando | Arquivo | Resultado |
-| --- | --- | --- |
-| `npm run start` | `scripts/start.sh` | Sobe/reutiliza PostgreSQL e Silo, aplica migrações, roda o seed, compila/inicia API e web e espera os endpoints responderem. |
-| `npm run stop` | `scripts/stop.sh` | Encerra API/web iniciados pelos scripts e para containers PostgreSQL/Silo sem remover volumes. |
-| `npm run seed:demo` | `scripts/seed-demo.sh` | Aplica migrações pendentes e executa a carga existente de teste local. |
+| Comando             | Arquivo                | Resultado                                                                                                                    |
+| ------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `npm run start`     | `scripts/start.sh`     | Sobe/reutiliza PostgreSQL e Silo, aplica migrações, roda o seed, compila/inicia API e web e espera os endpoints responderem. |
+| `npm run stop`      | `scripts/stop.sh`      | Encerra API/web iniciados pelos scripts e para containers PostgreSQL/Silo sem remover volumes.                               |
+| `npm run seed:demo` | `scripts/seed-demo.sh` | Aplica migrações pendentes e executa a carga existente de teste local.                                                       |
 
 ## Dados e contas
 
@@ -29,10 +29,14 @@ Usar três scripts Bash na raiz e expô-los por scripts npm, preservando a stack
 - PIDs e logs ficam em `.fullhouse/pids` e `.fullhouse/logs`; `stop.sh` encerra somente PIDs registrados e os serviços Compose do projeto.
 - Volumes do Compose continuam preservados ao desligar.
 
+## Verificações antes do commit
+
+O ambiente de testes do frontend usa `jsdom`, que precisa de Node 22.22.2 ou mais recente na linha 22, Node 24.15.0 ou mais recente na linha 24, ou Node 26 em diante. A versão de referência em `.nvmrc` coincide com a do Devbox. Quando o Node no PATH é incompatível, o hook carrega o NVM e tenta usar a versão já instalada. Se ela estiver indisponível, o hook explica como preparar o ambiente antes de executar as verificações.
+
 ## Rastreabilidade
 
-| Requisitos | Decisões | Critérios |
-| --- | --- | --- |
-| RF01–RF03, RNF04 | Scripts start/stop e estado em `.fullhouse/` | CA01, CA05 |
-| RF04–RF05, RNF01–RNF03 | Seed idempotente com prefixo e credenciais por ambiente | CA02–CA04, CA06 |
-| RF06 | README dedicado com comandos, portas e logs | CA01, CA03, CA06 |
+| Requisitos             | Decisões                                                | Critérios        |
+| ---------------------- | ------------------------------------------------------- | ---------------- |
+| RF01–RF03, RNF04       | Scripts start/stop e estado em `.fullhouse/`            | CA01, CA05       |
+| RF04–RF05, RNF01–RNF03 | Seed idempotente com prefixo e credenciais por ambiente | CA02–CA04, CA06  |
+| RF06                   | README dedicado com comandos, portas e logs             | CA01, CA03, CA06 |

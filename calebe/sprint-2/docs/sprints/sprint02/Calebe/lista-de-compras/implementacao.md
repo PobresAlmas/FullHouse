@@ -12,13 +12,13 @@ O código da funcionalidade e as suítes automatizadas estão implementados. As 
 
 ## 2. Frontend
 
-| Recurso | Arquivo principal | Papel |
-| --- | --- | --- |
-| Página da lista | `web/app/(private)/shopping-list/page.tsx` | Seleção de residência, inclusão/edição, seções de pendentes/comprados e ações do item. |
-| Cliente HTTP e tipos | `web/features/shopping-list/api/shopping-list.api.ts` | Contratos e chamadas à API residencial. |
-| Testes da página | `web/app/(private)/shopping-list/__test__/page.test.tsx` | Fluxos, duplicatas, validação, concorrência, troca de residência e estados de tela. |
-| Testes do cliente | `web/features/shopping-list/api/__test__/shopping-list.api.test.ts` | Rotas, payloads e versão enviada nas operações. |
-| Navegação | `web/components/layout/AppSidebar.tsx` | Adiciona o acesso autenticado “Lista de compras”. |
+| Recurso              | Arquivo principal                                                   | Papel                                                                                  |
+| -------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Página da lista      | `web/app/(private)/shopping-list/page.tsx`                          | Seleção de residência, inclusão/edição, seções de pendentes/comprados e ações do item. |
+| Cliente HTTP e tipos | `web/features/shopping-list/api/shopping-list.api.ts`               | Contratos e chamadas à API residencial.                                                |
+| Testes da página     | `web/app/(private)/shopping-list/__test__/page.test.tsx`            | Fluxos, duplicatas, validação, concorrência, troca de residência e estados de tela.    |
+| Testes do cliente    | `web/features/shopping-list/api/__test__/shopping-list.api.test.ts` | Rotas, payloads e versão enviada nas operações.                                        |
+| Navegação            | `web/components/layout/AppSidebar.tsx`                              | Adiciona o acesso autenticado “Lista de compras”.                                      |
 
 A tela separa itens `Pendentes` e `Comprados`; os comprados podem ser recolhidos. Há confirmação antes de remover, aviso não bloqueante para duplicata pendente e suporte à quantidade decimal com vírgula. A página trata estados vazio, carregamento, erro, conflito e residência sem vínculo. Não há atualização em tempo real.
 
@@ -26,26 +26,26 @@ A tela separa itens `Pendentes` e `Comprados`; os comprados podem ser recolhidos
 
 O módulo fica em `backend/src/shopping-list/`:
 
-| Arquivo | Responsabilidade |
-| --- | --- |
-| `shopping-list.module.ts` | Registra controller, serviço e repositório do módulo. |
-| `shopping-list.controller.ts` | Rotas autenticadas e leitura dos dados do usuário e da residência. |
-| `shopping-list.service.ts` | Valida vínculo ativo, regras de quantidade/unidade, ordenação e respostas. |
-| `shopping-list.repository.ts` | Consultas e alterações persistidas, incluindo comparação de versão. |
-| `dto/create-shopping-list-item.dto.ts` | Validação dos campos de criação. |
-| `dto/update-shopping-list-item.dto.ts` | Validação de edição e versão esperada. |
-| `dto/update-shopping-list-status.dto.ts` | Validação de conclusão e reabertura. |
+| Arquivo                                  | Responsabilidade                                                           |
+| ---------------------------------------- | -------------------------------------------------------------------------- |
+| `shopping-list.module.ts`                | Registra controller, serviço e repositório do módulo.                      |
+| `shopping-list.controller.ts`            | Rotas autenticadas e leitura dos dados do usuário e da residência.         |
+| `shopping-list.service.ts`               | Valida vínculo ativo, regras de quantidade/unidade, ordenação e respostas. |
+| `shopping-list.repository.ts`            | Consultas e alterações persistidas, incluindo comparação de versão.        |
+| `dto/create-shopping-list-item.dto.ts`   | Validação dos campos de criação.                                           |
+| `dto/update-shopping-list-item.dto.ts`   | Validação de edição e versão esperada.                                     |
+| `dto/update-shopping-list-status.dto.ts` | Validação de conclusão e reabertura.                                       |
 
 ### 3.1. Endpoints identificados
 
 Todas as rotas exigem autenticação JWT e validam os UUIDs recebidos.
 
-| Método | Rota | Função |
-| --- | --- | --- |
-| `GET` | `/residences/:residenceId/shopping-list/items` | Listar os itens da residência. |
-| `POST` | `/residences/:residenceId/shopping-list/items` | Criar item pendente. |
-| `PATCH` | `/residences/:residenceId/shopping-list/items/:itemId` | Editar campos usando `version`. |
-| `PATCH` | `/residences/:residenceId/shopping-list/items/:itemId/status` | Concluir ou reabrir usando `version`. |
+| Método   | Rota                                                                    | Função                                                         |
+| -------- | ----------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `GET`    | `/residences/:residenceId/shopping-list/items`                          | Listar os itens da residência.                                 |
+| `POST`   | `/residences/:residenceId/shopping-list/items`                          | Criar item pendente.                                           |
+| `PATCH`  | `/residences/:residenceId/shopping-list/items/:itemId`                  | Editar campos usando `version`.                                |
+| `PATCH`  | `/residences/:residenceId/shopping-list/items/:itemId/status`           | Concluir ou reabrir usando `version`.                          |
 | `DELETE` | `/residences/:residenceId/shopping-list/items/:itemId?version=:version` | Remover com confirmação na interface e versão esperada na API. |
 
 ### 3.2. Regras e persistência
@@ -62,13 +62,13 @@ Todas as rotas exigem autenticação JWT e validam os UUIDs recebidos.
 
 ## 4. Rastreabilidade
 
-| Entrega | Critério | Evidência no código |
-| --- | --- | --- |
-| CRUD e status compartilhados | Acesso e ciclo de vida do item | Controller, serviço e repositório do módulo `shopping-list`. |
-| Isolamento residencial | Só membros ativos consultam ou alteram | `ResidenceAccessService` usado pelo serviço. |
-| Edição segura contra concorrência | Versão antiga não sobrescreve versão recente | `updateMany` condicionado à versão no repositório. |
-| Aviso de duplicata | Avisar sem impedir duplicatas intencionais | Normalização e confirmação na página da lista. |
-| Separação de módulos | Compra não altera estoque ou gastos | Lista persiste em tabela própria; sem chamada aos módulos de despensa ou financeiro. |
+| Entrega                           | Critério                                     | Evidência no código                                                                  |
+| --------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------ |
+| CRUD e status compartilhados      | Acesso e ciclo de vida do item               | Controller, serviço e repositório do módulo `shopping-list`.                         |
+| Isolamento residencial            | Só membros ativos consultam ou alteram       | `ResidenceAccessService` usado pelo serviço.                                         |
+| Edição segura contra concorrência | Versão antiga não sobrescreve versão recente | `updateMany` condicionado à versão no repositório.                                   |
+| Aviso de duplicata                | Avisar sem impedir duplicatas intencionais   | Normalização e confirmação na página da lista.                                       |
+| Separação de módulos              | Compra não altera estoque ou gastos          | Lista persiste em tabela própria; sem chamada aos módulos de despensa ou financeiro. |
 
 ## 5. Estado da entrega
 
