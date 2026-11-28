@@ -2932,9 +2932,9 @@ function ExpenseRow({
                                 type="button"
                                 aria-label={`Excluir ${expense.description}`}
                                 onClick={() => onDelete(expense)}
-                                className={`${expenseActionClass} border-destructive/65 text-destructive enabled:hover:border-destructive`}
+                                className="grid size-7 place-items-center rounded border border-red-300 text-red-600 hover:bg-red-50"
                             >
-                                <Trash2 size={15} aria-hidden="true" />
+                                <Trash2 size={14} />
                             </button>
                         </div>
                     </>
