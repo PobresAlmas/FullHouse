@@ -179,6 +179,15 @@ describe("FinancePage expense CRUD", () => {
             })
         );
         expect(await screen.findByRole("row", { name: /Internet/ })).toBeInTheDocument();
+        const insightsLink = screen.getByRole("link", { name: "Ver mês da despesa nos Insights" });
+        expect(insightsLink).toHaveAttribute(
+            "href",
+            "/finance/insights?range=CUSTOM&from=2026-10-01&to=2026-10-31&homeId=home-id"
+        );
+        expect(screen.getByRole("link", { name: "Insights" })).toHaveAttribute(
+            "href",
+            insightsLink.getAttribute("href")
+        );
     }, 15000);
 
     it("uses the residence selected in the expense form when the user has more than one", async () => {

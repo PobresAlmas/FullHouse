@@ -26,18 +26,14 @@ describe("TasksRepository", () => {
       },
       fila_rodizio: { createMany: vi.fn(), deleteMany: vi.fn() },
       instancia_tarefa: {
-        create: vi
-          .fn()
-          .mockResolvedValue({
-            id: "instance-1",
-            definicao_tarefa_id: "definition-1",
-          }),
-        update: vi
-          .fn()
-          .mockResolvedValue({
-            id: "instance-1",
-            definicao_tarefa_id: "definition-1",
-          }),
+        create: vi.fn().mockResolvedValue({
+          id: "instance-1",
+          definicao_tarefa_id: "definition-1",
+        }),
+        update: vi.fn().mockResolvedValue({
+          id: "instance-1",
+          definicao_tarefa_id: "definition-1",
+        }),
         updateMany: vi.fn(),
       },
       lembrete: { create: vi.fn(), deleteMany: vi.fn() },
