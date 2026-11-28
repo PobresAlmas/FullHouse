@@ -462,13 +462,13 @@ describe("SettingsPage", () => {
             items: [
                 {
                     id: "notification-1",
-                    titulo: "Tarefa atribuída",
-                    mensagem: "Uma tarefa foi atribuída a você.",
+                    titulo: "Seu interesse foi aceito",
+                    mensagem: "O anunciante aceitou conversar sobre o quarto.",
                     lida: false,
                     criadoEm: "2026-11-20T12:00:00.000Z",
-                    entidadeTipo: "TAREFA",
-                    entidadeId: "task-1",
-                    negotiationId: null,
+                    entidadeTipo: "NEGOCIACAO_QUARTO",
+                    entidadeId: "negotiation-1",
+                    negotiationId: "negotiation-1",
                     convite: null,
                 },
             ],
@@ -477,8 +477,14 @@ describe("SettingsPage", () => {
         });
         render(<SettingsPage section="notifications" tab="general" />);
 
-        expect(await screen.findByText("Tarefa atribuída")).toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: "Marcar como lida" }));
+        const link = await screen.findByRole("link", { name: "Seu interesse foi aceito" });
+        expect(link).toHaveAttribute("href", "/rooms/negotiations/negotiation-1");
+        expect(link).toContainElement(
+            screen.getByText("O anunciante aceitou conversar sobre o quarto.")
+        );
+        const markRead = screen.getByRole("button", { name: "Marcar como lida" });
+        expect(link).not.toContainElement(markRead);
+        await user.click(markRead);
         await waitFor(() => expect(mocks.markRead).toHaveBeenCalledWith("notification-1"));
     });
 

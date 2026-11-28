@@ -44,3 +44,13 @@
 - [x] **T22 — Persistir preferências por usuário.** Carregar e salvar somente opções de visibilidade em armazenamento local versionado; lidar com usuário trocado e indisponibilidade do navegador sem bloquear a página. **Refs:** RF14, RNF07, CA14.
 - [x] **T23 — Implementar controles e exibição seletiva.** Adicionar controles acessíveis, contagem de blocos visíveis, ação de restaurar padrão e orientação quando todos estiverem ocultos. **Refs:** RF14, RNF04, CA14.
 - [x] **T24 — Revisar a interação contra CA14.** Conferir por inspeção do fluxo o padrão inicial, cada grupo selecionável, estado de todos ocultos, independência dos filtros e recuperação do padrão; sem alterar agregações financeiras. **Refs:** CA14.
+
+## Ajustes visuais do Financeiro
+
+- [x] **T25 — Ajustar a lista de despesas e o destaque da navegação.** Conferir a lista de Financeiro sem rolagem horizontal, o contraste do item ativo no escuro e a identificação dos botões de comprovante, lembrete e edição. **Refs:** CA10, CA12.
+
+O Chrome confirmou os modos Casa e Pessoal em 390, 1280 e 1600 px, o destaque escuro e a abertura das três ações. Passaram os 20 testes de Financeiro e navegação, além do ESLint e da checagem TypeScript.
+
+O Chrome também confirmou o contraste ao passar o mouse no menu lateral em tema escuro. Os sete testes da navegação lateral passaram.
+
+- [x] **T26 — Centralizar comprovantes e lembretes na tabela.** Alinhar os ícones aos títulos das colunas, inclusive quando já houver arquivos anexados, e conferir a lista em tela estreita. **Ref:** T25. O Chrome confirmou o alinhamento em 1600 px e os rótulos acima dos ícones em 390 px. Os 13 testes de `finance/__test__/page.test.tsx` passaram, assim como ESLint e Prettier no arquivo alterado.

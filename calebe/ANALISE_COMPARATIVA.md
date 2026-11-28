@@ -2,11 +2,11 @@
 
 ## Visão geral
 
-| Sprint | Problema principal | Desafios técnicos para analisar |
-| --- | --- | --- |
-| 1 — Despensa | Cadastrar e consultar itens e acompanhar o estoque da casa | Regras de propriedade e privacidade, validação dos dados e consistência do saldo ao registrar movimentações. |
-| 2 — Lista de compras | Compartilhar itens entre moradores e controlar o ciclo pendente/comprado | Concorrência entre moradores, atualização por versão, transições de estado, validações de quantidade/unidade e resposta da interface a conflitos. |
-| 3 — Insights e qualidade | Resumir despesas para apoiar decisões e endurecer controles do sistema | Agregações financeiras corretas, filtros e datas, autorização transversal, proteção de login e cobertura de regressão em vários módulos. |
+| Sprint                   | Problema principal                                                       | Desafios técnicos para analisar                                                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 — Despensa             | Cadastrar e consultar itens e acompanhar o estoque da casa               | Regras de propriedade e privacidade, validação dos dados e consistência do saldo ao registrar movimentações.                                      |
+| 2 — Lista de compras     | Compartilhar itens entre moradores e controlar o ciclo pendente/comprado | Concorrência entre moradores, atualização por versão, transições de estado, validações de quantidade/unidade e resposta da interface a conflitos. |
+| 3 — Insights e qualidade | Resumir despesas para apoiar decisões e endurecer controles do sistema   | Agregações financeiras corretas, filtros e datas, autorização transversal, proteção de login e cobertura de regressão em vários módulos.          |
 
 ## Como as soluções diferem
 

@@ -84,3 +84,7 @@ Use este checklist como pedido de implementação. Consulte [requirements.md](re
 ## Verificação registrada
 
 O checklist original mantém 13 itens pendentes. Entre eles estão a comparação com as nove [referências visuais](../../../docs/design-references/design-references/settings/README.md), a cobertura adicional de preferências e permissões individuais, a geração de alertas, a auditoria de temas e a verificação final. O estado acima registra a verificação da change de origem.
+
+## Área clicável das notificações
+
+- [x] **T50 — Abrir notificações pela caixa inteira.** Incluir o título e a descrição no link, destacar a caixa sob o ponteiro nos dois temas e preservar os botões individuais. **Refs:** RF10, CA10. Os 31 testes de notificações e configurações passaram. No Chrome, com dados de teste, foi possível clicar nas margens, navegar ao destino e observar o destaque no sino e na central nos temas claro e escuro.

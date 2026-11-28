@@ -65,7 +65,7 @@ describe("NotificationBell", () => {
         });
     });
 
-    it("links a new room interest to the announcement in Moradores", async () => {
+    it("opens the announcement in Moradores from the room interest card", async () => {
         vi.mocked(getNotifications).mockResolvedValue({
             items: [
                 {
@@ -93,9 +93,18 @@ describe("NotificationBell", () => {
         );
         expect(await screen.findByLabelText("1 notificações não lidas")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Notificações" }));
-        expect(
-            await screen.findByRole("link", { name: "Novo interesse em um quarto" })
-        ).toHaveAttribute("href", "/settings?section=members&listingId=listing-1#anuncios-da-casa");
+        const link = await screen.findByRole("link", { name: "Novo interesse em um quarto" });
+        expect(link).toHaveAttribute(
+            "href",
+            "/settings?section=members&listingId=listing-1#anuncios-da-casa"
+        );
+        const message = screen.getByText(pendingInvite.mensagem);
+        expect(link).toContainElement(message);
+        expect(link).not.toContainElement(screen.getByRole("button", { name: "Marcar como lida" }));
+        link.addEventListener("click", (event) => event.preventDefault(), { once: true });
+        fireEvent.click(message);
+        await waitFor(() => expect(markNotificationRead).toHaveBeenCalledWith("notification-1"));
+        expect(screen.queryByRole("link", { name: "Novo interesse em um quarto" })).toBeNull();
     });
 
     it("provides invite actions and removes them after the recipient responds", async () => {

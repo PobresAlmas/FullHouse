@@ -857,9 +857,15 @@ export default function FinancePage() {
                                 </button>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full min-w-[1120px] text-left text-xs">
-                                    <thead className="border-b border-[#eae4ec] text-[11px] font-semibold text-[#88849a]">
+                            <div className="min-w-0">
+                                <table
+                                    role="table"
+                                    className="block w-full table-fixed text-left text-xs 2xl:table"
+                                >
+                                    <thead
+                                        role="rowgroup"
+                                        className="sr-only border-b border-[#eae4ec] text-[11px] font-semibold text-[#88849a] 2xl:not-sr-only"
+                                    >
                                         <tr>
                                             {scope === "PERSONAL" && (
                                                 <th scope="col" className="w-10 px-3 py-3">
@@ -889,10 +895,10 @@ export default function FinancePage() {
                                             <th scope="col" className="px-3 py-3">
                                                 Status
                                             </th>
-                                            <th scope="col" className="px-3 py-3">
+                                            <th scope="col" className="px-3 py-3 text-center">
                                                 Comprovante
                                             </th>
-                                            <th scope="col" className="px-3 py-3">
+                                            <th scope="col" className="px-3 py-3 text-center">
                                                 Lembrete
                                             </th>
                                             <th scope="col" className="px-3 py-3 text-center">
@@ -900,7 +906,10 @@ export default function FinancePage() {
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-[#eee9f0]">
+                                    <tbody
+                                        role="rowgroup"
+                                        className="block divide-y divide-[#eee9f0] 2xl:table-row-group"
+                                    >
                                         {visibleExpenses.length === 0 ? (
                                             <tr>
                                                 <td
@@ -2696,6 +2705,22 @@ function CalendarWidget({ expenses }: { expenses: Expense[] }) {
     );
 }
 
+const expenseCellClass = "min-w-0 wrap-anywhere 2xl:px-3 2xl:py-3";
+const expenseActionClass =
+    "grid size-8 shrink-0 place-items-center rounded border bg-card transition-colors enabled:cursor-pointer enabled:hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50";
+const expenseActionColor = "border-muted-foreground text-foreground";
+
+function ExpenseCellLabel({ children }: { children: string }) {
+    return (
+        <span
+            aria-hidden="true"
+            className="mb-1 block text-[10px] font-medium text-muted-foreground 2xl:hidden"
+        >
+            {children}
+        </span>
+    );
+}
+
 function ExpenseRow({
     expense,
     onEdit,
@@ -2727,9 +2752,12 @@ function ExpenseRow({
         expense.date < localIsoDate(new Date());
     const group = expense.sourceLabel ?? expense.subgroup?.nome ?? expense.homeName ?? "Casa";
     return (
-        <tr className="text-[#333039] hover:bg-[#fcf9fd]">
+        <tr
+            role="row"
+            className="relative grid grid-cols-2 items-start gap-x-3 gap-y-3 px-4 py-3 text-[#333039] hover:bg-[#fcf9fd] sm:grid-cols-3 2xl:table-row 2xl:p-0"
+        >
             {personalMode && (
-                <td className="px-3 py-3">
+                <td role="cell" className="absolute left-4 top-3 2xl:static 2xl:px-3 2xl:py-3">
                     <input
                         type="checkbox"
                         aria-label={`Marcar ${expense.description} como paga`}
@@ -2739,8 +2767,12 @@ function ExpenseRow({
                     />
                 </td>
             )}
-            <th scope="row" className="max-w-[180px] px-3 py-3 text-xs font-semibold">
-                <span className="block truncate">{expense.description}</span>
+            <th
+                role="rowheader"
+                scope="row"
+                className={`col-span-full text-xs font-semibold ${expenseCellClass} ${personalMode ? "pl-7" : ""}`}
+            >
+                <span className="block">{expense.description}</span>
                 <span className="mt-0.5 block text-[10px] font-normal text-[#8b8490]">
                     {expense.scope === "PERSONAL"
                         ? "Despesa pessoal"
@@ -2751,45 +2783,54 @@ function ExpenseRow({
                             : "Despesa da casa"}
                 </span>
             </th>
-            <td className="px-3 py-3">
-                <span className="inline-flex items-center gap-1.5 text-[#4f7ba2]">
-                    <span className="grid size-6 place-items-center rounded-full bg-[#e9f1fb]">
+            <td role="cell" className={expenseCellClass}>
+                <ExpenseCellLabel>Categoria</ExpenseCellLabel>
+                <span className="inline-flex max-w-full items-center gap-1.5 text-[#4f7ba2]">
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#e9f1fb]">
                         <House size={13} />
                     </span>
-                    {group}
+                    <span className="min-w-0">{group}</span>
                 </span>
             </td>
-            <td className="px-3 py-3">
+            <td role="cell" className={expenseCellClass}>
+                <ExpenseCellLabel>Pago por</ExpenseCellLabel>
                 {paid && expense.paidBy ? (
-                    <span className="inline-flex items-center gap-1.5 text-[#79737c]">
-                        <span className="grid size-6 place-items-center rounded-full bg-[#4f90cb] text-[10px] text-white">
+                    <span className="inline-flex max-w-full items-center gap-1.5 text-[#79737c]">
+                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#4f90cb] text-[10px] text-white">
                             {expense.paidBy.slice(0, 1).toUpperCase()}
                         </span>
-                        {expense.paidBy}
+                        <span className="min-w-0">{expense.paidBy}</span>
                     </span>
                 ) : (
                     <span className="text-[#aaa4ad]">—</span>
                 )}
             </td>
-            <td className="whitespace-nowrap px-3 py-3">{formatDate(expense.date)}</td>
-            <td className="whitespace-nowrap px-3 py-3 font-medium">
-                {formatCurrency(expense.amount)}
+            <td role="cell" className={expenseCellClass}>
+                <ExpenseCellLabel>Data</ExpenseCellLabel>
+                {formatDate(expense.date)}
             </td>
-            <td className="whitespace-nowrap px-3 py-3">
+            <td role="cell" className={expenseCellClass}>
+                <ExpenseCellLabel>Valor</ExpenseCellLabel>
+                <span className="font-medium">{formatCurrency(expense.amount)}</span>
+            </td>
+            <td role="cell" className={expenseCellClass}>
+                <ExpenseCellLabel>Vencimento</ExpenseCellLabel>
                 <span className={overdue ? "font-semibold text-red-600" : "font-medium"}>
                     {formatDate(expense.date)}
                 </span>
                 {overdue && <span className="mt-0.5 block text-[10px] text-red-600">Atrasada</span>}
             </td>
-            <td className="px-3 py-3">
+            <td role="cell" className={expenseCellClass}>
+                <ExpenseCellLabel>Status</ExpenseCellLabel>
                 <span
                     className={`rounded-lg px-2.5 py-1 text-[10px] font-medium ${paid ? "bg-[#e8f3e8] text-[#4a8b45]" : "bg-[#fff2cb] text-[#bd7a00]"}`}
                 >
                     {paid ? "Pago" : "Pendente"}
                 </span>
             </td>
-            <td className="px-3 py-3 text-center text-[#a19aa5]">
-                <div className="flex items-center justify-center gap-1">
+            <td role="cell" className={expenseCellClass}>
+                <ExpenseCellLabel>Comprovante</ExpenseCellLabel>
+                <div className="flex flex-wrap items-center gap-1 2xl:flex-col">
                     {expense.canEdit && (
                         <>
                             <input
@@ -2797,6 +2838,7 @@ function ExpenseRow({
                                 type="file"
                                 accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
                                 className="sr-only"
+                                tabIndex={-1}
                                 aria-label={`Selecionar comprovante para ${expense.description}`}
                                 onChange={(event) => {
                                     const file = event.target.files?.[0];
@@ -2809,14 +2851,14 @@ function ExpenseRow({
                                 aria-label={`Anexar comprovante para ${expense.description}`}
                                 disabled={proofUploading}
                                 onClick={() => proofInput.current?.click()}
-                                className="grid size-7 place-items-center rounded text-[#817b84] hover:bg-[#f1edf3] disabled:opacity-50"
+                                className={`${expenseActionClass} ${expenseActionColor}`}
                             >
                                 <Paperclip size={15} />
                             </button>
                         </>
                     )}
                     {!!expense.proofs?.length && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-1 2xl:justify-center">
                             {expense.proofs.map((proof, index) => (
                                 <a
                                     key={proof.id}
@@ -2833,7 +2875,8 @@ function ExpenseRow({
                     )}
                 </div>
             </td>
-            <td className="px-3 py-3 text-center text-[#a19aa5]">
+            <td role="cell" className={expenseCellClass}>
+                <ExpenseCellLabel>Lembrete</ExpenseCellLabel>
                 <button
                     type="button"
                     disabled={!canEditReminder && !expense.reminder}
@@ -2843,31 +2886,34 @@ function ExpenseRow({
                             : `Adicionar lembrete para ${expense.description}`
                     }
                     onClick={onReminder}
-                    className={`mx-auto grid size-7 place-items-center rounded-full disabled:cursor-not-allowed disabled:opacity-50 ${expense.reminder ? "text-[#4e812f] hover:bg-[#edf6e8]" : "text-[#a19aa5] hover:bg-[#f1edf3]"}`}
+                    className={`${expenseActionClass} 2xl:mx-auto ${expense.reminder ? "border-primary text-primary" : expenseActionColor}`}
                 >
                     <Bell size={15} />
                 </button>
             </td>
-            <td className="px-3 py-3">
+            <td role="cell" className={expenseCellClass}>
                 {expense.canEdit && (
-                    <div className="flex justify-center gap-1.5">
-                        <button
-                            type="button"
-                            aria-label={`Editar ${expense.description}`}
-                            onClick={() => onEdit(expense)}
-                            className="grid size-7 place-items-center rounded border border-[#bdb6c1] text-[#615b65] hover:bg-[#f0edf2]"
-                        >
-                            <Pencil size={14} />
-                        </button>
-                        <button
-                            type="button"
-                            aria-label={`Excluir ${expense.description}`}
-                            onClick={() => onDelete(expense)}
-                            className="grid size-7 place-items-center rounded border border-red-300 text-red-600 hover:bg-red-50"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    </div>
+                    <>
+                        <ExpenseCellLabel>Ações</ExpenseCellLabel>
+                        <div className="flex flex-wrap gap-1.5 2xl:justify-center">
+                            <button
+                                type="button"
+                                aria-label={`Editar ${expense.description}`}
+                                onClick={() => onEdit(expense)}
+                                className={`${expenseActionClass} ${expenseActionColor}`}
+                            >
+                                <Pencil size={14} />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label={`Excluir ${expense.description}`}
+                                onClick={() => onDelete(expense)}
+                                className="grid size-7 place-items-center rounded border border-red-300 text-red-600 hover:bg-red-50"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    </>
                 )}
             </td>
         </tr>

@@ -14,106 +14,113 @@ const LOGIN_LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
-    constructor(
-        private readonly usersService: UsersService,
-        private readonly passwordService: PasswordService,
-        private readonly passwordResetService: PasswordResetService,
-        private readonly jwtService: JwtService
-    ) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly passwordService: PasswordService,
+    private readonly passwordResetService: PasswordResetService,
+    private readonly jwtService: JwtService,
+  ) {}
 
-    async register(data: RegisterDto) {
-        const user = await this.usersService.create(data);
+  async register(data: RegisterDto) {
+    const user = await this.usersService.create(data);
 
-        const token = this.jwtService.sign({
-            sub: user.id,
-            email: user.email,
-            name: user.apelido || user.nome,
-        });
+    const token = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+      name: user.apelido || user.nome,
+    });
 
-        return {
-            access_token: token,
-            user: toUserResponse(user),
-        };
+    return {
+      access_token: token,
+      user: toUserResponse(user),
+    };
+  }
+
+  async login(data: LoginDto, _response: Response) {
+    void _response;
+    const user = await this.usersService.findByEmail(data.email);
+
+    if (!user) throw new UnauthorizedException("E-mail ou senha inválidos.");
+
+    if (user.login_bloqueado_ate) {
+      const now = new Date();
+      if (user.login_bloqueado_ate > now) {
+        throw new UnauthorizedException("E-mail ou senha inválidos.");
+      }
+
+      await this.usersService.clearExpiredLoginLock(user.id, now);
     }
 
-    async login(data: LoginDto, _response: Response) {
-        void _response;
-        const user = await this.usersService.findByEmail(data.email);
+    const passwordValid = await this.passwordService.compare(
+      data.password,
+      user.senha_hash,
+    );
 
-        if (!user) throw new UnauthorizedException("E-mail ou senha inválidos.");
-
-        if (user.login_bloqueado_ate) {
-            const now = new Date();
-            if (user.login_bloqueado_ate > now) {
-                throw new UnauthorizedException("E-mail ou senha inválidos.");
-            }
-
-            await this.usersService.clearExpiredLoginLock(user.id, now);
-        }
-
-        const passwordValid = await this.passwordService.compare(data.password, user.senha_hash);
-
-        if (!passwordValid) {
-            await this.usersService.recordFailedLogin(
-                user.id,
-                MAX_FAILED_LOGIN_ATTEMPTS,
-                LOGIN_LOCKOUT_DURATION_MS
-            );
-            throw new UnauthorizedException("E-mail ou senha inválidos.");
-        }
-
-        await this.usersService.clearLoginFailures(user.id);
-
-        const token = this.jwtService.sign({
-            sub: user.id,
-            email: user.email,
-            name: user.apelido || user.nome,
-        });
-
-        return {
-            access_token: token,
-            user: toUserResponse(user),
-        };
+    if (!passwordValid) {
+      await this.usersService.recordFailedLogin(
+        user.id,
+        MAX_FAILED_LOGIN_ATTEMPTS,
+        LOGIN_LOCKOUT_DURATION_MS,
+      );
+      throw new UnauthorizedException("E-mail ou senha inválidos.");
     }
 
-    async forgotPassword(email: string) {
-        const user = await this.usersService.findByEmail(email);
+    await this.usersService.clearLoginFailures(user.id);
 
-        if (!user)
-            return {
-                message: "Se o email existir, enviaremos um código.",
-            };
+    const token = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+      name: user.apelido || user.nome,
+    });
 
-        await this.passwordResetService.create(user.id, user.email);
+    return {
+      access_token: token,
+      user: toUserResponse(user),
+    };
+  }
 
-        return {
-            message: "Se o email existir, enviaremos um código.",
-        };
-    }
+  async forgotPassword(email: string) {
+    const user = await this.usersService.findByEmail(email);
 
-    async verifyResetCode(email: string, code: string) {
-        const user = await this.usersService.findByEmail(email);
+    if (!user)
+      return {
+        message: "Se o email existir, enviaremos um código.",
+      };
 
-        if (!user) return { valid: false };
+    await this.passwordResetService.create(user.id, user.email);
 
-        const valid = await this.passwordResetService.verify(user.id, code);
+    return {
+      message: "Se o email existir, enviaremos um código.",
+    };
+  }
 
-        return { valid };
-    }
+  async verifyResetCode(email: string, code: string) {
+    const user = await this.usersService.findByEmail(email);
 
-    async resetPassword(data: ResetPasswordDto) {
-        const user = await this.usersService.findByEmail(data.email);
+    if (!user) return { valid: false };
 
-        if (!user) throw new UnauthorizedException("Código inválido");
+    const valid = await this.passwordResetService.verify(user.id, code);
 
-        const reset = await this.passwordResetService.verify(user.id, data.code);
+    return { valid };
+  }
 
-        if (!reset) throw new UnauthorizedException("Código inválido ou expirado");
+  async resetPassword(data: ResetPasswordDto) {
+    const user = await this.usersService.findByEmail(data.email);
 
-        const passwordHash = await this.passwordService.hash(data.password);
+    if (!user) throw new UnauthorizedException("Código inválido");
 
-        await this.passwordResetService.consumeAndUpdatePassword(reset.id, user.id, passwordHash);
+    const reset = await this.passwordResetService.verify(user.id, data.code);
 
-        return { message: "Senha alterada com sucesso." };
-    }
+    if (!reset) throw new UnauthorizedException("Código inválido ou expirado");
+
+    const passwordHash = await this.passwordService.hash(data.password);
+
+    await this.passwordResetService.consumeAndUpdatePassword(
+      reset.id,
+      user.id,
+      passwordHash,
+    );
+
+    return { message: "Senha alterada com sucesso." };
+  }
 }

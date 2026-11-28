@@ -1,245 +1,268 @@
 import { api } from "@/services/api";
 
 export interface ExpenseSubgroup {
-    id: string;
-    name: string;
-    homeId: string;
-    homeName: string;
-    members: string[];
-    memberIds?: string[];
-    memberDetails?: { id: string; name: string }[];
-    canEdit?: boolean;
+  id: string;
+  name: string;
+  homeId: string;
+  homeName: string;
+  members: string[];
+  memberIds?: string[];
+  memberDetails?: { id: string; name: string }[];
+  canEdit?: boolean;
 }
 
 export interface ExpenseHome {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
 }
 
 export interface ExpenseHomeMember {
-    id: string;
-    name: string;
+  id: string;
+  name: string;
 }
 
 export interface ExpenseAllocation {
-    participationId: string;
-    memberName: string;
-    amount: string;
+  participationId: string;
+  memberName: string;
+  amount: string;
 }
 
 export interface ExpenseAllocationInput {
-    participationId: string;
-    amount: string;
+  participationId: string;
+  amount: string;
 }
 
 export interface CreateExpenseSubgroupInput {
-    homeId: string;
-    name: string;
-    memberIds: string[];
+  homeId: string;
+  name: string;
+  memberIds: string[];
 }
 
 export interface Expense {
-    id: string;
-    description: string;
-    amount: string;
-    date: string | null;
-    homeId?: string;
-    homeName?: string;
-    subgroup: { id: string; nome: string } | null;
-    paymentStatus: "PENDING" | "PAID" | "CANCELLED";
-    paidBy: string | null;
-    paidAt: string | null;
-    scope?: "HOME" | "PERSONAL";
-    sourceLabel?: string;
-    totalAmount?: string;
-    canEdit?: boolean;
-    reminder?: { id: string; message: string; remindAt: string } | null;
-    allocations?: ExpenseAllocation[];
-    allocationStrategy?: "IGUALITARIO" | "PERSONALIZADO";
-    proofs?: { id: string; url: string; type: "IMAGEM" | "PDF" }[];
+  id: string;
+  description: string;
+  amount: string;
+  date: string | null;
+  homeId?: string;
+  homeName?: string;
+  subgroup: { id: string; nome: string } | null;
+  paymentStatus: "PENDING" | "PAID" | "CANCELLED";
+  paidBy: string | null;
+  paidAt: string | null;
+  scope?: "HOME" | "PERSONAL";
+  sourceLabel?: string;
+  totalAmount?: string;
+  canEdit?: boolean;
+  reminder?: { id: string; message: string; remindAt: string } | null;
+  allocations?: ExpenseAllocation[];
+  allocationStrategy?: "IGUALITARIO" | "PERSONALIZADO";
+  proofs?: { id: string; url: string; type: "IMAGEM" | "PDF" }[];
 }
 
 export interface ExpenseReminderInput {
-    remindAt: string;
-    message?: string;
-    enabled: boolean;
+  remindAt: string;
+  message?: string;
+  enabled: boolean;
 }
 
 export interface ExpenseReminder {
-    id: string;
-    message: string;
-    remindAt: string;
-    enabled: boolean;
+  id: string;
+  message: string;
+  remindAt: string;
+  enabled: boolean;
 }
 
 export interface ExpenseProof {
-    id: string;
-    url: string;
-    type: "IMAGEM" | "PDF";
+  id: string;
+  url: string;
+  type: "IMAGEM" | "PDF";
 }
 
 export type ExpenseInsightsStatus = "ALL" | "PAID" | "PENDING" | "OVERDUE";
 
 export interface ExpenseInsightsQuery {
-    from: string;
-    to: string;
-    participationId?: string;
-    subgroupId?: string;
-    status?: ExpenseInsightsStatus;
+  from: string;
+  to: string;
+  participationId?: string;
+  subgroupId?: string;
+  status?: ExpenseInsightsStatus;
 }
 
 export interface ExpenseInsights {
-    period: { from: string; to: string; timeZone: string; today: string };
-    summary: {
-        dueAmount: string;
-        paidAmount: string;
-        pendingAmount: string;
-        overdueAmount: string;
-        paidPercentage: number | null;
-        unallocatedExpenseCount: number;
-        unallocatedExpenseAmount: string;
-    };
-    members: {
-        participationId: string;
-        name: string;
-        active: boolean;
-        dueAmount: string;
-        paidAmount: string;
-        pendingAmount: string;
-        overdueAmount: string;
-        paidPercentage: number | null;
-        paidCount: number;
-        pendingCount: number;
-        overdueCount: number;
-    }[];
-    wholeBillsPaidByMember: {
-        participationId: string | null;
-        name: string;
-        amount: string;
-        count: number;
-    }[];
-    monthly: {
-        month: string;
-        dueAmount: string;
-        paidAmount: string;
-        pendingAmount: string;
-        overdueAmount: string;
-    }[];
-    overdueAllocations: {
-        id: string;
-        expenseId: string;
-        description: string;
-        participationId: string;
-        memberName: string;
-        subgroupName: string | null;
-        dueDate: string;
-        overdueDays: number;
-        amount: string;
-    }[];
+  period: { from: string; to: string; timeZone: string; today: string };
+  summary: {
+    dueAmount: string;
+    paidAmount: string;
+    pendingAmount: string;
+    overdueAmount: string;
+    paidPercentage: number | null;
+    unallocatedExpenseCount: number;
+    unallocatedExpenseAmount: string;
+  };
+  members: {
+    participationId: string;
+    name: string;
+    active: boolean;
+    dueAmount: string;
+    paidAmount: string;
+    pendingAmount: string;
+    overdueAmount: string;
+    paidPercentage: number | null;
+    paidCount: number;
+    pendingCount: number;
+    overdueCount: number;
+  }[];
+  wholeBillsPaidByMember: {
+    participationId: string | null;
+    name: string;
+    amount: string;
+    count: number;
+  }[];
+  monthly: {
+    month: string;
+    dueAmount: string;
+    paidAmount: string;
+    pendingAmount: string;
+    overdueAmount: string;
+  }[];
+  overdueAllocations: {
+    id: string;
+    expenseId: string;
+    description: string;
+    participationId: string;
+    memberName: string;
+    subgroupName: string | null;
+    dueDate: string;
+    overdueDays: number;
+    amount: string;
+  }[];
 }
 
 export type ExpenseScope = "HOME" | "PERSONAL";
 
 export interface CreateExpenseInput {
-    description: string;
-    amount: string;
-    date: string;
-    paymentDate?: string | null;
-    homeId?: string;
-    subgroupId?: string | null;
-    paymentStatus: "PENDING" | "PAID";
-    scope?: ExpenseScope;
-    allocations?: ExpenseAllocationInput[];
+  description: string;
+  amount: string;
+  date: string;
+  paymentDate?: string | null;
+  homeId?: string;
+  subgroupId?: string | null;
+  paymentStatus: "PENDING" | "PAID";
+  scope?: ExpenseScope;
+  allocations?: ExpenseAllocationInput[];
 }
 
 export async function getExpenseSubgroups(): Promise<ExpenseSubgroup[]> {
-    const response = await api.get<ExpenseSubgroup[]>("/expenses/subgroups");
-    return response.data;
+  const response = await api.get<ExpenseSubgroup[]>("/expenses/subgroups");
+  return response.data;
 }
 
 export async function getAllExpenseSubgroups(): Promise<ExpenseSubgroup[]> {
-    const response = await api.get<ExpenseSubgroup[]>("/expenses/subgroups/all");
-    return response.data;
+  const response = await api.get<ExpenseSubgroup[]>("/expenses/subgroups/all");
+  return response.data;
 }
 
 export async function getExpenseHomes(): Promise<ExpenseHome[]> {
-    const response = await api.get<ExpenseHome[]>("/expenses/homes");
-    return response.data;
+  const response = await api.get<ExpenseHome[]>("/expenses/homes");
+  return response.data;
 }
 
-export async function getExpenseHomeMembers(homeId: string): Promise<ExpenseHomeMember[]> {
-    const response = await api.get<ExpenseHomeMember[]>(`/expenses/homes/${homeId}/members`);
-    return response.data;
+export async function getExpenseHomeMembers(
+  homeId: string,
+): Promise<ExpenseHomeMember[]> {
+  const response = await api.get<ExpenseHomeMember[]>(
+    `/expenses/homes/${homeId}/members`,
+  );
+  return response.data;
 }
 
 export async function getExpenseInsights(
-    homeId: string,
-    query: ExpenseInsightsQuery
+  homeId: string,
+  query: ExpenseInsightsQuery,
 ): Promise<ExpenseInsights> {
-    const response = await api.get<ExpenseInsights>(`/expenses/homes/${homeId}/insights`, {
-        params: query,
-    });
-    return response.data;
+  const response = await api.get<ExpenseInsights>(
+    `/expenses/homes/${homeId}/insights`,
+    {
+      params: query,
+    },
+  );
+  return response.data;
 }
 
 export async function createExpenseSubgroup(
-    data: CreateExpenseSubgroupInput
+  data: CreateExpenseSubgroupInput,
 ): Promise<ExpenseSubgroup> {
-    const response = await api.post<ExpenseSubgroup>("/expenses/subgroups", data);
-    return response.data;
+  const response = await api.post<ExpenseSubgroup>("/expenses/subgroups", data);
+  return response.data;
 }
 
 export async function updateExpenseSubgroup(
-    id: string,
-    data: CreateExpenseSubgroupInput
+  id: string,
+  data: CreateExpenseSubgroupInput,
 ): Promise<ExpenseSubgroup> {
-    const response = await api.put<ExpenseSubgroup>(`/expenses/subgroups/${id}`, data);
-    return response.data;
+  const response = await api.put<ExpenseSubgroup>(
+    `/expenses/subgroups/${id}`,
+    data,
+  );
+  return response.data;
 }
 
-export async function getExpenses(scope: ExpenseScope = "HOME"): Promise<Expense[]> {
-    const response = await api.get<Expense[]>("/expenses", { params: { scope } });
-    return response.data;
+export async function getExpenses(
+  scope: ExpenseScope = "HOME",
+): Promise<Expense[]> {
+  const response = await api.get<Expense[]>("/expenses", { params: { scope } });
+  return response.data;
 }
 
 export async function setExpensePaymentStatus(id: string, paid: boolean) {
-    const response = await api.patch<{
-        id: string;
-        paymentStatus: "PENDING" | "PAID";
-        paidAt: string | null;
-    }>(`/expenses/${id}/personal-payment`, { paid });
-    return response.data;
+  const response = await api.patch<{
+    id: string;
+    paymentStatus: "PENDING" | "PAID";
+    paidAt: string | null;
+  }>(`/expenses/${id}/personal-payment`, { paid });
+  return response.data;
 }
 
 export async function saveExpenseReminder(
-    id: string,
-    data: ExpenseReminderInput
+  id: string,
+  data: ExpenseReminderInput,
 ): Promise<ExpenseReminder | null> {
-    const response = await api.post<ExpenseReminder | null>(`/expenses/${id}/reminder`, data);
-    return response.data;
+  const response = await api.post<ExpenseReminder | null>(
+    `/expenses/${id}/reminder`,
+    data,
+  );
+  return response.data;
 }
 
 export async function deleteExpenseReminder(id: string): Promise<void> {
-    await api.delete(`/expenses/${id}/reminder`);
+  await api.delete(`/expenses/${id}/reminder`);
 }
 
-export async function uploadExpenseProof(id: string, file: File): Promise<ExpenseProof> {
-    const form = new FormData();
-    form.append("file", file);
-    const response = await api.post<ExpenseProof>(`/expenses/${id}/proofs`, form);
-    return response.data;
+export async function uploadExpenseProof(
+  id: string,
+  file: File,
+): Promise<ExpenseProof> {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await api.post<ExpenseProof>(`/expenses/${id}/proofs`, form);
+  return response.data;
 }
 
-export async function createExpense(data: CreateExpenseInput): Promise<Expense> {
-    const response = await api.post<Expense>("/expenses", data);
-    return response.data;
+export async function createExpense(
+  data: CreateExpenseInput,
+): Promise<Expense> {
+  const response = await api.post<Expense>("/expenses", data);
+  return response.data;
 }
 
-export async function updateExpense(id: string, data: CreateExpenseInput): Promise<Expense> {
-    const response = await api.put<Expense>(`/expenses/${id}`, data);
-    return response.data;
+export async function updateExpense(
+  id: string,
+  data: CreateExpenseInput,
+): Promise<Expense> {
+  const response = await api.put<Expense>(`/expenses/${id}`, data);
+  return response.data;
 }
 
 export async function deleteExpense(id: string): Promise<void> {
-    await api.delete(`/expenses/${id}`);
+  await api.delete(`/expenses/${id}`);
 }

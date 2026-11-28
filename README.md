@@ -4,9 +4,11 @@ Aplicação para organizar uma casa compartilhada: tarefas, despesas, despensa, 
 
 ## Requisitos
 
-- Node.js 22 ou superior
+- Node.js 26.8.1, versão de referência em `.nvmrc` e no Devbox
 - pnpm 12 (`corepack enable` usa a versão declarada nos projetos)
 - Docker com Docker Compose
+
+Se usar o NVM, rode `nvm install` e `nvm use` na raiz do repositório. O pre-commit usa a versão instalada do `.nvmrc` quando o Git é iniciado com um Node incompatível com o ambiente de testes.
 
 ## Arquitetura
 

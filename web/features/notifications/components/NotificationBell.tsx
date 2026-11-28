@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
@@ -10,7 +9,8 @@ import {
     subscribeNotifications,
 } from "../api/notifications.api";
 import type { AppNotification } from "../api/notifications.api";
-import { roomInterestHref } from "../room-interest-link";
+import { notificationHref } from "../room-interest-link";
+import { NotificationCardContent } from "./NotificationCardContent";
 import { respondToRoomInvitation } from "@/features/rooms/api/rooms.api";
 import { enterInvitedResidence } from "@/features/rooms/enter-invited-residence";
 import { AuthContext } from "@/providers/AuthProvider";
@@ -249,87 +249,85 @@ function SignedInNotificationBell({
                     ) : (
                         <ul className="grid gap-2">
                             {notifications.map((notification) => {
-                                const href =
-                                    roomInterestHref(notification) ??
-                                    (notification.entidadeTipo === "REUNIAO"
-                                        ? "/meetings"
-                                        : undefined) ??
-                                    (notification.entidadeTipo === "TROCA_TAREFA"
-                                        ? "/tasks"
-                                        : undefined) ??
-                                    (notification.negotiationId
-                                        ? `/rooms/negotiations/${notification.negotiationId}`
-                                        : undefined);
+                                const href = notificationHref(notification);
+                                const canRespond = notification.convite?.podeResponder;
+                                const hasActions = canRespond || !notification.lida;
                                 return (
                                     <li
                                         key={notification.id}
-                                        className={`rounded-lg border border-l-[3px] p-3 transition-colors ${notification.lida ? "border-[#e3dde5] border-l-[#d5ced8] bg-white" : "border-[#d5e4cc] border-l-[#5c8c3a] bg-[#f2f7ee]"}`}
+                                        className={`relative rounded-lg border border-l-[3px] ${notification.lida ? "border-[#e3dde5] border-l-[#d5ced8] bg-white" : "border-[#d5e4cc] border-l-[#5c8c3a] bg-[#f2f7ee]"}`}
                                     >
-                                        <div className="flex items-start justify-between gap-2">
-                                            {href ? (
-                                                <Link
-                                                    href={href}
-                                                    onClick={() => {
-                                                        if (!notification.lida)
-                                                            void markRead(notification.id);
-                                                        setOpen(false);
-                                                    }}
-                                                    className={`font-semibold hover:underline ${notification.lida ? "text-[#625c66]" : "text-[#29252d]"}`}
-                                                >
-                                                    {notification.titulo}
-                                                </Link>
-                                            ) : (
+                                        <NotificationCardContent
+                                            href={href}
+                                            title={notification.titulo}
+                                            onOpen={() => {
+                                                if (!notification.lida)
+                                                    void markRead(notification.id);
+                                                setOpen(false);
+                                            }}
+                                            className={hasActions ? "p-3 pb-0" : "p-3"}
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
                                                 <p
-                                                    className={`font-semibold ${notification.lida ? "text-[#625c66]" : "text-[#29252d]"}`}
+                                                    className={`font-semibold ${notification.lida ? "text-muted-foreground" : "text-foreground"}`}
                                                 >
                                                     {notification.titulo}
                                                 </p>
-                                            )}
-                                            {!notification.lida && (
-                                                <span
-                                                    aria-label="Não lida"
-                                                    title="Não lida"
-                                                    className="mt-1.5 size-2 shrink-0 rounded-full bg-[#5c8c3a]"
-                                                />
-                                            )}
-                                        </div>
-                                        {notification.mensagem && (
-                                            <p className="mt-1 text-sm text-[#625c66]">
-                                                {notification.mensagem}
-                                            </p>
-                                        )}
-                                        {notification.convite?.podeResponder && (
-                                            <div className="mt-3 flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    disabled={responding}
-                                                    onClick={() =>
-                                                        void respond(notification, "ACEITO")
-                                                    }
-                                                    className="rounded bg-[#2f6034] px-3 py-1.5 text-xs font-semibold text-white"
-                                                >
-                                                    Aceitar
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    disabled={responding}
-                                                    onClick={() =>
-                                                        void respond(notification, "RECUSADO")
-                                                    }
-                                                    className="rounded border px-3 py-1.5 text-xs"
-                                                >
-                                                    Recusar
-                                                </button>
+                                                {!notification.lida && (
+                                                    <span
+                                                        aria-label="Não lida"
+                                                        title="Não lida"
+                                                        className="mt-1.5 size-2 shrink-0 rounded-full bg-[#5c8c3a]"
+                                                    />
+                                                )}
                                             </div>
-                                        )}
-                                        {!notification.lida && (
-                                            <button
-                                                type="button"
-                                                onClick={() => void markRead(notification.id)}
-                                                className="mt-2 block text-xs text-[#315f35] underline"
-                                            >
-                                                Marcar como lida
-                                            </button>
+                                            {notification.mensagem && (
+                                                <p className="mt-1 text-sm text-muted-foreground">
+                                                    {notification.mensagem}
+                                                </p>
+                                            )}
+                                        </NotificationCardContent>
+                                        {hasActions && (
+                                            <div className="px-3 pb-3">
+                                                {canRespond && (
+                                                    <div className="mt-3 flex gap-2">
+                                                        <button
+                                                            type="button"
+                                                            disabled={responding}
+                                                            onClick={() =>
+                                                                void respond(notification, "ACEITO")
+                                                            }
+                                                            className="relative z-10 rounded bg-[#2f6034] px-3 py-1.5 text-xs font-semibold text-white"
+                                                        >
+                                                            Aceitar
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            disabled={responding}
+                                                            onClick={() =>
+                                                                void respond(
+                                                                    notification,
+                                                                    "RECUSADO"
+                                                                )
+                                                            }
+                                                            className="relative z-10 rounded border px-3 py-1.5 text-xs"
+                                                        >
+                                                            Recusar
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {!notification.lida && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            void markRead(notification.id)
+                                                        }
+                                                        className="relative z-10 mt-2 block text-xs text-[#315f35] underline"
+                                                    >
+                                                        Marcar como lida
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </li>
                                 );

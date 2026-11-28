@@ -291,14 +291,14 @@ html.dark [data-slot="task-tag-filter"][data-active="true"] {
     }
 }
 
-html.tasks-hide-page-scrollbar,
-html.tasks-hide-page-scrollbar body {
+html,
+body {
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
-html.tasks-hide-page-scrollbar::-webkit-scrollbar,
-html.tasks-hide-page-scrollbar body::-webkit-scrollbar {
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
     display: none;
     width: 0;
     height: 0;
@@ -324,11 +324,39 @@ html.tasks-hide-page-scrollbar body::-webkit-scrollbar {
     font-weight: 500;
 }
 
+html.dark .app-nav-active,
 html.dark .settings-nav-active,
 html.dark .settings-tab-active {
     background-color: #393342 !important;
     color: #ffffff !important;
     font-weight: 700 !important;
+}
+
+html.dark .app-nav a:not([aria-current="page"]):hover {
+    background-color: #443c49;
+    color: #ffffff !important;
+}
+
+.notification-card-link {
+    display: block;
+    cursor: pointer;
+}
+
+.notification-card-link::after {
+    position: absolute;
+    inset: -1px;
+    border-radius: 0.5rem;
+    content: "";
+    transition: background-color 150ms ease;
+}
+
+.notification-card-link:hover::after {
+    background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.notification-card-link:focus-visible::after {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
 }
 
 html.dark .system-select-listbox {

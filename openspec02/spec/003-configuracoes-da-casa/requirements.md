@@ -30,7 +30,7 @@ Como morador, quero consultar os dados da minha casa e ajustar minhas preferênc
 - **RF07 — Categorias.** Oferecer as abas Geral, Categorias, Despensa, Financeiro e Pets. Listar, criar, renomear e remover categorias pela API existente. Orientar a reclassificação se a categoria ainda tiver itens.
 - **RF08 — Preferências pessoais.** Consultar e persistir preferências por usuário e residência, incluindo opções de alertas, Despensa, Financeiro e Pets. Alterações parciais preservam os campos omitidos.
 - **RF09 — Preferências aplicadas.** Respeitar as opções de exibição de vencidos e atrasadas nas listas correspondentes. Guardar a configuração de lembretes de tarefas, despesas, convites, atualizações da casa, vacinas, vermífugo e consultas. Vincular promessas de envio à geração e ao transporte efetivos dos eventos.
-- **RF10 — Centro de notificações.** Listar avisos persistidos com paginação e filtro geral/não lidas. Permitir marcar como lida, manter a contagem do sino coerente e atualizar a seção pela API autenticada.
+- **RF10 — Centro de notificações.** Listar avisos persistidos com paginação e filtro geral/não lidas. Permitir marcar como lida, manter a contagem do sino coerente e atualizar a seção pela API autenticada. No sino e na central, permitir abrir o destino de um aviso pela caixa inteira nos temas claro e escuro, com um destaque suave ao passar o mouse. Os botões internos executam suas ações separadamente.
 - **RF11 — Tema.** Aplicar Claro, Escuro e Sistema ao aplicativo, persistir a escolha no dispositivo e acompanhar as mudanças do sistema operacional no modo Sistema. A liberação depende de suporte visual completo.
 
 ## Requisitos não funcionais
@@ -76,7 +76,7 @@ Como morador, quero consultar os dados da minha casa e ajustar minhas preferênc
 - **CA07 — Categorias.** Criar uma categoria válida e única a inclui na lista. Exclusão de categoria em uso informa a dependência. Alteração em outra casa não modifica seus dados.
 - **CA08 — Persistência e validação.** Um PATCH de `expirationNoticeDays` de 5 para 7 mantém os demais campos e o resultado aparece em consulta posterior. Erros de validação não gravam alterações. Dois moradores não sobrescrevem as preferências um do outro.
 - **CA09 — Exibição e alertas.** `showExpired=false` oculta os itens vencidos sem excluí-los. `showOverdue=true` mantém despesas atrasadas visíveis conforme permissões. Preferências de Pets persistem após novo login. Avisos efetivos respeitam as preferências do destinatário.
-- **CA10 — Centro de notificações.** Uma conta com 25 avisos consegue navegar por todos. O filtro e a marcação persistida atualizam a contagem. Uma conta não lê avisos alheios. A atualização periódica exibe os avisos já produzidos.
+- **CA10 — Centro de notificações.** Uma conta com 25 avisos consegue navegar por todos. O filtro e a marcação persistida atualizam a contagem. Uma conta não lê avisos alheios. A atualização periódica exibe os avisos já produzidos. Para avisos com destino, clicar na descrição ou no espaço vazio também abre a página correspondente. Nos dois temas, a caixa se destaca sob o ponteiro e os botões internos podem ser acionados sem abrir o destino.
 - **CA11 — Tema.** Sistema acompanha o tema do sistema operacional. Escuro persiste após recarregar, com contraste e sem flash indevido. Uma opção sem adaptação visual completa não é declarada concluída.
 - **CA12 — Interface.** Desktop e celular preservam a navegação, a hierarquia e o acesso aos controles. A comparação das nove telas documenta diferenças intencionais.
 

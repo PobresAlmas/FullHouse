@@ -118,16 +118,20 @@ O `status` filtra as cotas antes de calcular cartões, moradores, meses e lista.
 
 ## Incremento: gráficos comparativos e navegação lateral
 
+No tema escuro, a seleção na navegação lateral tem fundo próprio e texto claro. Ao passar o mouse sobre outro item, o fundo também permanece escuro e o texto e o ícone ficam brancos. Na lista de despesas de `/finance`, os campos se organizam em linhas flexíveis em telas estreitas, seguindo a lista de Tarefas. Em telas largas, mantêm o alinhamento em colunas. Comprovante, lembrete e edição têm borda, indicação de foco e estado de interação visíveis.
+
+Em telas largas, os títulos e os ícones de Comprovante e Lembrete ficam no centro de suas colunas. Os links para abrir anexos ficam abaixo do ícone de comprovante.
+
 - A barra lateral terá um link independente chamado Insights, com destino /finance/insights. O AppShell mapeará essa rota antes de /finance para marcar o tópico correto; áreas residenciais, inclusive Insights, ficam ocultas quando a conta não tem residência.
 - O gráfico **Percentual das cotas marcadas como pagas** ordena moradores do menor para o maior percentual. Usa valores devidos e pagos com todas as situações de cota, porque filtrar somente pendentes faria todos parecerem 0% pagos e filtrar somente pagas faria todos parecerem 100%. Período, morador e subgrupo continuam aplicados. A interface explica essa exceção ao filtro de situação e chama o estado de marcação feita no sistema.
 - Se a situação selecionada não for ALL, a interface fará uma segunda leitura do endpoint existente com os mesmos filtros autorizados de período, morador e subgrupo e com status ALL. Não se altera o contrato nem se faz agregação de dados brutos no navegador.
 - O gráfico **Valor em atraso por morador** usa valor e contagem de cotas vencidas devolvidos no agregado que respeita todos os filtros, ordenado do maior atraso em reais para o menor. O valor é uma parte do aberto; não deve ser somado outra vez ao resumo.
 - Ambos usam barras horizontais em CSS, legenda/descrição textual e rótulos acessíveis. Sem cotas correspondentes, mostrar mensagem de vazio em vez de dados artificiais. Os gráficos entram no grid responsivo já usado pelos comparativos.
 
-| Requisitos | Decisões | Critérios |
-| --- | --- | --- |
+| Requisitos        | Decisões                                                        | Critérios  |
+| ----------------- | --------------------------------------------------------------- | ---------- |
 | RF12, RNF02–RNF04 | Gráficos por taxa quitada e atraso usando agregados autorizados | CA09, CA13 |
-| RF13, RNF04 | Item próprio no AppSidebar e rota específica antes de /finance | CA12 |
+| RF13, RNF04       | Item próprio no AppSidebar e rota específica antes de /finance  | CA12       |
 
 ## Incremento: personalização do painel (IHC)
 
@@ -138,6 +142,6 @@ O `status` filtra as cotas antes de calcular cartões, moradores, meses e lista.
 - Persistir as opções em `localStorage` com uma chave versionada e particionada pelo ID autenticado (`fullhouse:insights:view-preferences:v1:<userId>`). Guardar somente booleanos de visibilidade, sem métricas ou dados pessoais. Na troca de usuário, carregar as opções daquele ID antes de gravar; erro de leitura/escrita não bloqueia a página e as opções seguem na memória até sair dela.
 - Usar `<details>/<summary>` para a divulgação progressiva e controles nativos de formulário, com foco visível e instruções textuais. O resumo da quantidade e o aviso de todos ocultos deixam o estado do painel claro para teclado e leitor de tela.
 
-| Requisitos | Decisões | Critérios |
-| --- | --- | --- |
-| RF14, RNF04, RNF07 | Sete blocos selecionáveis, todos ativos inicialmente, preferências locais por usuário e restauração em um passo | CA14 |
+| Requisitos         | Decisões                                                                                                        | Critérios |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- | --------- |
+| RF14, RNF04, RNF07 | Sete blocos selecionáveis, todos ativos inicialmente, preferências locais por usuário e restauração em um passo | CA14      |

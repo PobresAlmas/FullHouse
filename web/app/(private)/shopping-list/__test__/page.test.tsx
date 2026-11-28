@@ -11,6 +11,7 @@ import {
 } from "@/features/shopping-list/api/shopping-list.api";
 import type { ShoppingListItem } from "@/features/shopping-list/api/shopping-list.api";
 import { getPetResidences } from "@/features/pets/api/pets.api";
+import { getResidences } from "@/features/residences/api/residences.api";
 import { createResidenceFixture } from "@/test/fixtures/residence";
 import { selectSystemOption } from "@/test/utils/render";
 
@@ -22,6 +23,10 @@ vi.mock("@/features/shopping-list/api/shopping-list.api", () => ({
     updateShoppingListStatus: vi.fn(),
 }));
 vi.mock("@/features/pets/api/pets.api", () => ({ getPetResidences: vi.fn() }));
+vi.mock("@/features/residences/api/residences.api", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/features/residences/api/residences.api")>()),
+    getResidences: vi.fn(),
+}));
 vi.mock("@/features/auth/hooks/useAuth", () => ({
     useAuth: () => ({
         user: { id: "user-1", email: "ana@example.com", name: "Ana Silva" },
@@ -50,6 +55,7 @@ describe("ShoppingListPage", () => {
     beforeEach(() => {
         vi.resetAllMocks();
         vi.mocked(getPetResidences).mockResolvedValue([residence]);
+        vi.mocked(getResidences).mockResolvedValue([residence]);
         vi.mocked(getShoppingListItems).mockResolvedValue([item]);
     });
 
@@ -290,6 +296,7 @@ describe("ShoppingListPage", () => {
 
     it("opens the personal list when no residence is associated", async () => {
         vi.mocked(getPetResidences).mockResolvedValue([]);
+        vi.mocked(getResidences).mockResolvedValue([]);
         render(<ShoppingListPage />);
         expect(await screen.findByRole("heading", { name: "Lista pessoal" })).toBeInTheDocument();
         expect(getShoppingListItems).toHaveBeenCalledWith("", true);
