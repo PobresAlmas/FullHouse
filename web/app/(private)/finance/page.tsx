@@ -53,6 +53,7 @@ import type {
 } from "@/features/expenses/api/expenses.api";
 import type { Residence } from "@/features/residences/api/residences.api";
 import { AuthContext } from "@/providers/AuthProvider";
+import { expenseMonthRange } from "@/features/expenses/lib/finance-format";
 
 type FormState = CreateExpenseInput;
 type ExpenseSummaryModal = "PENDING" | "PAID_THIS_MONTH" | "LAST_3_MONTHS";
@@ -183,7 +184,7 @@ export default function FinancePage() {
     const [formError, setFormError] = useState("");
     const [error, setError] = useState("");
     const [residencePermissionUnavailable, setResidencePermissionUnavailable] = useState(false);
-    const [notice, setNotice] = useState("");
+    const [notice, setNotice] = useState<{ message: string; insightsHref?: string } | null>(null);
 
     useEffect(() => {
         let active = true;
@@ -337,7 +338,7 @@ export default function FinancePage() {
         setSummaryModal(null);
         setScope(nextScope);
         setError("");
-        setNotice("");
+        setNotice(null);
     }
 
     function openCreateModal() {
@@ -349,7 +350,7 @@ export default function FinancePage() {
             scope,
         });
         setFormError("");
-        setNotice("");
+        setNotice(null);
         setModal({ mode: "create" });
     }
 
@@ -455,7 +456,7 @@ export default function FinancePage() {
                       }
                     : current
             );
-            setNotice("Comprovante anexado à despesa.");
+            setNotice({ message: "Comprovante anexado à despesa." });
         } catch (uploadError: unknown) {
             setError(getErrorMessage(uploadError));
         } finally {
@@ -527,11 +528,11 @@ export default function FinancePage() {
                 return;
             }
             setSubgroupModalOpen(false);
-            setNotice(
-                editingSubgroup
+            setNotice({
+                message: editingSubgroup
                     ? `Subgrupo “${saved.name}” atualizado com sucesso.`
-                    : `Subgrupo “${saved.name}” criado com sucesso.`
-            );
+                    : `Subgrupo “${saved.name}” criado com sucesso.`,
+            });
             setEditingSubgroup(null);
         } catch (createError: unknown) {
             setSubgroupError(getErrorMessage(createError));
@@ -560,7 +561,7 @@ export default function FinancePage() {
                     : undefined,
         });
         setFormError("");
-        setNotice("");
+        setNotice(null);
         setModal({ mode: "edit", expense });
     }
 
@@ -606,17 +607,32 @@ export default function FinancePage() {
                 paymentDate: form.paymentStatus === "PAID" ? form.paymentDate || null : null,
                 scope,
             };
-            if (modal?.mode === "edit") {
-                const updated = await updateExpense(modal.expense.id, data);
-                setExpenses((items) =>
-                    sortExpenses(items.map((item) => (item.id === updated.id ? updated : item)))
-                );
-                setNotice("Despesa atualizada com sucesso.");
-            } else {
-                const created = await createExpense(data);
-                setExpenses((items) => sortExpenses([created, ...items]));
-                setNotice("Despesa cadastrada com sucesso.");
-            }
+            const editing = modal?.mode === "edit";
+            const saved = editing
+                ? await updateExpense(modal.expense.id, data)
+                : await createExpense(data);
+            setExpenses((items) =>
+                sortExpenses(
+                    editing
+                        ? items.map((item) => (item.id === saved.id ? saved : item))
+                        : [saved, ...items]
+                )
+            );
+            const homeId = saved.homeId ?? targetHomeId;
+            const insightsParams =
+                scope === "HOME" && homeId && saved.date
+                    ? new URLSearchParams({
+                          range: "CUSTOM",
+                          ...expenseMonthRange(saved.date),
+                          homeId,
+                      })
+                    : null;
+            setNotice({
+                message: editing
+                    ? "Despesa atualizada com sucesso."
+                    : "Despesa cadastrada com sucesso.",
+                insightsHref: insightsParams ? `/finance/insights?${insightsParams}` : undefined,
+            });
             setModal(null);
         } catch (saveError: unknown) {
             setFormError(getErrorMessage(saveError));
@@ -655,7 +671,7 @@ export default function FinancePage() {
         try {
             await deleteExpense(expenseToDelete.id);
             setExpenses((items) => items.filter((item) => item.id !== expenseToDelete.id));
-            setNotice("Despesa excluída com sucesso.");
+            setNotice({ message: "Despesa excluída com sucesso." });
             setExpenseToDelete(null);
             setModal(null);
         } catch (deleteError: unknown) {
@@ -725,7 +741,15 @@ export default function FinancePage() {
                             role="status"
                             className="mb-5 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800"
                         >
-                            {notice}
+                            {notice.message}
+                            {notice.insightsHref && (
+                                <Link
+                                    href={notice.insightsHref}
+                                    className="ml-2 font-semibold underline underline-offset-2"
+                                >
+                                    Ver mês da despesa nos Insights
+                                </Link>
+                            )}
                         </div>
                     )}
 
@@ -762,7 +786,7 @@ export default function FinancePage() {
                                 </h2>
                                 {scope === "HOME" && (
                                     <Link
-                                        href="/finance/insights"
+                                        href={notice?.insightsHref ?? "/finance/insights"}
                                         className="inline-flex items-center gap-2 rounded-lg border border-[#4e812f] px-3 py-2 text-sm font-medium text-[#3e6b25] hover:bg-[#f0f7ec]"
                                     >
                                         <BarChart3 size={16} /> Insights

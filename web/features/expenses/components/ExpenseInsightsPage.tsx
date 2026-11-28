@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
     ArrowLeft,
-    BarChart3,
     CalendarDays,
     Check,
     ChevronDown,
@@ -29,10 +28,13 @@ import type {
     ExpenseSubgroup,
 } from "@/features/expenses/api/expenses.api";
 
-type PeriodPreset = "CURRENT_MONTH" | "LAST_SIX_MONTHS" | "CUSTOM";
+import { expenseMonthRange } from "../lib/finance-format";
+
+type PeriodPreset = "CURRENT_MONTH" | "NEXT_MONTH" | "LAST_SIX_MONTHS" | "CUSTOM";
 type MemberSort = "overdue" | "paid" | "due" | "percentage";
 type OverdueSort = "days" | "amount";
 type InsightsFilters = {
+    homeId: string;
     preset: PeriodPreset;
     from: string;
     to: string;
@@ -132,28 +134,20 @@ function businessDate() {
     return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
-function firstDayOfMonth(value: string) {
-    return `${value.slice(0, 7)}-01`;
-}
-
-function lastDayOfMonth(value: string) {
-    const [year, month] = value.slice(0, 7).split("-").map(Number);
-    return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
-}
-
-function sixMonthRange(today: string) {
-    const [year, month] = today.slice(0, 7).split("-").map(Number);
-    return {
-        from: new Date(Date.UTC(year, month - 6, 1)).toISOString().slice(0, 10),
-        to: lastDayOfMonth(today),
-    };
+function presetRange(preset: Exclude<PeriodPreset, "CUSTOM">, today: string) {
+    if (preset === "NEXT_MONTH") return expenseMonthRange(today, 1);
+    const currentMonth = expenseMonthRange(today);
+    return preset === "LAST_SIX_MONTHS"
+        ? { from: expenseMonthRange(today, -5).from, to: currentMonth.to }
+        : currentMonth;
 }
 
 function defaultFilters(): InsightsFilters {
     const today = businessDate();
-    const month = { from: firstDayOfMonth(today), to: lastDayOfMonth(today) };
+    const month = expenseMonthRange(today);
     if (typeof window === "undefined")
         return {
+            homeId: "",
             preset: "CURRENT_MONTH",
             ...month,
             participationId: "",
@@ -171,25 +165,20 @@ function defaultFilters(): InsightsFilters {
     };
     const requestedRange = params.get("range");
     const requestedPreset: PeriodPreset =
-        requestedRange === "LAST_SIX_MONTHS"
-            ? "LAST_SIX_MONTHS"
-            : requestedRange === "CUSTOM"
+        requestedRange === "CURRENT_MONTH" ||
+        requestedRange === "NEXT_MONTH" ||
+        requestedRange === "LAST_SIX_MONTHS" ||
+        requestedRange === "CUSTOM"
+            ? requestedRange
+            : from && to && (from !== month.from || to !== month.to)
               ? "CUSTOM"
-              : requestedRange === "CURRENT_MONTH"
-                ? "CURRENT_MONTH"
-                : from && to && (from !== month.from || to !== month.to)
-                  ? "CUSTOM"
-                  : "CURRENT_MONTH";
+              : "CURRENT_MONTH";
     const validCustom = validDate(from) && validDate(to) && from <= to;
     const preset = requestedPreset === "CUSTOM" && !validCustom ? "CURRENT_MONTH" : requestedPreset;
-    const range =
-        preset === "LAST_SIX_MONTHS"
-            ? sixMonthRange(today)
-            : preset === "CUSTOM" && validCustom
-              ? { from, to }
-              : month;
+    const range = preset === "CUSTOM" ? { from, to } : presetRange(preset, today);
     const status = params.get("status");
     return {
+        homeId: params.get("homeId") ?? "",
         preset,
         ...range,
         participationId: params.get("participationId") ?? "",
@@ -231,6 +220,7 @@ function updateAddress(filters: InsightsFilters) {
     });
     if (filters.participationId) params.set("participationId", filters.participationId);
     if (filters.subgroupId) params.set("subgroupId", filters.subgroupId);
+    if (filters.homeId) params.set("homeId", filters.homeId);
     window.history.replaceState(null, "", `/finance/insights?${params.toString()}`);
 }
 
@@ -276,6 +266,7 @@ export default function ExpenseInsightsPage() {
     const [overdueSort, setOverdueSort] = useState<OverdueSort>("days");
     const [initialLoading, setInitialLoading] = useState(true);
     const [loading, setLoading] = useState(true);
+    const [refreshVersion, setRefreshVersion] = useState(0);
     const [error, setError] = useState("");
     const [residenceError, setResidenceError] = useState("");
     const [visibleViews, setVisibleViews] =
@@ -284,7 +275,7 @@ export default function ExpenseInsightsPage() {
     const [preferenceStorageAvailable, setPreferenceStorageAvailable] = useState<boolean | null>(
         null
     );
-    const home = homes[0];
+    const home = homes.find((item) => item.id === filters?.homeId) ?? homes[0];
     const preferencesStorageKey = user?.id ? `${VISUALIZATION_STORAGE_PREFIX}${user.id}` : null;
     const hasVisibleViews = Object.values(visibleViews).some(Boolean);
 
@@ -358,6 +349,12 @@ export default function ExpenseInsightsPage() {
     }, [filters]);
 
     useEffect(() => {
+        const refresh = () => setRefreshVersion((version) => version + 1);
+        window.addEventListener("focus", refresh);
+        return () => window.removeEventListener("focus", refresh);
+    }, []);
+
+    useEffect(() => {
         if (!home || !filters) return;
         let active = true;
         const query = {
@@ -380,6 +377,7 @@ export default function ExpenseInsightsPage() {
         ])
             .then(([availableMembers, availableSubgroups, result, contributionResult]) => {
                 if (!active) return;
+                setError("");
                 setMembers(availableMembers);
                 setSubgroups(availableSubgroups.filter((item) => item.homeId === home.id));
                 setInsights(result);
@@ -397,7 +395,7 @@ export default function ExpenseInsightsPage() {
         return () => {
             active = false;
         };
-    }, [home, filters]);
+    }, [home, filters, refreshVersion]);
 
     const sortedMembers = useMemo(() => {
         const items = [...(insights?.members ?? [])];
@@ -495,14 +493,9 @@ export default function ExpenseInsightsPage() {
     );
 
     function applyPreset(preset: PeriodPreset) {
-        const today = businessDate();
-        const range =
-            preset === "LAST_SIX_MONTHS"
-                ? sixMonthRange(today)
-                : preset === "CURRENT_MONTH"
-                  ? { from: firstDayOfMonth(today), to: lastDayOfMonth(today) }
-                  : null;
-        setFilter({ preset, ...(range ?? {}) });
+        setFilter(
+            preset === "CUSTOM" ? { preset } : { preset, ...presetRange(preset, businessDate()) }
+        );
     }
 
     if (initialLoading) {
@@ -572,9 +565,7 @@ export default function ExpenseInsightsPage() {
                         Compare as cotas da casa e acompanhe as pendências de {home.name}.
                     </p>
                 </div>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm text-[#514c56] ring-1 ring-[#ded6e2]">
-                    <BarChart3 size={17} className="text-[#4e812f]" /> Visão da casa
-                </span>
+                <p className="text-xs text-muted-foreground">Visão da casa</p>
             </header>
 
             <section
@@ -594,6 +585,7 @@ export default function ExpenseInsightsPage() {
                             className="mt-1.5 w-full rounded-lg border border-[#d8d1da] bg-white px-3 py-2.5 text-sm text-[#29252d]"
                         >
                             <option value="CURRENT_MONTH">Mês atual</option>
+                            <option value="NEXT_MONTH">Próximo mês</option>
                             <option value="LAST_SIX_MONTHS">Últimos 6 meses</option>
                             <option value="CUSTOM">Personalizado</option>
                         </select>
@@ -846,8 +838,18 @@ export default function ExpenseInsightsPage() {
                                 Nenhuma cota encontrada neste período
                             </h2>
                             <p className="mt-1 text-sm text-[#706a74]">
-                                Mude o período ou remova algum filtro para ampliar a análise.
+                                Os Insights usam o vencimento das despesas. Mude o período ou remova
+                                algum filtro para ampliar a análise.
                             </p>
+                            {filters?.preset === "CURRENT_MONTH" && (
+                                <button
+                                    type="button"
+                                    onClick={() => applyPreset("NEXT_MONTH")}
+                                    className="mt-3 cursor-pointer rounded text-sm font-semibold text-primary underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                >
+                                    Ver próximo mês
+                                </button>
+                            )}
                             {!hasVisibleViews && (
                                 <button
                                     type="button"

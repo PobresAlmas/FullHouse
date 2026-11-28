@@ -56,6 +56,14 @@ export function localIsoDate(date: Date) {
     return `${year}-${month}-${day}`;
 }
 
+export function expenseMonthRange(date: string, offset = 0) {
+    const [year, month] = date.slice(0, 7).split("-").map(Number);
+    return {
+        from: new Date(Date.UTC(year, month - 1 + offset, 1)).toISOString().slice(0, 10),
+        to: new Date(Date.UTC(year, month + offset, 0)).toISOString().slice(0, 10),
+    };
+}
+
 export function sortExpenses(items: Expense[]) {
     return [...items].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
 }

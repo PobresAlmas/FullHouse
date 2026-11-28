@@ -11,11 +11,11 @@
 
 ## Fluxo principal
 
-1. O usuário abre **Insights** a partir de Financeiro. A página consulta a residência ativa e carrega a análise do mês atual.
+1. Na entrada padrão, a página consulta a residência ativa e carrega a análise do mês atual. Após salvar uma despesa da casa no Financeiro, o atalho abre os Insights da residência e do mês de vencimento dessa despesa.
 2. O usuário muda período, morador, subgrupo ou situação da cota. A seleção fica na URL para ser recarregável e compartilhável dentro da mesma sessão autorizada.
 3. O cliente consulta o agregado da residência. O backend exige participação ativa, valida os filtros e aplica as mesmas regras de visibilidade residencial e de subgrupo existentes no módulo de despesas.
 4. O backend agrega rateios por vencimento, participação e subgrupo. Retorna valores em formato decimal textual para evitar erro de ponto flutuante no contrato.
-5. A página atualiza os cartões, comparativos e lista. Se o filtro de situação não for ALL, faz uma consulta adicional com status ALL para manter correto o denominador do gráfico de taxa paga; período, morador e subgrupo permanecem aplicados. Se o período incluir despesas sem rateio, mostra aviso com quantidade e valor não distribuídos.
+5. A página atualiza os cartões, comparativos e lista. Ao voltar para a aba dos Insights, consulta novamente os dados com os filtros ativos. Se o filtro de situação não for ALL, faz uma consulta adicional com status ALL para manter correto o denominador do gráfico de taxa paga; período, morador e subgrupo permanecem aplicados. Se o período incluir despesas sem rateio, mostra aviso com quantidade e valor não distribuídos.
 
 ## Fluxos alternativos
 
@@ -29,7 +29,7 @@
 ## Interface
 
 - Título **Insights financeiros** com retorno para Financeiro.
-- Barra de filtros com período (`Mês atual`, `Últimos 6 meses`, `Personalizado`), datas de início e fim no modo personalizado, morador, subgrupo e situação da cota.
+- Barra de filtros com período (`Mês atual`, `Próximo mês`, `Últimos 6 meses`, `Personalizado`), datas de início e fim no modo personalizado, morador, subgrupo e situação da cota.
 - Linha de cartões: **Devido em cotas**, **Marcado como pago**, **Em aberto**, **Em atraso** e **Percentual quitado**. Atraso é uma parte de “Em aberto”, não um total adicional.
 - **Comparativo por morador:** barras horizontais empilhadas para pago e em aberto, com valor devido como total e percentual quitado como dado textual. Padrão de ordenação: maior valor em atraso; opção de ordenar por devido, pago ou percentual quitado. Mostrar “Sem cotas no período” para participações sem rateio dentro do recorte.
 - **Contas inteiras quitadas por morador:** quadro separado que soma o valor integral das despesas residenciais atualmente `QUITADA`, agrupadas pela participação registrada em `pago_por_participacao_id`. O período continua usando o vencimento da despesa. O filtro de situação da cota não afeta este quadro. Se não houver participação registrada, mostrar uma linha “Responsável não informado”.
